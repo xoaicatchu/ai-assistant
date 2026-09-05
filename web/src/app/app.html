@@ -65,46 +65,46 @@
         <svg lucideMessageCircle class="h-4 w-4" aria-hidden="true"></svg>
         Chat
       </button>
+      <div class="conversation-tabs" role="tablist" aria-label="Các cuộc trò chuyện">
+        @for (conversation of conversations(); track conversation.id) {
+          <button
+            class="conversation-tab"
+            [class.active-conversation-tab]="conversation.id === activeConversationId()"
+            type="button"
+            role="tab"
+            [attr.aria-selected]="conversation.id === activeConversationId()"
+            [disabled]="busy()"
+            (click)="selectConversation(conversation.id)"
+          >
+            <span>{{ conversation.title }}</span>
+            <span
+              class="conversation-tab-close"
+              role="button"
+              tabindex="0"
+              aria-label="Xóa cuộc trò chuyện"
+              title="Xóa cuộc trò chuyện"
+              (click)="deleteConversation(conversation.id, $event)"
+            >
+              <svg lucideX class="h-3 w-3" aria-hidden="true"></svg>
+            </span>
+          </button>
+        }
+        <button
+          class="new-conversation-button"
+          type="button"
+          aria-label="Tạo cuộc trò chuyện mới"
+          title="Tạo cuộc trò chuyện mới"
+          [disabled]="busy()"
+          (click)="createConversation()"
+        >
+          <span aria-hidden="true">+</span>
+          <span class="sr-only">Cuộc trò chuyện mới</span>
+        </button>
+      </div>
     </nav>
 
     @if (activeTab() === 'chat') {
       <section id="chat-panel" class="chat-panel" role="tabpanel" aria-labelledby="chat-tab">
-        <div class="conversation-tabs" role="tablist" aria-label="Các cuộc trò chuyện">
-          @for (conversation of conversations(); track conversation.id) {
-            <button
-              class="conversation-tab"
-              [class.active-conversation-tab]="conversation.id === activeConversationId()"
-              type="button"
-              role="tab"
-              [attr.aria-selected]="conversation.id === activeConversationId()"
-              [disabled]="busy()"
-              (click)="selectConversation(conversation.id)"
-            >
-              <span>{{ conversation.title }}</span>
-              <span
-                class="conversation-tab-close"
-                role="button"
-                tabindex="0"
-                aria-label="Xóa cuộc trò chuyện"
-                title="Xóa cuộc trò chuyện"
-                (click)="deleteConversation(conversation.id, $event)"
-                >
-                <svg lucideX class="h-3 w-3" aria-hidden="true"></svg>
-              </span>
-            </button>
-          }
-          <button
-            class="new-conversation-button"
-            type="button"
-            aria-label="Tạo cuộc trò chuyện mới"
-            title="Tạo cuộc trò chuyện mới"
-            [disabled]="busy()"
-            (click)="createConversation()"
-          >
-            <span aria-hidden="true">+</span>
-            <span class="sr-only">Cuộc trò chuyện mới</span>
-          </button>
-        </div>
         <section #conversation class="conversation" aria-live="polite" aria-label="Conversation">
           @if (messages().length === 0) {
             <div class="welcome-card">

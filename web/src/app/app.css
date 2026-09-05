@@ -151,6 +151,7 @@ textarea:disabled {
 .tab-bar {
   min-height: 42px;
   border-bottom: 1px solid #ececf1;
+  min-width: 0;
 }
 
 .tab-button {
@@ -200,12 +201,13 @@ textarea:disabled {
 }
 
 .conversation-tabs {
-  width: min(100%, 768px);
+  min-width: 0;
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 5px;
-  margin: 0 auto;
-  padding: 8px 20px 0;
+  margin-left: 4px;
+  padding: 0;
   overflow-x: auto;
   scrollbar-width: none;
 }
