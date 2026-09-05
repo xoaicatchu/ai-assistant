@@ -203,13 +203,19 @@
             <input
               [ngModel]="gatewayBaseUrl()"
               (ngModelChange)="gatewayBaseUrl.set($event)"
-              [disabled]="busy()"
+              [disabled]="busy() || runtime.isVercel"
               autocomplete="off"
               spellcheck="false"
               placeholder="Để trống để dùng /api hoặc proxy local"
               aria-label="Gateway Base URL"
             />
-            <small>Ví dụ: <code>https://api.example.com</code>. Credential không nằm ở frontend.</small>
+            <small>
+              @if (runtime.isVercel) {
+                Vercel luôn dùng proxy cùng origin <code>/api</code>; backend được cấu hình bằng biến server-side.
+              } @else {
+                Ví dụ: <code>https://api.example.com</code>. Credential không nằm ở frontend.
+              }
+            </small>
           </label>
 
           <label class="setup-field setup-field-wide">

@@ -80,7 +80,7 @@ export class App {
   protected readonly activeTab = signal<ActiveTab>('chat');
   protected readonly model = signal(this.initialSetup.selectedModel);
   protected readonly modelOptions = signal(allModelOptions(this.initialSetup.customModels));
-  protected readonly gatewayBaseUrl = signal(this.initialSetup.gatewayBaseUrl);
+  protected readonly gatewayBaseUrl = signal(runtimeConfig.isVercel ? '' : this.initialSetup.gatewayBaseUrl);
   protected readonly customModelsText = signal(this.initialSetup.customModels.join('\n'));
   protected readonly setupMessage = signal('');
   protected readonly draft = signal('');
@@ -263,7 +263,7 @@ export class App {
 
   protected saveSetup(): void {
     const saved = saveSetupSettings({
-      gatewayBaseUrl: this.gatewayBaseUrl(),
+      gatewayBaseUrl: runtimeConfig.isVercel ? '' : this.gatewayBaseUrl(),
       customModels: this.customModelsText(),
       selectedModel: this.model(),
     });

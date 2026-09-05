@@ -10,14 +10,20 @@ declare global {
 }
 
 const configured = globalThis.__PROXY_AGENT_CONFIG__ ?? {};
-const generatedApiBaseUrl = normalizeGatewayBaseUrl(configured.apiBaseUrl);
+const generatedIsVercel = configured.isVercel === true;
+const generatedApiBaseUrl = generatedIsVercel ? '/api' : normalizeGatewayBaseUrl(configured.apiBaseUrl);
 
 export const runtimeConfig: RuntimeConfig = {
   apiBaseUrl: generatedApiBaseUrl,
-  isVercel: configured.isVercel === true,
+  isVercel: generatedIsVercel,
 };
 
 export function setRuntimeApiBaseUrl(value: string): void {
+  if (runtimeConfig.isVercel) {
+    runtimeConfig.apiBaseUrl = '/api';
+    return;
+  }
+
   runtimeConfig.apiBaseUrl = normalizeGatewayBaseUrl(value) || generatedApiBaseUrl;
 }
 

@@ -18,4 +18,16 @@ describe('runtime config', () => {
 
     expect(runtimeConfig.apiBaseUrl).toBe('');
   });
+
+  it('always uses the same-origin proxy on Vercel', () => {
+    const originalIsVercel = runtimeConfig.isVercel;
+    runtimeConfig.isVercel = true;
+
+    setRuntimeApiBaseUrl('https://aishop24h.com');
+
+    expect(runtimeConfig.apiBaseUrl).toBe('/api');
+    expect(apiUrl('/health')).toBe('/api/health');
+
+    runtimeConfig.isVercel = originalIsVercel;
+  });
 });
