@@ -61,7 +61,7 @@ flowchart LR
     Backend -->|server-side Tavily key| Tavily
 ```
 
-`web/` chạy riêng với Angular dev-server khi phát triển. Khi production, Vercel serve `dist/web/browser` và function `api/[...path].ts` proxy `/api/*` tới backend bằng biến server-side `PROXY_AGENT_BACKEND_URL`. Vercel luôn ép frontend dùng `/api`; `NG_APP_API_BASE_URL` chỉ dành cho deployment không phải Vercel muốn gọi trực tiếp backend qua CORS. Backend không được deploy như Vercel static asset, mà chạy bằng `Dockerfile` ở root repo hoặc một host container tương đương.
+`web/` chạy riêng với Angular dev-server khi phát triển. Khi production, Vercel serve `dist/web/browser`; rewrite `/api/*` vào function `api/index.ts`, function này proxy tới backend bằng biến server-side `PROXY_AGENT_BACKEND_URL`. Vercel luôn ép frontend dùng `/api`; `NG_APP_API_BASE_URL` chỉ dành cho deployment không phải Vercel muốn gọi trực tiếp backend qua CORS. Backend không được deploy như Vercel static asset, mà chạy bằng `Dockerfile` ở root repo hoặc một host container tương đương.
 
 ## Các tầng và trách nhiệm
 

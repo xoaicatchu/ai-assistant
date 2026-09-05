@@ -33,7 +33,7 @@ describe('Vercel backend proxy URL', () => {
     const response = createResponse();
 
     await proxyRequest(
-      createRequest('POST', '/v1/chat/completions?stream=true', 'request-body'),
+      createRequest('POST', '/api/index?path=v1/chat/completions&stream=true', 'request-body'),
       response,
       'https://backend.example.com',
       'v1/chat/completions',

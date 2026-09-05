@@ -71,7 +71,7 @@ Tạo Vercel Project từ repository này và để **Root Directory** ở thư 
 - Output directory: `web/dist/web/browser`
 - Server environment variable: `PROXY_AGENT_BACKEND_URL=https://<public-backend-url>`
 
-Frontend dùng mặc định same-origin `/api`; function `api/[...path].ts` proxy request và SSE từ Vercel tới backend .NET. Vì vậy URL backend nằm ở biến môi trường server-side, không bị nhúng vào bundle trình duyệt. Backend .NET không chạy trực tiếp như Vercel static frontend; hãy deploy backend bằng Dockerfile ở root project trên một container host, sau đó dùng URL public của backend làm giá trị biến trên.
+Frontend dùng mặc định same-origin `/api`; function `api/index.ts` nhận rewrite `/api/*` và proxy request/SSE từ Vercel tới backend .NET. Vì vậy URL backend nằm ở biến môi trường server-side, không bị nhúng vào bundle trình duyệt. Backend .NET không chạy trực tiếp như Vercel static frontend; hãy deploy backend bằng Dockerfile ở root project trên một container host, sau đó dùng URL public của backend làm giá trị biến trên.
 
 Nếu Project đã đặt Root Directory là `web`, giữ thiết lập đó cũng được: dùng build command `npm run build`, output `dist/web/browser` và cấu hình trong `web/vercel.json`. Không đặt Root Directory là `src` hoặc một thư mục không chứa `package.json`.
 

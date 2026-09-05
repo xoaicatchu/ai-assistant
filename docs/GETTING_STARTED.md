@@ -131,7 +131,7 @@ Khi import repo vào Vercel:
 2. Dùng build command `npm run build` và output directory `web/dist/web/browser`.
 3. Tạo server environment variable `PROXY_AGENT_BACKEND_URL=https://<public-backend-url>` cho Production rồi redeploy.
 
-`api/[...path].ts` proxy `/api/*` và cả SSE tới backend. Build Vercel luôn dùng same-origin `/api`, kể cả khi `NG_APP_API_BASE_URL` cũ còn tồn tại, nên URL backend không bị nhúng vào bundle. Nếu muốn giữ Root Directory=`web`, dùng output `dist/web/browser` và function `web/api/[...path].ts`. Deployment không phải Vercel mới dùng `NG_APP_API_BASE_URL` để gọi backend trực tiếp và cần cấu hình CORS tương ứng.
+`api/index.ts` nhận rewrite `/api/*` và proxy cả request lẫn SSE tới backend. Build Vercel luôn dùng same-origin `/api`, kể cả khi `NG_APP_API_BASE_URL` cũ còn tồn tại, nên URL backend không bị nhúng vào bundle. Nếu muốn giữ Root Directory=`web`, dùng output `dist/web/browser` và function `web/api/index.ts`. Deployment không phải Vercel mới dùng `NG_APP_API_BASE_URL` để gọi backend trực tiếp và cần cấu hình CORS tương ứng.
 
 ## 6. Kiểm tra process:
 

@@ -39,7 +39,7 @@ export async function proxyRequest(
   backendBaseUrl: string,
   requestPath: string,
 ): Promise<void> {
-  const search = request.url?.includes('?') ? request.url.slice(request.url.indexOf('?')) : '';
+  const search = forwardedSearch(request.url);
   const targetUrl = buildBackendUrl(backendBaseUrl, requestPath, search);
   if (!targetUrl) {
     writeJson(response, 503, {
@@ -105,6 +105,20 @@ export async function proxyRequest(
     }
   } finally {
     response.end();
+  }
+}
+
+function forwardedSearch(requestUrl: string | undefined): string {
+  if (!requestUrl?.includes('?')) {
+    return '';
+  }
+
+  try {
+    const parsed = new URL(requestUrl, 'http://vercel-proxy.internal');
+    parsed.searchParams.delete('path');
+    return parsed.search;
+  } catch {
+    return '';
   }
 }
 
