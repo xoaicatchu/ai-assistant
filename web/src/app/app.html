@@ -189,27 +189,25 @@
             aria-label="Tin nhắn"
             enterkeyhint="send"
           ></textarea>
-          <div class="composer-options">
-            <label class="stream-toggle composer-stream-toggle" title="Bật hoặc tắt streaming SSE">
-              <input
-                type="checkbox"
-                [ngModel]="streamEnabled()"
-                (ngModelChange)="streamEnabled.set($event)"
-                [disabled]="busy()"
-                name="composer-streaming"
-                aria-label="Streaming SSE"
-              />
-              <span class="toggle-track" aria-hidden="true"><span></span></span>
-              <span>Streaming SSE</span>
-            </label>
-          </div>
           <div class="composer-footer flex items-center justify-between gap-3">
             <div class="composer-tools flex min-w-0 items-center gap-2">
               <label class="icon-button attach-button" for="image-upload" title="Đính kèm ảnh">
-                <svg lucidePaperclip class="h-4 w-4" aria-hidden="true"></svg>
+                <svg lucidePlus class="h-4 w-4" aria-hidden="true"></svg>
                 <span class="sr-only">Đính kèm ảnh</span>
               </label>
               <input id="image-upload" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/gif" (change)="onImageSelected($event)" />
+              <label class="stream-toggle composer-stream-toggle" title="Bật hoặc tắt streaming SSE">
+                <input
+                  type="checkbox"
+                  [ngModel]="streamEnabled()"
+                  (ngModelChange)="streamEnabled.set($event)"
+                  [disabled]="busy()"
+                  name="composer-streaming"
+                  aria-label="Streaming SSE"
+                />
+                <span class="toggle-track" aria-hidden="true"><span></span></span>
+                <span>Stream</span>
+              </label>
             </div>
             <div class="composer-actions flex items-center gap-1.5">
               <div class="model-select-wrap">
