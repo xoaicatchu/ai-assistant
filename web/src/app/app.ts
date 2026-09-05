@@ -19,7 +19,7 @@ import {
   LucideWifiOff,
   LucideX,
 } from '@lucide/angular';
-import { dismissComposerInput, shouldSubmitOnEnter } from './composer';
+import { restoreComposerAfterSend, shouldSubmitOnEnter } from './composer';
 import { ChatMessage, ChatService } from './chat.service';
 import { ImageAttachment, toChatMessage } from './chat-content';
 import {
@@ -158,7 +158,7 @@ export class App {
     this.scrollConversationToBottom();
     this.draft.set('');
     this.pendingImage.set(null);
-    dismissComposerInput(this.composerInput?.nativeElement);
+    restoreComposerAfterSend(this.composerInput?.nativeElement);
     this.error.set('');
     this.updateActiveConversation(content);
 

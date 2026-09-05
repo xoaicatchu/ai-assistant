@@ -12,9 +12,9 @@ message is submitted.
   Chat composer footer, replacing the static Enter/Shift+Enter shortcut copy.
 - Keep the toggle as a runtime-only preference, so it immediately controls
   whether the next request uses SSE or a complete JSON response.
-- After a valid message or image is accepted for sending, clear the textarea
-  focus explicitly. This lets iOS dismiss the software keyboard while the
-  request continues.
+- After a valid message or image is accepted for sending, release textarea
+  focus on iPhone/iPad so iOS dismisses the software keyboard; restore textarea
+  focus on desktop so the user can immediately type the next message.
 - Preserve Enter-to-send and Shift+Enter-for-new-line behavior.
 - Remove the Response mode card from Customize; connection testing remains in
   the gateway connection card beside the current health state.
@@ -36,17 +36,17 @@ connection card rather than mixed with save/reset actions.
 ## Data flow and error handling
 
 No API contract changes are required. The existing `streamEnabled` signal still
-selects `ChatService.stream()` or `ChatService.complete()`. The explicit blur
-only runs after the message has passed the existing empty-input and model
-validation checks; invalid submissions keep the current editing focus.
+selects `ChatService.stream()` or `ChatService.complete()`. Platform-specific
+focus handling only runs after the message has passed the existing empty-input
+and model validation checks; invalid submissions keep the current editing focus.
 
 The existing health status, save/reset normalization, and disabled-while-busy
 rules remain unchanged.
 
 ## Testing and verification
 
-- Add a focused component behavior test for blurring the composer after a
-  valid send while preserving focus on invalid input.
+- Add focused composer behavior tests for the iPhone/iPad blur path and the
+  desktop focus path.
 - Add template/component assertions for the SSE control being in the Chat
   composer and absent from the Customize panel where practical.
 - Run the frontend unit tests, production build, and `git diff --check`.

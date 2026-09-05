@@ -4,7 +4,7 @@
 
 **Goal:** Put the SSE switch in the chat composer, dismiss the iPhone keyboard after a valid send, and make the Customize actions easier to understand with Save at the bottom.
 
-**Architecture:** Keep `streamEnabled` as the existing runtime signal and move only its control from the Customize template into the composer footer. Add a tiny tested composer utility that calls `blur()` on the textarea after the existing input/model validation succeeds. Reorganize the existing Customize markup and CSS without changing API payloads, storage, or health-check behavior.
+**Architecture:** Keep `streamEnabled` as the existing runtime signal and move only its control from the Customize template into the composer footer. Add a tiny tested composer utility that calls `blur()` on Apple mobile devices and `focus()` on desktop after the existing input/model validation succeeds. Reorganize the existing Customize markup and CSS without changing API payloads, storage, or health-check behavior.
 
 **Tech Stack:** Angular 21 standalone components, TypeScript, native signals/forms, CSS, Vitest.
 
@@ -13,40 +13,59 @@
 - The Chat composer footer contains the image attachment control and a compact accessible SSE switch.
 - The `streamEnabled` signal still selects `ChatService.stream()` or `ChatService.complete()`.
 - Preserve Enter-to-send and Shift+Enter-for-new-line behavior.
-- The explicit blur only runs after the message has passed the existing empty-input and model validation checks.
+- The iPhone/iPad blur and desktop focus behavior only runs after the message has passed the existing empty-input and model validation checks.
 - No API contract changes are required.
 - Run the frontend unit tests, production build, and `git diff --check`.
 - Run the existing .NET test suite to confirm the frontend-only change does not affect the gateway.
 
 ---
 
-### Task 1: Add a failing regression test for mobile composer dismissal
+### Task 1: Add failing regression tests for platform-specific composer focus
 
 **Files:**
 - Modify: `web/src/app/composer.spec.ts`
 - Modify: `web/src/app/composer.ts`
 
 **Interfaces:**
-- Produces `dismissComposerInput(input: Pick<HTMLElement, 'blur'> | null | undefined): void` for the component to call after accepting a message.
+- Produces `restoreComposerAfterSend(input: Pick<HTMLElement, 'blur' | 'focus'> | null | undefined, environment?: ComposerEnvironment): void` for the component to call after accepting a message.
 
 - [ ] **Step 1: Write the failing tests**
 
-Append this suite to `web/src/app/composer.spec.ts` and import the new symbol:
+Replace the existing dismissal suite in `web/src/app/composer.spec.ts` and
+import the new symbol:
 
 ```typescript
-import { dismissComposerInput, shouldSubmitOnEnter } from './composer';
+import { restoreComposerAfterSend, shouldSubmitOnEnter } from './composer';
 
-describe('dismissComposerInput', () => {
-  it('blurs the textarea so a mobile keyboard can close after sending', () => {
+describe('restoreComposerAfterSend', () => {
+  it('blurs the textarea on iPhone so the software keyboard can close', () => {
     const blur = vi.fn();
+    const focus = vi.fn();
 
-    dismissComposerInput({ blur });
+    restoreComposerAfterSend(
+      { blur, focus },
+      { platform: 'iPhone', userAgent: 'Mozilla/5.0 (iPhone)', maxTouchPoints: 5 },
+    );
 
     expect(blur).toHaveBeenCalledOnce();
+    expect(focus).not.toHaveBeenCalled();
+  });
+
+  it('keeps the textarea focused on desktop for the next message', () => {
+    const blur = vi.fn();
+    const focus = vi.fn();
+
+    restoreComposerAfterSend(
+      { blur, focus },
+      { platform: 'Win32', userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', maxTouchPoints: 0 },
+    );
+
+    expect(focus).toHaveBeenCalledOnce();
+    expect(blur).not.toHaveBeenCalled();
   });
 
   it('does nothing when the composer is not mounted', () => {
-    expect(() => dismissComposerInput(undefined)).not.toThrow();
+    expect(() => restoreComposerAfterSend(undefined, { platform: 'Win32' })).not.toThrow();
   });
 });
 ```
@@ -66,16 +85,54 @@ Run from `web/`:
 npm test -- src/app/composer.spec.ts
 ```
 
-Expected: the test run fails because `dismissComposerInput` is not exported by
+Expected: the test run fails because `restoreComposerAfterSend` is not exported by
 `composer.ts` yet.
 
 - [ ] **Step 3: Add the minimal utility implementation**
 
-Add this function to `web/src/app/composer.ts`:
+Add this interface and function to `web/src/app/composer.ts`:
 
 ```typescript
-export function dismissComposerInput(input: Pick<HTMLElement, 'blur'> | null | undefined): void {
-  input?.blur();
+export interface ComposerEnvironment {
+  platform?: string;
+  userAgent?: string;
+  maxTouchPoints?: number;
+}
+
+export function restoreComposerAfterSend(
+  input: Pick<HTMLElement, 'blur' | 'focus'> | null | undefined,
+  environment: ComposerEnvironment = readComposerEnvironment(),
+): void {
+  if (!input) {
+    return;
+  }
+
+  if (isAppleMobile(environment)) {
+    input.blur();
+    return;
+  }
+
+  input.focus();
+}
+
+function readComposerEnvironment(): ComposerEnvironment {
+  if (typeof navigator === 'undefined') {
+    return {};
+  }
+
+  return {
+    platform: navigator.platform,
+    userAgent: navigator.userAgent,
+    maxTouchPoints: navigator.maxTouchPoints,
+  };
+}
+
+function isAppleMobile(environment: ComposerEnvironment): boolean {
+  const platform = environment.platform ?? '';
+  const userAgent = environment.userAgent ?? '';
+  return /iPad|iPhone|iPod/u.test(platform)
+    || /iPad|iPhone|iPod/u.test(userAgent)
+    || (platform === 'MacIntel' && (environment.maxTouchPoints ?? 0) > 1);
 }
 ```
 
@@ -103,7 +160,7 @@ git commit -m "test: cover mobile composer dismissal"
 - Modify: `web/src/app/app.html`
 
 **Interfaces:**
-- Consumes `dismissComposerInput` from `composer.ts`.
+- Consumes `restoreComposerAfterSend` from `composer.ts`.
 - Keeps the existing `streamEnabled()` signal and `runRequest()` branch unchanged.
 
 - [ ] **Step 1: Wire the tested blur utility into valid send flow**
@@ -111,7 +168,7 @@ git commit -m "test: cover mobile composer dismissal"
 Update the import in `web/src/app/app.ts`:
 
 ```typescript
-import { dismissComposerInput, shouldSubmitOnEnter } from './composer';
+import { restoreComposerAfterSend, shouldSubmitOnEnter } from './composer';
 ```
 
 In `send()`, immediately after the existing lines that clear `draft` and
@@ -120,13 +177,15 @@ In `send()`, immediately after the existing lines that clear `draft` and
 ```typescript
 this.draft.set('');
 this.pendingImage.set(null);
-dismissComposerInput(this.composerInput?.nativeElement);
+restoreComposerAfterSend(this.composerInput?.nativeElement);
 this.error.set('');
 ```
 
 Remove the later `this.focusComposer();` call from `send()`. Keep
 `focusComposer()` for tab switching and conversation selection, where returning
-to Chat should still place the caret in the composer.
+to Chat should still place the caret in the composer. `restoreComposerAfterSend`
+uses the browser platform/user agent to call `blur()` on iPhone/iPad and
+`focus()` on desktop.
 
 - [ ] **Step 2: Replace the shortcut copy with an accessible SSE switch**
 

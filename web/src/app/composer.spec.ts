@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { dismissComposerInput, shouldSubmitOnEnter } from './composer';
+import { restoreComposerAfterSend, shouldSubmitOnEnter } from './composer';
 
 describe('shouldSubmitOnEnter', () => {
   it('submits on Enter without Shift', () => {
@@ -23,16 +23,34 @@ describe('shouldSubmitOnEnter', () => {
   });
 });
 
-describe('dismissComposerInput', () => {
-  it('blurs the textarea so a mobile keyboard can close after sending', () => {
+describe('restoreComposerAfterSend', () => {
+  it('blurs the textarea on iPhone so the software keyboard can close', () => {
     const blur = vi.fn();
+    const focus = vi.fn();
 
-    dismissComposerInput({ blur });
+    restoreComposerAfterSend(
+      { blur, focus },
+      { platform: 'iPhone', userAgent: 'Mozilla/5.0 (iPhone)', maxTouchPoints: 5 },
+    );
 
     expect(blur).toHaveBeenCalledOnce();
+    expect(focus).not.toHaveBeenCalled();
+  });
+
+  it('keeps the textarea focused on desktop for the next message', () => {
+    const blur = vi.fn();
+    const focus = vi.fn();
+
+    restoreComposerAfterSend(
+      { blur, focus },
+      { platform: 'Win32', userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', maxTouchPoints: 0 },
+    );
+
+    expect(focus).toHaveBeenCalledOnce();
+    expect(blur).not.toHaveBeenCalled();
   });
 
   it('does nothing when the composer is not mounted', () => {
-    expect(() => dismissComposerInput(undefined)).not.toThrow();
+    expect(() => restoreComposerAfterSend(undefined, { platform: 'Win32' })).not.toThrow();
   });
 });
