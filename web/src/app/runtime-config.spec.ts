@@ -19,12 +19,16 @@ describe('runtime config', () => {
     expect(runtimeConfig.apiBaseUrl).toBe('/api');
   });
 
-  it('always uses the same-origin proxy on Vercel', () => {
+  it('uses the same-origin proxy by default while allowing a custom backend on Vercel', () => {
     const originalIsVercel = runtimeConfig.isVercel;
     runtimeConfig.isVercel = true;
 
     setRuntimeApiBaseUrl('https://aishop24h.com');
 
+    expect(runtimeConfig.apiBaseUrl).toBe('https://aishop24h.com');
+    expect(apiUrl('/health')).toBe('https://aishop24h.com/health');
+
+    setRuntimeApiBaseUrl('');
     expect(runtimeConfig.apiBaseUrl).toBe('/api');
     expect(apiUrl('/health')).toBe('/api/health');
 

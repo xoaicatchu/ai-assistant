@@ -80,7 +80,7 @@ export class App {
   protected readonly activeTab = signal<ActiveTab>('chat');
   protected readonly model = signal(this.initialSetup.selectedModel);
   protected readonly modelOptions = signal(allModelOptions(this.initialSetup.customModels));
-  protected readonly gatewayBaseUrl = signal(runtimeConfig.isVercel ? '' : this.initialSetup.gatewayBaseUrl);
+  protected readonly gatewayBaseUrl = signal(this.initialSetup.gatewayBaseUrl);
   protected readonly apiKey = signal(this.initialSetup.apiKey);
   protected readonly customModelsText = signal(this.initialSetup.customModels.join('\n'));
   protected readonly setupMessage = signal('');
@@ -264,7 +264,7 @@ export class App {
 
   protected saveSetup(): void {
     const saved = saveSetupSettings({
-      gatewayBaseUrl: runtimeConfig.isVercel ? '' : this.gatewayBaseUrl(),
+      gatewayBaseUrl: this.gatewayBaseUrl(),
       apiKey: this.apiKey(),
       customModels: this.customModelsText(),
       selectedModel: this.model(),
@@ -276,7 +276,7 @@ export class App {
     this.customModelsText.set(saved.customModels.join('\n'));
     this.modelOptions.set(allModelOptions(saved.customModels));
     this.model.set(saved.selectedModel);
-    this.setupMessage.set('Đã lưu setup trên thiết bị này.');
+    this.setupMessage.set('Đã lưu tùy chỉnh trên thiết bị này.');
     void this.checkHealth();
   }
 
@@ -288,7 +288,7 @@ export class App {
     this.customModelsText.set(defaults.customModels.join('\n'));
     this.modelOptions.set(allModelOptions(defaults.customModels));
     this.model.set(defaults.selectedModel);
-    this.setupMessage.set('Đã khôi phục setup mặc định.');
+    this.setupMessage.set('Đã khôi phục tùy chỉnh mặc định.');
     void this.checkHealth();
   }
 

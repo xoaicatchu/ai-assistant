@@ -21,11 +21,6 @@ export const runtimeConfig: RuntimeConfig = {
 };
 
 export function setRuntimeApiBaseUrl(value: string): void {
-  if (runtimeConfig.isVercel) {
-    runtimeConfig.apiBaseUrl = '/api';
-    return;
-  }
-
   runtimeConfig.apiBaseUrl = normalizeGatewayBaseUrl(value) || '/api';
 }
 

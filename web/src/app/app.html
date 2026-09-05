@@ -62,7 +62,7 @@
         (click)="selectTab('setup')"
       >
         <svg lucideSettings2 class="h-4 w-4" aria-hidden="true"></svg>
-        Setup
+        Customize
       </button>
     </nav>
 
@@ -192,18 +192,18 @@
     } @else {
       <section id="setup-panel" class="setup-panel" role="tabpanel" aria-labelledby="setup-tab">
         <div class="setup-heading">
-          <p class="eyebrow">WORKSPACE SETUP</p>
-          <h2>Cấu hình phiên chat</h2>
-          <p>Chọn backend, API key và model route cho phiên chat hiện tại.</p>
+          <p class="eyebrow">WORKSPACE CUSTOMIZE</p>
+          <h2>Tùy chỉnh phiên chat</h2>
+          <p>Backend mặc định đã được cấu hình sẵn. Chỉ dùng phần này khi muốn trỏ sang backend khác.</p>
         </div>
 
         <div class="setup-grid">
           <label class="setup-field setup-field-wide">
-            <span>Gateway Base URL</span>
+            <span>Custom backend URL</span>
             <input
               [ngModel]="gatewayBaseUrl()"
               (ngModelChange)="gatewayBaseUrl.set($event)"
-              [disabled]="busy() || runtime.isVercel"
+              [disabled]="busy()"
               autocomplete="off"
               spellcheck="false"
               placeholder="Để trống để dùng /api hoặc proxy local"
@@ -211,15 +211,15 @@
             />
             <small>
               @if (runtime.isVercel) {
-                Vercel dùng backend container cùng project qua <code>/api</code>; URL backend không cần nhập ở đây.
+                Để trống để dùng backend mặc định qua <code>/api</code>. Nhập URL khác nếu muốn dùng custom backend.
               } @else {
-                Ví dụ: <code>https://api.example.com</code>. Credential không nằm ở frontend.
+                Ví dụ: <code>https://api.example.com</code>. API key chỉ áp dụng cho custom backend.
               }
             </small>
           </label>
 
           <label class="setup-field setup-field-wide">
-            <span>OpenAI API Key</span>
+            <span>API Key cho custom backend</span>
             <input
               type="password"
               [ngModel]="apiKey()"
@@ -295,7 +295,7 @@
         <div class="setup-footer">
           <button class="primary-button" type="button" (click)="saveSetupAndOpenChat()">
             <svg lucideShieldCheck class="h-4 w-4" aria-hidden="true"></svg>
-            Lưu và mở Chat
+            Lưu tùy chỉnh và mở Chat
           </button>
           <div class="setup-footer-actions">
             @if (setupMessage()) {

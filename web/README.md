@@ -22,7 +22,7 @@ Open <http://localhost:4200>. The development proxy forwards `/health`, `/api`, 
 
 The composer accepts text or an image pasted from the clipboard. Supported image types are JPG, PNG, WEBP, and GIF up to 5 MB. Press Enter to send; use Shift+Enter for a new line. The image is sent as an OpenAI-compatible `image_url` content part, and the .NET gateway maps it to the selected provider's Vision format.
 
-The UI uses Tailwind CSS v4 through the Angular PostCSS integration and `@lucide/angular` for the enterprise icon set. The Chat composer keeps a compact model combobox; Setup manages the gateway URL and optional custom model routes. While a request is running, Send is replaced by Stop.
+The UI uses Tailwind CSS v4 through the Angular PostCSS integration and `@lucide/angular` for the enterprise icon set. The Chat composer keeps a compact model combobox; Customize manages an optional custom backend URL, API key, and model routes. While a request is running, Send is replaced by Stop.
 
 ## Vercel deployment
 
@@ -40,7 +40,7 @@ PROXY_AGENT_BACKEND_URL=https://<public-backend-url>
 
 Vercel routes `/api/*` to the .NET backend container service, which streams the response back to the browser. The Angular build defaults to same-origin `/api`; provider credentials are configured on the backend service.
 
-For Vercel, leave `NG_APP_API_BASE_URL` unset; the build uses same-origin `/api`. The Setup tab can configure the API key and custom model routes; those values are persisted in local storage.
+For Vercel, leave `NG_APP_API_BASE_URL` unset; the build uses same-origin `/api`. The Customize tab can override the backend URL, API key, and custom model routes; those values are persisted in local storage.
 
 You can also set Root Directory to `web`; in that mode use `dist/web/browser` as the output directory and the `web/vercel.json` configuration.
 
