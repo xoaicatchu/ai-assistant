@@ -1,16 +1,16 @@
 :host {
   display: block;
-  min-height: var(--app-viewport-height, 100dvh);
+  min-height: 100dvh;
 }
 
 .app-shell {
-  min-height: var(--app-viewport-height, 100dvh);
+  min-height: 100dvh;
   background: #ffffff;
 }
 
 .chat-card {
   width: 100%;
-  height: var(--app-viewport-height, 100dvh);
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;

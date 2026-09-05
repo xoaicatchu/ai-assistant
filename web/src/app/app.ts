@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnDestroy, signal, ViewChild } from '@angular/core';
+import { Component, ElementRef, signal, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   LucideArrowUp,
@@ -81,7 +81,7 @@ interface ChatConversation {
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
-export class App implements OnDestroy {
+export class App {
   @ViewChild('conversation') private conversation?: ElementRef<HTMLElement>;
   @ViewChild('composerInput') private composerInput?: ElementRef<HTMLTextAreaElement>;
 
@@ -115,20 +115,10 @@ export class App implements OnDestroy {
   private nextConversationId = 2;
   private readonly maxImageBytes = 5 * 1024 * 1024;
   private readonly acceptedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
-  private readonly viewport = typeof window !== 'undefined' ? window.visualViewport : null;
-  private readonly syncViewportHeightHandler = () => this.syncViewportHeight();
 
   constructor(private readonly chatService: ChatService) {
-    this.syncViewportHeight();
-    this.viewport?.addEventListener('resize', this.syncViewportHeightHandler);
-    this.viewport?.addEventListener('scroll', this.syncViewportHeightHandler);
     setRuntimeApiBaseUrl(this.initialSetup.gatewayBaseUrl);
     void this.checkHealth();
-  }
-
-  ngOnDestroy(): void {
-    this.viewport?.removeEventListener('resize', this.syncViewportHeightHandler);
-    this.viewport?.removeEventListener('scroll', this.syncViewportHeightHandler);
   }
 
   protected async send(): Promise<void> {
@@ -647,12 +637,4 @@ export class App implements OnDestroy {
     requestAnimationFrame(() => this.composerInput?.nativeElement.focus());
   }
 
-  private syncViewportHeight(): void {
-    if (typeof document === 'undefined' || typeof window === 'undefined') {
-      return;
-    }
-
-    const height = this.viewport?.height ?? window.innerHeight;
-    document.documentElement.style.setProperty('--app-viewport-height', `${height}px`);
-  }
 }
