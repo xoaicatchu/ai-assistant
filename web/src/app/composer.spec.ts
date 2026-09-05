@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { shouldSubmitOnEnter } from './composer';
+import { describe, expect, it, vi } from 'vitest';
+import { dismissComposerInput, shouldSubmitOnEnter } from './composer';
 
 describe('shouldSubmitOnEnter', () => {
   it('submits on Enter without Shift', () => {
@@ -20,5 +20,19 @@ describe('shouldSubmitOnEnter', () => {
 
   it('accepts composition state tracked by the component', () => {
     expect(shouldSubmitOnEnter({ key: 'Enter', shiftKey: false, isComposing: false, keyCode: 13 }, true)).toBe(false);
+  });
+});
+
+describe('dismissComposerInput', () => {
+  it('blurs the textarea so a mobile keyboard can close after sending', () => {
+    const blur = vi.fn();
+
+    dismissComposerInput({ blur });
+
+    expect(blur).toHaveBeenCalledOnce();
+  });
+
+  it('does nothing when the composer is not mounted', () => {
+    expect(() => dismissComposerInput(undefined)).not.toThrow();
   });
 });

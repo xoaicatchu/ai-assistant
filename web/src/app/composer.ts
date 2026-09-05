@@ -4,3 +4,7 @@ export function shouldSubmitOnEnter(
 ): boolean {
   return event.key === 'Enter' && !event.shiftKey && !event.isComposing && !isComposing && event.keyCode !== 229;
 }
+
+export function dismissComposerInput(input: Pick<HTMLElement, 'blur'> | null | undefined): void {
+  input?.blur();
+}
