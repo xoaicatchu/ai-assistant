@@ -11,13 +11,26 @@
         </div>
       </div>
 
-      <div
-        class="connection-status"
-        [class]="'connection-status status-' + health()"
-        [attr.aria-label]="'Trạng thái: ' + healthLabel()"
-        [attr.title]="healthLabel()"
-        aria-live="polite"
-      >
+      <div class="topbar-actions flex items-center gap-2">
+        <button
+          id="customize-button"
+          class="settings-button"
+          type="button"
+          [class.active-settings]="activeTab() === 'setup'"
+          [attr.aria-pressed]="activeTab() === 'setup'"
+          aria-label="Mở tùy chỉnh"
+          title="Customize"
+          (click)="toggleCustomize()"
+        >
+          <svg lucideSettings2 class="h-4 w-4" aria-hidden="true"></svg>
+        </button>
+        <div
+          class="connection-status"
+          [class]="'connection-status status-' + health()"
+          [attr.aria-label]="'Trạng thái: ' + healthLabel()"
+          [attr.title]="healthLabel()"
+          aria-live="polite"
+        >
         <span class="status-icon" aria-hidden="true">
           @switch (health()) {
             @case ('online') {
@@ -34,6 +47,7 @@
             }
           }
         </span>
+        </div>
       </div>
     </header>
 
@@ -51,23 +65,46 @@
         <svg lucideMessageCircle class="h-4 w-4" aria-hidden="true"></svg>
         Chat
       </button>
-      <button
-        id="setup-tab"
-        class="tab-button"
-        [class.active-tab]="activeTab() === 'setup'"
-        role="tab"
-        type="button"
-        aria-controls="setup-panel"
-        [attr.aria-selected]="activeTab() === 'setup'"
-        (click)="selectTab('setup')"
-      >
-        <svg lucideSettings2 class="h-4 w-4" aria-hidden="true"></svg>
-        Customize
-      </button>
     </nav>
 
     @if (activeTab() === 'chat') {
       <section id="chat-panel" class="chat-panel" role="tabpanel" aria-labelledby="chat-tab">
+        <div class="conversation-tabs" role="tablist" aria-label="Các cuộc trò chuyện">
+          @for (conversation of conversations(); track conversation.id) {
+            <button
+              class="conversation-tab"
+              [class.active-conversation-tab]="conversation.id === activeConversationId()"
+              type="button"
+              role="tab"
+              [attr.aria-selected]="conversation.id === activeConversationId()"
+              [disabled]="busy()"
+              (click)="selectConversation(conversation.id)"
+            >
+              <span>{{ conversation.title }}</span>
+              <span
+                class="conversation-tab-close"
+                role="button"
+                tabindex="0"
+                aria-label="Xóa cuộc trò chuyện"
+                title="Xóa cuộc trò chuyện"
+                (click)="deleteConversation(conversation.id, $event)"
+                >
+                <svg lucideX class="h-3 w-3" aria-hidden="true"></svg>
+              </span>
+            </button>
+          }
+          <button
+            class="new-conversation-button"
+            type="button"
+            aria-label="Tạo cuộc trò chuyện mới"
+            title="Tạo cuộc trò chuyện mới"
+            [disabled]="busy()"
+            (click)="createConversation()"
+          >
+            <span aria-hidden="true">+</span>
+            <span class="sr-only">Cuộc trò chuyện mới</span>
+          </button>
+        </div>
         <section #conversation class="conversation" aria-live="polite" aria-label="Conversation">
           @if (messages().length === 0) {
             <div class="welcome-card">
@@ -139,6 +176,7 @@
             </div>
           }
           <textarea
+            #composerInput
             [ngModel]="draft()"
             (ngModelChange)="draft.set($event)"
             (keydown)="onComposerKeydown($event)"
@@ -149,6 +187,7 @@
             rows="2"
             placeholder="Nhắn tin hoặc dán ảnh vào đây…"
             aria-label="Tin nhắn"
+            autofocus
           ></textarea>
           <div class="composer-footer flex items-center justify-between gap-3">
             <div class="composer-tools flex min-w-0 items-center gap-2">
@@ -190,7 +229,7 @@
         </form>
       </section>
     } @else {
-      <section id="setup-panel" class="setup-panel" role="tabpanel" aria-labelledby="setup-tab">
+      <section id="setup-panel" class="setup-panel" role="tabpanel" aria-labelledby="customize-button">
         <div class="setup-heading">
           <p class="eyebrow">WORKSPACE CUSTOMIZE</p>
           <h2>Tùy chỉnh phiên chat</h2>

@@ -82,6 +82,33 @@ textarea:disabled {
   color: #6b6c7b;
 }
 
+.topbar-actions {
+  flex-shrink: 0;
+}
+
+.settings-button,
+.new-conversation-button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #8e8ea0;
+  background: #f4f4f6;
+  border: 1px solid #e6e6eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
+}
+
+.settings-button:hover,
+.settings-button.active-settings,
+.new-conversation-button:hover {
+  color: #2563eb;
+  background: #eef4ff;
+  border-color: #dbe7ff;
+}
+
 .status-icon {
   width: 25px;
   height: 25px;
@@ -170,6 +197,70 @@ textarea:disabled {
   display: flex;
   flex: 1;
   flex-direction: column;
+}
+
+.conversation-tabs {
+  width: min(100%, 768px);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 auto;
+  padding: 8px 20px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.conversation-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.conversation-tab {
+  min-width: 0;
+  max-width: 180px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px 6px 10px;
+  overflow: hidden;
+  color: #8e8ea0;
+  font: inherit;
+  font-size: 10px;
+  background: #f7f7f8;
+  border: 1px solid #e6e6eb;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.conversation-tab > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-tab:hover,
+.active-conversation-tab {
+  color: #343541;
+  background: #eef4ff;
+  border-color: #dbe7ff;
+}
+
+.conversation-tab-close {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  color: #a0a1ad;
+}
+
+.conversation-tab-close:hover {
+  color: #c2413a;
+}
+
+.new-conversation-button {
+  flex-shrink: 0;
+  width: 27px;
+  height: 27px;
+  font-size: 18px;
+  line-height: 1;
 }
 
 .mini-icon {

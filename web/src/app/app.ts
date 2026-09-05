@@ -48,6 +48,12 @@ interface ActiveRequest {
   controller: AbortController;
 }
 
+interface ChatConversation {
+  id: number;
+  title: string;
+  messages: ViewMessage[];
+}
+
 @Component({
   selector: 'app-root',
   imports: [
@@ -74,10 +80,15 @@ interface ActiveRequest {
 })
 export class App {
   @ViewChild('conversation') private conversation?: ElementRef<HTMLElement>;
+  @ViewChild('composerInput') private composerInput?: ElementRef<HTMLTextAreaElement>;
 
   private readonly initialSetup = loadSetupSettings();
   protected readonly runtime = runtimeConfig;
   protected readonly activeTab = signal<ActiveTab>('chat');
+  protected readonly conversations = signal<ChatConversation[]>([
+    { id: 1, title: 'Cuộc trò chuyện mới', messages: [] },
+  ]);
+  protected readonly activeConversationId = signal(1);
   protected readonly model = signal(this.initialSetup.selectedModel);
   protected readonly modelOptions = signal(allModelOptions(this.initialSetup.customModels));
   protected readonly gatewayBaseUrl = signal(this.initialSetup.gatewayBaseUrl);
@@ -98,6 +109,7 @@ export class App {
   private requestGeneration = 0;
   private composing = false;
   private nextMessageId = 1;
+  private nextConversationId = 2;
   private readonly maxImageBytes = 5 * 1024 * 1024;
   private readonly acceptedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
@@ -144,6 +156,8 @@ export class App {
     this.draft.set('');
     this.pendingImage.set(null);
     this.error.set('');
+    this.updateActiveConversation(content);
+    this.focusComposer();
 
     await this.runRequest(requestMessages, selectedModel, requestId, userMessage.id, assistantId);
   }
@@ -184,6 +198,7 @@ export class App {
       status: 'pending',
     };
     this.messages.set([...remainingMessages, retriedUser, retriedAssistant]);
+    this.updateActiveConversation();
     this.error.set('');
     this.scrollConversationToBottom();
 
@@ -251,6 +266,7 @@ export class App {
         this.setAssistantError(assistantId, this.errorMessage(caughtError));
       }
     } finally {
+      this.updateActiveConversation();
       if (this.activeRequest?.controller === controller) {
         this.activeRequest = null;
         this.busy.set(false);
@@ -260,6 +276,80 @@ export class App {
 
   protected selectTab(tab: ActiveTab): void {
     this.activeTab.set(tab);
+    if (tab === 'chat') {
+      this.focusComposer();
+    }
+  }
+
+  protected toggleCustomize(): void {
+    this.activeTab.set(this.activeTab() === 'setup' ? 'chat' : 'setup');
+    if (this.activeTab() === 'chat') {
+      this.focusComposer();
+    }
+  }
+
+  protected createConversation(): void {
+    if (this.busy()) {
+      return;
+    }
+
+    this.persistActiveConversation();
+    const id = this.nextConversationId++;
+    this.conversations.update((conversations) => [
+      ...conversations,
+      { id, title: 'Cuộc trò chuyện mới', messages: [] },
+    ]);
+    this.activeConversationId.set(id);
+    this.messages.set([]);
+    this.error.set('');
+    this.draft.set('');
+    this.pendingImage.set(null);
+    this.focusComposer();
+  }
+
+  protected selectConversation(id: number): void {
+    if (this.busy() || id === this.activeConversationId()) {
+      return;
+    }
+
+    this.persistActiveConversation();
+    const conversation = this.conversations().find((item) => item.id === id);
+    if (!conversation) {
+      return;
+    }
+
+    this.activeConversationId.set(id);
+    this.messages.set([...conversation.messages]);
+    this.error.set('');
+    this.draft.set('');
+    this.pendingImage.set(null);
+    this.scrollConversationToBottom();
+    this.focusComposer();
+  }
+
+  protected deleteConversation(id: number, event: Event): void {
+    event.stopPropagation();
+    if (this.busy()) {
+      return;
+    }
+
+    const remaining = this.conversations().filter((conversation) => conversation.id !== id);
+    if (remaining.length === 0) {
+      this.clear();
+      this.conversations.set([{ id: this.activeConversationId(), title: 'Cuộc trò chuyện mới', messages: [] }]);
+      return;
+    }
+
+    this.conversations.set(remaining);
+    if (id === this.activeConversationId()) {
+      const next = remaining[remaining.length - 1];
+      this.activeConversationId.set(next.id);
+      this.messages.set([...next.messages]);
+      this.error.set('');
+      this.draft.set('');
+      this.pendingImage.set(null);
+      this.focusComposer();
+    }
   }
 
   protected saveSetup(): void {
@@ -310,6 +400,7 @@ export class App {
       this.stop();
     }
     this.messages.set([]);
+    this.updateActiveConversation();
     this.error.set('');
   }
 
@@ -403,6 +494,7 @@ export class App {
         };
       }),
     );
+    this.updateActiveConversation();
     this.error.set('');
     this.scrollConversationToBottom();
   }
@@ -452,6 +544,7 @@ export class App {
           : item,
       ),
     );
+    this.updateActiveConversation();
     this.busy.set(false);
     this.scrollConversationToBottom();
   }
@@ -463,5 +556,34 @@ export class App {
         scrollToBottom(container);
       }
     });
+  }
+
+  private persistActiveConversation(): void {
+    this.updateActiveConversation();
+  }
+
+  private updateActiveConversation(title?: string): void {
+    const activeId = this.activeConversationId();
+    const currentMessages = [...this.messages()];
+    this.conversations.update((conversations) =>
+      conversations.map((conversation) =>
+        conversation.id === activeId
+          ? {
+              ...conversation,
+              messages: currentMessages,
+              title: title ? this.conversationTitle(title) : conversation.title,
+            }
+          : conversation,
+      ),
+    );
+  }
+
+  private conversationTitle(value: string): string {
+    const title = value.trim().replace(/\s+/gu, ' ');
+    return title.length > 30 ? `${title.slice(0, 30)}…` : title || 'Cuộc trò chuyện mới';
+  }
+
+  private focusComposer(): void {
+    requestAnimationFrame(() => this.composerInput?.nativeElement.focus());
   }
 }

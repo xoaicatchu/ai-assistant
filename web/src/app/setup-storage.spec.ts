@@ -18,6 +18,7 @@ describe('setup storage', () => {
 
   it('returns safe defaults when no saved setup exists', () => {
     expect(loadSetupSettings()).toEqual(DEFAULT_SETUP_SETTINGS);
+    expect(DEFAULT_SETUP_SETTINGS.selectedModel).toBe('deepseek/deepseek-v4-flash');
   });
 
   it('normalizes a saved setup and removes duplicate custom routes', () => {
