@@ -9,6 +9,11 @@ Gateway HTTP trên .NET 10 để gọi OpenAI và Anthropic qua một contract t
 - Client-side tool/function calling: gateway chuyển tiếp tool definitions và trả tool calls, không tự chạy tool.
 - `GET /health`: kiểm tra process mà không gọi provider.
 
+Tài liệu chi tiết:
+
+- [Kiến trúc](docs/ARCHITECTURE.md)
+- [Hướng dẫn chạy và sử dụng](docs/GETTING_STARTED.md)
+
 > Trong scope hiện tại, `anthropic:` gọi Anthropic Messages API. Ứng dụng chưa chạy executable Claude Code CLI.
 
 ## Yêu cầu
