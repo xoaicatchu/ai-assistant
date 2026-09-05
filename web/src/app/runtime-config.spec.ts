@@ -16,7 +16,7 @@ describe('runtime config', () => {
   it('falls back to the generated URL for invalid setup input', () => {
     setRuntimeApiBaseUrl('ftp://api.example.com');
 
-    expect(runtimeConfig.apiBaseUrl).toBe('');
+    expect(runtimeConfig.apiBaseUrl).toBe('/api');
   });
 
   it('always uses the same-origin proxy on Vercel', () => {
