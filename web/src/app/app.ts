@@ -22,6 +22,7 @@ import {
 import {
   dismissComposerOnSubmit,
   focusComposerOnDesktop,
+  focusConversationAfterAppleSubmit,
   restoreComposerAfterSend,
   shouldSubmitOnEnter,
 } from './composer';
@@ -163,6 +164,7 @@ export class App {
     this.draft.set('');
     this.pendingImage.set(null);
     restoreComposerAfterSend(this.composerInput?.nativeElement);
+    focusConversationAfterAppleSubmit(this.conversation?.nativeElement);
     this.error.set('');
     this.updateActiveConversation(content);
 

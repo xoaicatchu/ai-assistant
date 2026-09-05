@@ -40,6 +40,20 @@ export function dismissComposerOnSubmit(
   }
 }
 
+export function focusConversationAfterAppleSubmit(
+  target: Pick<HTMLElement, 'focus'> | null | undefined,
+  environment: ComposerEnvironment = readComposerEnvironment(),
+  schedule: ComposerSchedule = scheduleAfterFrame,
+): void {
+  if (!target || !isAppleMobile(environment)) {
+    return;
+  }
+
+  const moveFocus = () => target.focus({ preventScroll: true });
+  moveFocus();
+  schedule(moveFocus);
+}
+
 function scheduleAfterFrame(callback: () => void): void {
   if (typeof globalThis.requestAnimationFrame === 'function') {
     globalThis.requestAnimationFrame(() => callback());

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   dismissComposerOnSubmit,
   focusComposerOnDesktop,
+  focusConversationAfterAppleSubmit,
   restoreComposerAfterSend,
   shouldSubmitOnEnter,
 } from './composer';
@@ -121,5 +122,43 @@ describe('dismissComposerOnSubmit', () => {
     );
 
     expect(blur).not.toHaveBeenCalled();
+  });
+});
+
+describe('focusConversationAfterAppleSubmit', () => {
+  it('moves iPhone focus to the conversation instead of the textarea', () => {
+    const focus = vi.fn();
+
+    focusConversationAfterAppleSubmit(
+      { focus },
+      { platform: 'iPhone', userAgent: 'Mozilla/5.0 (iPhone)', maxTouchPoints: 5 },
+    );
+
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+  });
+
+  it('reasserts conversation focus after the submit render settles', () => {
+    const focus = vi.fn();
+    const schedule = vi.fn((callback: () => void) => callback());
+
+    focusConversationAfterAppleSubmit(
+      { focus },
+      { platform: 'iPhone', userAgent: 'Mozilla/5.0 (iPhone)', maxTouchPoints: 5 },
+      schedule,
+    );
+
+    expect(schedule).toHaveBeenCalledOnce();
+    expect(focus).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not move desktop focus away from the textarea', () => {
+    const focus = vi.fn();
+
+    focusConversationAfterAppleSubmit(
+      { focus },
+      { platform: 'Win32', userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', maxTouchPoints: 0 },
+    );
+
+    expect(focus).not.toHaveBeenCalled();
   });
 });

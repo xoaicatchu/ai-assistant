@@ -105,7 +105,7 @@
 
     @if (activeTab() === 'chat') {
       <section id="chat-panel" class="chat-panel" role="tabpanel" aria-labelledby="chat-tab">
-        <section #conversation class="conversation" aria-live="polite" aria-label="Conversation">
+        <section #conversation class="conversation" tabindex="-1" aria-live="polite" aria-label="Conversation">
           @if (messages().length === 0) {
             <div class="welcome-card">
               <div class="welcome-icon grid place-items-center" aria-hidden="true">
