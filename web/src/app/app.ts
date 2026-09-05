@@ -42,6 +42,7 @@ type HealthState = 'checking' | 'online' | 'offline' | 'unconfigured';
 type ActiveTab = 'chat' | 'setup';
 
 interface ActiveRequest {
+  conversationId: number;
   requestId: number;
   userMessageId: number;
   assistantMessageId: number;
@@ -105,7 +106,7 @@ export class App {
     runtimeConfig.isVercel && !runtimeConfig.apiBaseUrl ? 'unconfigured' : 'checking',
   );
 
-  private activeRequest: ActiveRequest | null = null;
+  private readonly activeRequests = new Map<number, ActiveRequest>();
   private requestGeneration = 0;
   private composing = false;
   private nextMessageId = 1;
@@ -159,7 +160,14 @@ export class App {
     this.updateActiveConversation(content);
     this.focusComposer();
 
-    await this.runRequest(requestMessages, selectedModel, requestId, userMessage.id, assistantId);
+    await this.runRequest(
+      this.activeConversationId(),
+      requestMessages,
+      selectedModel,
+      requestId,
+      userMessage.id,
+      assistantId,
+    );
   }
 
   protected async retryMessage(userMessageId: number): Promise<void> {
@@ -198,11 +206,17 @@ export class App {
       status: 'pending',
     };
     this.messages.set([...remainingMessages, retriedUser, retriedAssistant]);
-    this.updateActiveConversation();
     this.error.set('');
     this.scrollConversationToBottom();
 
-    await this.runRequest(requestMessages, selectedModel, requestId, retriedUser.id, retriedAssistant.id);
+    await this.runRequest(
+      this.activeConversationId(),
+      requestMessages,
+      selectedModel,
+      requestId,
+      retriedUser.id,
+      retriedAssistant.id,
+    );
   }
 
   protected canRetry(userMessageId: number): boolean {
@@ -211,6 +225,7 @@ export class App {
   }
 
   private async runRequest(
+    conversationId: number,
     requestMessages: ChatMessage[],
     selectedModel: string,
     requestId: number,
@@ -218,16 +233,22 @@ export class App {
     assistantId: number,
   ): Promise<void> {
     const controller = new AbortController();
-    this.activeRequest = { requestId, userMessageId, assistantMessageId: assistantId, controller };
+    this.activeRequests.set(conversationId, {
+      conversationId,
+      requestId,
+      userMessageId,
+      assistantMessageId: assistantId,
+      controller,
+    });
     this.busy.set(true);
 
     try {
       if (this.streamEnabled()) {
         await this.chatService.stream(selectedModel, requestMessages, controller.signal, (delta) => {
-          if (!this.isCurrentRequest(requestId, controller)) {
+          if (!this.isCurrentRequest(conversationId, requestId, controller)) {
             return;
           }
-          this.messages.update((messages) =>
+          this.updateConversationMessages(conversationId, (messages) =>
             messages.map((message) =>
               message.id === assistantId ? { ...message, text: message.text + delta } : message,
             ),
@@ -236,10 +257,10 @@ export class App {
         });
       } else {
         const response = await this.chatService.complete(selectedModel, requestMessages, controller.signal);
-        if (!this.isCurrentRequest(requestId, controller)) {
+        if (!this.isCurrentRequest(conversationId, requestId, controller)) {
           return;
         }
-        this.messages.update((messages) =>
+        this.updateConversationMessages(conversationId, (messages) =>
           messages.map((message) =>
             message.id === assistantId ? { ...message, text: response } : message,
           ),
@@ -247,29 +268,30 @@ export class App {
         this.scrollConversationToBottom();
       }
 
-      if (!this.isCurrentRequest(requestId, controller)) {
+      if (!this.isCurrentRequest(conversationId, requestId, controller)) {
         return;
       }
 
-      const assistant = this.messages().find((message) => message.id === assistantId);
+      const assistant = this.conversationMessages(conversationId).find((message) => message.id === assistantId);
       if (assistant && !assistant.text) {
-        this.setAssistantError(assistantId, 'Gateway trả về thành công nhưng không có nội dung text.');
+        this.setAssistantError(conversationId, assistantId, 'Gateway trả về thành công nhưng không có nội dung text.');
       } else if (assistant) {
-        this.messages.update((messages) =>
+        this.updateConversationMessages(conversationId, (messages) =>
           messages.map((message) =>
             message.id === assistantId ? { ...message, status: 'complete' } : message,
           ),
         );
       }
     } catch (caughtError) {
-      if (!controller.signal.aborted && this.isCurrentRequest(requestId, controller)) {
-        this.setAssistantError(assistantId, this.errorMessage(caughtError));
+      if (!controller.signal.aborted && this.isCurrentRequest(conversationId, requestId, controller)) {
+        this.setAssistantError(conversationId, assistantId, this.errorMessage(caughtError));
       }
     } finally {
-      this.updateActiveConversation();
-      if (this.activeRequest?.controller === controller) {
-        this.activeRequest = null;
-        this.busy.set(false);
+      if (this.activeRequests.get(conversationId)?.controller === controller) {
+        this.activeRequests.delete(conversationId);
+        if (this.activeConversationId() === conversationId) {
+          this.busy.set(false);
+        }
       }
     }
   }
@@ -289,10 +311,6 @@ export class App {
   }
 
   protected createConversation(): void {
-    if (this.busy()) {
-      return;
-    }
-
     this.persistActiveConversation();
     const id = this.nextConversationId++;
     this.conversations.update((conversations) => [
@@ -304,11 +322,12 @@ export class App {
     this.error.set('');
     this.draft.set('');
     this.pendingImage.set(null);
+    this.busy.set(false);
     this.focusComposer();
   }
 
   protected selectConversation(id: number): void {
-    if (this.busy() || id === this.activeConversationId()) {
+    if (id === this.activeConversationId()) {
       return;
     }
 
@@ -323,14 +342,17 @@ export class App {
     this.error.set('');
     this.draft.set('');
     this.pendingImage.set(null);
+    this.busy.set(this.activeRequests.has(id));
     this.scrollConversationToBottom();
     this.focusComposer();
   }
 
   protected deleteConversation(id: number, event: Event): void {
     event.stopPropagation();
-    if (this.busy()) {
-      return;
+    const request = this.activeRequests.get(id);
+    if (request) {
+      request.controller.abort();
+      this.activeRequests.delete(id);
     }
 
     const remaining = this.conversations().filter((conversation) => conversation.id !== id);
@@ -348,6 +370,7 @@ export class App {
       this.error.set('');
       this.draft.set('');
       this.pendingImage.set(null);
+      this.busy.set(false);
       this.focusComposer();
     }
   }
@@ -479,8 +502,8 @@ export class App {
     return caughtError instanceof Error ? caughtError.message : 'Không thể kết nối tới gateway.';
   }
 
-  private setAssistantError(assistantId: number, message: string): void {
-    this.messages.update((messages) =>
+  private setAssistantError(conversationId: number, assistantId: number, message: string): void {
+    this.updateConversationMessages(conversationId, (messages) =>
       messages.map((item) => {
         if (item.id !== assistantId) {
           return item;
@@ -523,12 +546,13 @@ export class App {
     }
   }
 
-  private isCurrentRequest(generation: number, controller: AbortController): boolean {
-    return this.requestGeneration === generation && this.activeRequest?.controller === controller && !controller.signal.aborted;
+  private isCurrentRequest(conversationId: number, generation: number, controller: AbortController): boolean {
+    return this.requestGeneration >= generation && this.activeRequests.get(conversationId)?.controller === controller && !controller.signal.aborted;
   }
 
   private stopActiveRequest(message: string): void {
-    const active = this.activeRequest;
+    const conversationId = this.activeConversationId();
+    const active = this.activeRequests.get(conversationId);
     if (!active) {
       this.busy.set(false);
       return;
@@ -536,17 +560,36 @@ export class App {
 
     this.requestGeneration++;
     active.controller.abort();
-    this.activeRequest = null;
-    this.messages.update((messages) =>
+    this.activeRequests.delete(conversationId);
+    this.updateConversationMessages(conversationId, (messages) =>
       messages.map((item) =>
         item.id === active.assistantMessageId
           ? { ...item, text: formatAssistantError(message), status: 'stopped' as MessageStatus }
           : item,
       ),
     );
-    this.updateActiveConversation();
     this.busy.set(false);
     this.scrollConversationToBottom();
+  }
+
+  private conversationMessages(conversationId: number): ViewMessage[] {
+    return this.conversations().find((conversation) => conversation.id === conversationId)?.messages ?? [];
+  }
+
+  private updateConversationMessages(
+    conversationId: number,
+    update: (messages: ViewMessage[]) => ViewMessage[],
+  ): void {
+    this.conversations.update((conversations) =>
+      conversations.map((conversation) =>
+        conversation.id === conversationId
+          ? { ...conversation, messages: update(conversation.messages) }
+          : conversation,
+      ),
+    );
+    if (conversationId === this.activeConversationId()) {
+      this.messages.update(update);
+    }
   }
 
   private scrollConversationToBottom(): void {

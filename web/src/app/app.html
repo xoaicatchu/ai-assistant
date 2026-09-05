@@ -73,7 +73,6 @@
             type="button"
             role="tab"
             [attr.aria-selected]="conversation.id === activeConversationId()"
-            [disabled]="busy()"
             (click)="selectConversation(conversation.id)"
           >
             <span>{{ conversation.title }}</span>
@@ -94,7 +93,6 @@
           type="button"
           aria-label="Tạo cuộc trò chuyện mới"
           title="Tạo cuộc trò chuyện mới"
-          [disabled]="busy()"
           (click)="createConversation()"
         >
           <span aria-hidden="true">+</span>
