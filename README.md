@@ -69,13 +69,14 @@ Tạo Vercel Project từ repository này và để **Root Directory** ở thư 
 
 - Build command: `npm run build`
 - Output directory: `web/dist/web/browser`
-- Server environment variable: `PROXY_AGENT_BACKEND_URL=https://<public-backend-url>`
+- Chọn framework **Services** trong Vercel Project Settings.
+- Provider credentials và CORS origin cấu hình trong Environment Variables của backend service.
 
-Frontend dùng mặc định same-origin `/api`; function `api/index.ts` nhận rewrite `/api/*` và proxy request/SSE từ Vercel tới backend .NET. Vì vậy URL backend nằm ở biến môi trường server-side, không bị nhúng vào bundle trình duyệt. Backend .NET không chạy trực tiếp như Vercel static frontend; hãy deploy backend bằng Dockerfile ở root project trên một container host, sau đó dùng URL public của backend làm giá trị biến trên.
+Frontend dùng mặc định same-origin `/api`; Vercel route `/api/*` trực tiếp tới backend .NET container trong cùng project. Cả frontend và backend đều được build từ Dockerfile dành cho Vercel; backend đọc credential từ Environment Variables server-side.
 
 Nếu Project đã đặt Root Directory là `web`, giữ thiết lập đó cũng được: dùng build command `npm run build`, output `dist/web/browser` và cấu hình trong `web/vercel.json`. Không đặt Root Directory là `src` hoặc một thư mục không chứa `package.json`.
 
-Với Vercel, để trống `NG_APP_API_BASE_URL`; build sẽ luôn dùng same-origin `/api` kể cả khi biến cũ còn sót lại, tránh lỗi CORS. Biến này chỉ dành cho deployment không phải Vercel muốn gọi backend trực tiếp qua CORS. Trong tab Setup, có thể đổi Gateway Base URL và thêm custom model routes; cấu hình được lưu trong local storage của trình duyệt để lần sau mở lại vẫn còn.
+Với Vercel, để trống `NG_APP_API_BASE_URL`; frontend dùng same-origin `/api`. Trong tab Setup, có thể đổi API key và thêm custom model routes; cấu hình được lưu trong local storage của trình duyệt.
 
 Backend production cần allowlist domain Vercel bằng biến môi trường:
 

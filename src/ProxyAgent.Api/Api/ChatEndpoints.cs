@@ -10,6 +10,7 @@ public static class ChatEndpoints
     {
         endpoints.MapPost("/api/chat", HandleGatewayAsync);
         endpoints.MapPost("/v1/chat/completions", HandleOpenAiAsync);
+        endpoints.MapPost("/api/v1/chat/completions", HandleOpenAiAsync);
         return endpoints;
     }
 

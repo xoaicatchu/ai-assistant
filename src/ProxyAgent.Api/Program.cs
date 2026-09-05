@@ -48,6 +48,7 @@ var app = builder.Build();
 app.UseCors("frontend");
 app.MapGet("/", () => Results.Ok(new { service = "proxy-agent" }));
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 app.MapChatEndpoints();
 
 app.Run();
