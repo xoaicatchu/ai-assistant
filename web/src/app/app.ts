@@ -593,11 +593,16 @@ export class App {
   }
 
   private scrollConversationToBottom(): void {
-    requestAnimationFrame(() => {
+    const scroll = () => {
       const container = this.conversation?.nativeElement;
       if (container) {
         scrollToBottom(container);
       }
+    };
+
+    requestAnimationFrame(() => {
+      scroll();
+      requestAnimationFrame(scroll);
     });
   }
 
