@@ -7,7 +7,9 @@ const configPath = resolve(scriptDirectory, '../public/app-config.js');
 const rawApiBaseUrl = process.env.NG_APP_API_BASE_URL?.trim() ?? '';
 const isVercel = process.env.VERCEL === '1';
 const configuredApiBaseUrl = rawApiBaseUrl.replace(/\/+$/, '');
-const apiBaseUrl = configuredApiBaseUrl || (isVercel ? '/api' : '');
+// Vercel deployments always use the same-origin serverless proxy. This prevents
+// a leftover NG_APP_API_BASE_URL variable from silently reintroducing browser CORS.
+const apiBaseUrl = isVercel ? '/api' : configuredApiBaseUrl;
 
 await mkdir(dirname(configPath), { recursive: true });
 await writeFile(
@@ -16,10 +18,10 @@ await writeFile(
   'utf8',
 );
 
-if (configuredApiBaseUrl) {
-  console.log(`Generated frontend API config for ${apiBaseUrl}.`);
-} else if (isVercel) {
+if (isVercel) {
   console.log('Generated frontend API config using the Vercel serverless proxy at /api.');
+} else if (configuredApiBaseUrl) {
+  console.log(`Generated frontend API config for ${apiBaseUrl}.`);
 } else {
   console.log('Generated frontend API config using the relative API path.');
 }

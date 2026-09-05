@@ -61,7 +61,7 @@ flowchart LR
     Backend -->|server-side Tavily key| Tavily
 ```
 
-`web/` chạy riêng với Angular dev-server khi phát triển. Khi production, Vercel serve `dist/web/browser` và function `api/[...path].ts` proxy `/api/*` tới backend bằng biến server-side `PROXY_AGENT_BACKEND_URL`. `NG_APP_API_BASE_URL` chỉ là tùy chọn để gọi trực tiếp backend qua CORS. Backend không được deploy như Vercel static asset, mà chạy bằng `Dockerfile` ở root repo hoặc một host container tương đương.
+`web/` chạy riêng với Angular dev-server khi phát triển. Khi production, Vercel serve `dist/web/browser` và function `api/[...path].ts` proxy `/api/*` tới backend bằng biến server-side `PROXY_AGENT_BACKEND_URL`. Vercel luôn ép frontend dùng `/api`; `NG_APP_API_BASE_URL` chỉ dành cho deployment không phải Vercel muốn gọi trực tiếp backend qua CORS. Backend không được deploy như Vercel static asset, mà chạy bằng `Dockerfile` ở root repo hoặc một host container tương đương.
 
 ## Các tầng và trách nhiệm
 
@@ -122,7 +122,7 @@ Cancellation từ `HttpContext.RequestAborted` được truyền xuống stream 
 
 ### Frontend layer
 
-`web/src/app/app.ts` giữ state của cuộc hội thoại và render màn hình chat. `chat.service.ts` gửi request OpenAI-compatible bằng `fetch`, đọc JSON khi tắt streaming và parse SSE khi bật streaming. `chat-content.ts` chuyển text + ảnh thành `image_url` content parts; clipboard paste và file picker đều giới hạn ảnh ở 5 MB. `composer.ts` giữ quy tắc Enter gửi, Shift+Enter xuống dòng và không submit khi IME đang composition. `runtime-config.ts` lấy URL backend từ `public/app-config.js`, file này được sinh lúc `npm start`/`npm run build`; build Vercel tự chọn `/api` nếu không có `NG_APP_API_BASE_URL`. `setup-storage.ts` lưu Gateway Base URL, model route custom và model đang chọn ở local storage.
+`web/src/app/app.ts` giữ state của cuộc hội thoại và render màn hình chat. `chat.service.ts` gửi request OpenAI-compatible bằng `fetch`, đọc JSON khi tắt streaming và parse SSE khi bật streaming. `chat-content.ts` chuyển text + ảnh thành `image_url` content parts; clipboard paste và file picker đều giới hạn ảnh ở 5 MB. `composer.ts` giữ quy tắc Enter gửi, Shift+Enter xuống dòng và không submit khi IME đang composition. `runtime-config.ts` lấy URL backend từ `public/app-config.js`, file này được sinh lúc `npm start`/`npm run build`; build Vercel luôn chọn `/api`, còn deployment trực tiếp ngoài Vercel mới dùng `NG_APP_API_BASE_URL`. `setup-storage.ts` lưu Gateway Base URL, model route custom và model đang chọn ở local storage.
 
 Frontend không giữ provider API key. Local dev dùng `proxy.conf.json` để chuyển `/health`, `/api` và `/v1` sang backend local; production gọi backend qua HTTPS và backend kiểm soát origin bằng `Cors:AllowedOrigins`.
 

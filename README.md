@@ -75,7 +75,7 @@ Frontend dùng mặc định same-origin `/api`; function `api/[...path].ts` pro
 
 Nếu Project đã đặt Root Directory là `web`, giữ thiết lập đó cũng được: dùng build command `npm run build`, output `dist/web/browser` và cấu hình trong `web/vercel.json`. Không đặt Root Directory là `src` hoặc một thư mục không chứa `package.json`.
 
-`NG_APP_API_BASE_URL` vẫn được hỗ trợ nếu muốn frontend gọi backend trực tiếp qua CORS. Trong tab Setup, có thể đổi Gateway Base URL và thêm custom model routes; cấu hình được lưu trong local storage của trình duyệt để lần sau mở lại vẫn còn.
+Với Vercel, để trống `NG_APP_API_BASE_URL`; build sẽ luôn dùng same-origin `/api` kể cả khi biến cũ còn sót lại, tránh lỗi CORS. Biến này chỉ dành cho deployment không phải Vercel muốn gọi backend trực tiếp qua CORS. Trong tab Setup, có thể đổi Gateway Base URL và thêm custom model routes; cấu hình được lưu trong local storage của trình duyệt để lần sau mở lại vẫn còn.
 
 Backend production cần allowlist domain Vercel bằng biến môi trường:
 
