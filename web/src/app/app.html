@@ -296,34 +296,28 @@
             <small>Mỗi route một dòng. Bốn model mặc định vẫn luôn có sẵn trong combobox Chat.</small>
           </label>
 
-          <div class="setup-option">
-            <div>
-              <span>Response mode</span>
-              <small>{{ streamEnabled() ? 'Nhận từng đoạn qua SSE' : 'Nhận một JSON response hoàn chỉnh' }}</small>
-            </div>
-            <label class="stream-toggle">
-              <input
-                type="checkbox"
-                [ngModel]="streamEnabled()"
-                (ngModelChange)="streamEnabled.set($event)"
-                [disabled]="busy()"
-                aria-label="Streaming SSE"
-              />
-              <span class="toggle-track" aria-hidden="true"><span></span></span>
-              <span>Streaming SSE</span>
-            </label>
-          </div>
         </div>
 
         <div class="connection-card">
           <div class="connection-card-header">
-            <span class="mini-icon grid place-items-center" aria-hidden="true">
-              <svg lucideServer class="h-4 w-4" aria-hidden="true"></svg>
-            </span>
-            <div>
-              <p class="eyebrow">GATEWAY CONNECTION</p>
-              <h3>{{ healthLabel() }}</h3>
+            <div class="connection-card-heading">
+              <span class="mini-icon grid place-items-center" aria-hidden="true">
+                <svg lucideServer class="h-4 w-4" aria-hidden="true"></svg>
+              </span>
+              <div>
+                <p class="eyebrow">GATEWAY CONNECTION</p>
+                <h3>{{ healthLabel() }}</h3>
+              </div>
             </div>
+            <button
+              class="secondary-button"
+              type="button"
+              (click)="checkHealth()"
+              [disabled]="health() === 'checking'"
+            >
+              <svg lucideRefreshCw class="h-3.5 w-3.5" aria-hidden="true"></svg>
+              Kiểm tra
+            </button>
           </div>
           <div class="endpoint-list">
             <div class="endpoint-line">
@@ -333,18 +327,14 @@
           </div>
         </div>
 
-          @if (health() === 'unconfigured') {
-            <div class="setup-warning" role="alert">
+        @if (health() === 'unconfigured') {
+          <div class="setup-warning" role="alert">
             <strong>Backend chưa được cấu hình.</strong>
             Kiểm tra Vercel Services và cấu hình backend container.
-            </div>
+          </div>
         }
 
         <div class="setup-footer">
-          <button class="primary-button" type="button" (click)="saveSetupAndOpenChat()">
-            <svg lucideShieldCheck class="h-4 w-4" aria-hidden="true"></svg>
-            Lưu tùy chỉnh và mở Chat
-          </button>
           <div class="setup-footer-actions">
             @if (setupMessage()) {
               <span class="setup-message" role="status">{{ setupMessage() }}</span>
@@ -353,8 +343,9 @@
               Khôi phục mặc định
             </button>
           </div>
-          <button class="text-button" type="button" (click)="checkHealth()" [disabled]="health() === 'checking'">
-            Kiểm tra kết nối
+          <button class="primary-button" type="button" (click)="saveSetupAndOpenChat()">
+            <svg lucideShieldCheck class="h-4 w-4" aria-hidden="true"></svg>
+            Lưu tùy chỉnh và mở Chat
           </button>
         </div>
       </section>

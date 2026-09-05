@@ -20,7 +20,7 @@ npm start
 
 Open <http://localhost:4200>. The development proxy forwards `/health`, `/api`, and `/v1` to <http://localhost:5030>.
 
-The composer accepts text or an image pasted from the clipboard. Supported image types are JPG, PNG, WEBP, and GIF up to 5 MB. Press Enter to send; use Shift+Enter for a new line. The image is sent as an OpenAI-compatible `image_url` content part, and the .NET gateway maps it to the selected provider's Vision format.
+The composer accepts text or an image pasted from the clipboard. Supported image types are JPG, PNG, WEBP, and GIF up to 5 MB. The composer sends with Enter and inserts a new line with Shift+Enter. Use the SSE switch beside the attachment control to choose streaming or a complete response; after sending, the composer releases focus so the iPhone keyboard can close. The image is sent as an OpenAI-compatible `image_url` content part, and the .NET gateway maps it to the selected provider's Vision format.
 
 The UI uses Tailwind CSS v4 through the Angular PostCSS integration and `@lucide/angular` for the enterprise icon set. The Chat composer keeps a compact model combobox; Customize manages an optional custom backend URL, API key, and model routes. While a request is running, Send is replaced by Stop.
 

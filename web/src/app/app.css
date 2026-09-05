@@ -634,14 +634,6 @@ textarea:disabled {
   border-color: #cbdcff;
 }
 
-.shortcut {
-  overflow: hidden;
-  color: #9a9aa6;
-  font-size: 9px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .composer-footer {
   padding: 2px 6px 5px 9px;
 }
@@ -727,16 +719,14 @@ textarea:disabled {
   gap: 12px;
 }
 
-.setup-field,
-.setup-option {
+.setup-field {
   padding: 15px;
   background: #fbfbfc;
   border: 1px solid #e6e6eb;
   border-radius: 12px;
 }
 
-.setup-field > span,
-.setup-option > div > span {
+.setup-field > span {
   display: block;
   margin-bottom: 7px;
   color: #343541;
@@ -775,8 +765,7 @@ textarea:disabled {
   outline: none;
 }
 
-.setup-field small,
-.setup-option small {
+.setup-field small {
   display: block;
   margin-top: 8px;
   color: #8e8ea0;
@@ -789,11 +778,6 @@ textarea:disabled {
   color: #2563eb;
   font-family: 'SFMono-Regular', Consolas, monospace;
   font-size: 0.95em;
-}
-
-.setup-option {
-  justify-content: space-between;
-  gap: 12px;
 }
 
 .stream-toggle {
@@ -835,6 +819,10 @@ textarea:disabled {
   background: #22a35a;
 }
 
+.composer-stream-toggle {
+  min-width: 0;
+}
+
 .connection-card {
   margin-top: 16px;
   padding: 17px;
@@ -844,6 +832,14 @@ textarea:disabled {
 }
 
 .connection-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.connection-card-heading {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -859,6 +855,33 @@ textarea:disabled {
   color: #343541;
   font-size: 12px;
   font-weight: 700;
+}
+
+.secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 7px 9px;
+  color: #555762;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  background: #ffffff;
+  border: 1px solid #d1d1d6;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.secondary-button:hover:not(:disabled) {
+  color: #2563eb;
+  border-color: #b9ccf8;
+  background: #f7faff;
+}
+
+.secondary-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .endpoint-list {
@@ -900,7 +923,9 @@ textarea:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  margin-top: 20px;
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid #ececf1;
 }
 
 .setup-footer-actions {
@@ -983,10 +1008,6 @@ textarea:disabled {
     font-size: 16px;
   }
 
-  .shortcut {
-    max-width: 180px;
-  }
-
   .setup-panel {
     padding-right: 14px;
     padding-left: 14px;
@@ -1005,7 +1026,7 @@ textarea:disabled {
     justify-content: space-between;
   }
 
-  .primary-button {
+  .setup-footer .primary-button {
     justify-content: center;
   }
 }
