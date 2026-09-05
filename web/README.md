@@ -38,9 +38,9 @@ Create this Vercel environment variable for the Production environment:
 PROXY_AGENT_BACKEND_URL=https://<public-backend-url>
 ```
 
-The Vercel function in `api/index.ts` receives the `/api/*` rewrite, proxies to this backend, and streams the response back to the browser. The Angular build defaults to same-origin `/api`, so the backend URL is not exposed in the browser bundle. Provider credentials remain on the .NET server.
+Vercel routes `/api/*` to the .NET backend container service, which streams the response back to the browser. The Angular build defaults to same-origin `/api`; provider credentials are configured on the backend service.
 
-For Vercel, leave `NG_APP_API_BASE_URL` unset; the build intentionally uses same-origin `/api` even if an old value for that variable remains. `NG_APP_API_BASE_URL` is only for non-Vercel/direct deployments with public CORS enabled. The Setup tab can override the URL and custom model routes for the current browser; those values are persisted in local storage.
+For Vercel, leave `NG_APP_API_BASE_URL` unset; the build uses same-origin `/api`. The Setup tab can configure the API key and custom model routes; those values are persisted in local storage.
 
 You can also set Root Directory to `web`; in that mode use `dist/web/browser` as the output directory and the `web/vercel.json` configuration.
 

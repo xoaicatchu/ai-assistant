@@ -211,7 +211,7 @@
             />
             <small>
               @if (runtime.isVercel) {
-                Vercel luôn dùng proxy cùng origin <code>/api</code>; backend được cấu hình bằng biến server-side.
+                Vercel dùng backend container cùng project qua <code>/api</code>; URL backend không cần nhập ở đây.
               } @else {
                 Ví dụ: <code>https://api.example.com</code>. Credential không nằm ở frontend.
               }
@@ -285,11 +285,11 @@
           </div>
         </div>
 
-        @if (health() === 'unconfigured') {
-          <div class="setup-warning" role="alert">
-            <strong>Backend proxy chưa được cấu hình.</strong>
-            Set <code>PROXY_AGENT_BACKEND_URL</code> trên Vercel hoặc nhập Base URL ở trên.
-          </div>
+          @if (health() === 'unconfigured') {
+            <div class="setup-warning" role="alert">
+            <strong>Backend chưa được cấu hình.</strong>
+            Kiểm tra Vercel Services và cấu hình backend container.
+            </div>
         }
 
         <div class="setup-footer">
