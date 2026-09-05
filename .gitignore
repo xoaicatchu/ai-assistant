@@ -3,3 +3,4 @@ obj/
 .vs/
 src/ProxyAgent.Api/appsettings.Development.json
 src/ProxyAgent.Api/appsettings.Local.json
+.ast-graph/
