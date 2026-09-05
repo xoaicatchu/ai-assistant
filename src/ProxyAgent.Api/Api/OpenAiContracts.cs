@@ -57,7 +57,7 @@ public sealed class OpenAiChatResponse
     [JsonPropertyName("created")] public long Created { get; init; }
     [JsonPropertyName("model")] public string Model { get; init; } = string.Empty;
     [JsonPropertyName("choices")] public IReadOnlyList<OpenAiResponseChoice> Choices { get; init; } = [];
-    [JsonPropertyName("usage")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public UsageInfo? Usage { get; init; }
+    [JsonPropertyName("usage")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public UsageInfo? Usage { get; init; }
 }
 
 public sealed class OpenAiResponseChoice
@@ -71,7 +71,7 @@ public sealed class OpenAiResponseMessage
 {
     [JsonPropertyName("role")] public string Role { get; init; } = "assistant";
     [JsonPropertyName("content")] public string? Content { get; init; }
-    [JsonPropertyName("tool_calls")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyList<OpenAiResponseToolCall>? ToolCalls { get; init; }
+    [JsonPropertyName("tool_calls")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyList<OpenAiResponseToolCall>? ToolCalls { get; init; }
 }
 
 public sealed class OpenAiResponseToolCall

@@ -7,12 +7,12 @@ internal sealed class AnthropicRequest
 {
     [JsonPropertyName("model")] public string Model { get; init; } = string.Empty;
     [JsonPropertyName("max_tokens")] public int MaxTokens { get; init; }
-    [JsonPropertyName("system")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? System { get; init; }
+    [JsonPropertyName("system")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? System { get; init; }
     [JsonPropertyName("messages")] public IReadOnlyList<AnthropicMessage> Messages { get; init; } = [];
     [JsonPropertyName("stream")] public bool Stream { get; init; }
     [JsonPropertyName("temperature")] public double? Temperature { get; init; }
-    [JsonPropertyName("tools")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyList<AnthropicTool>? Tools { get; init; }
-    [JsonPropertyName("tool_choice")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public AnthropicToolChoice? ToolChoice { get; init; }
+    [JsonPropertyName("tools")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyList<AnthropicTool>? Tools { get; init; }
+    [JsonPropertyName("tool_choice")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public AnthropicToolChoice? ToolChoice { get; init; }
 }
 
 internal sealed class AnthropicMessage
@@ -24,12 +24,12 @@ internal sealed class AnthropicMessage
 internal sealed class AnthropicContentBlock
 {
     [JsonPropertyName("type")] public string Type { get; init; } = string.Empty;
-    [JsonPropertyName("text")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Text { get; init; }
-    [JsonPropertyName("id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Id { get; init; }
-    [JsonPropertyName("name")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Name { get; init; }
-    [JsonPropertyName("input")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public JsonElement Input { get; init; }
-    [JsonPropertyName("tool_use_id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ToolUseId { get; init; }
-    [JsonPropertyName("content")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Content { get; init; }
+    [JsonPropertyName("text")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Text { get; init; }
+    [JsonPropertyName("id")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Id { get; init; }
+    [JsonPropertyName("name")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Name { get; init; }
+    [JsonPropertyName("input")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public JsonElement Input { get; init; }
+    [JsonPropertyName("tool_use_id")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ToolUseId { get; init; }
+    [JsonPropertyName("content")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Content { get; init; }
 }
 
 internal sealed class AnthropicTool
