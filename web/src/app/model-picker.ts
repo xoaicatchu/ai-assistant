@@ -7,22 +7,10 @@ export interface ModelOption {
 
 export const MODEL_OPTIONS: readonly ModelOption[] = [
   {
-    route: 'gpt/gpt-5.6-sol-high-fast',
-    label: 'GPT-5.6 Sol High Fast',
-    provider: 'OpenAI-compatible',
-    description: 'Mạnh và nhanh cho hội thoại tổng quát',
-  },
-  {
     route: 'deepseek/deepseek-v4-flash',
     label: 'DeepSeek V4 Flash',
     provider: 'OpenAI-compatible',
     description: 'Nhẹ, nhanh cho kiểm tra gateway',
-  },
-  {
-    route: 'x-ai/grok-4.5',
-    label: 'Grok 4.5',
-    provider: 'OpenAI-compatible',
-    description: 'Cân bằng giữa tốc độ và độ sâu',
   },
   {
     route: 'x-ai/grok-4.6',

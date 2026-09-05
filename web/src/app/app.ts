@@ -19,7 +19,7 @@ import {
   LucideWifiOff,
   LucideX,
 } from '@lucide/angular';
-import { restoreComposerAfterSend, shouldSubmitOnEnter } from './composer';
+import { focusComposerOnDesktop, restoreComposerAfterSend, shouldSubmitOnEnter } from './composer';
 import { ChatMessage, ChatService } from './chat.service';
 import { ImageAttachment, toChatMessage } from './chat-content';
 import {
@@ -32,7 +32,7 @@ import {
 import { renderMarkdown } from './markdown-renderer';
 import { allModelOptions } from './model-picker';
 import { runtimeConfig, setRuntimeApiBaseUrl } from './runtime-config';
-import { scrollToBottom } from './scrolling';
+import { scrollToBottom, shouldAutoScroll, type ConversationScrollReason } from './scrolling';
 import {
   DEFAULT_SETUP_SETTINGS,
   loadSetupSettings,
@@ -255,7 +255,7 @@ export class App {
               message.id === assistantId ? { ...message, text: message.text + delta } : message,
             ),
           );
-          this.scrollConversationToBottom();
+          this.scrollConversationToBottom('response-update');
         });
       } else {
         const response = await this.chatService.complete(selectedModel, requestMessages, controller.signal);
@@ -267,7 +267,7 @@ export class App {
             message.id === assistantId ? { ...message, text: response } : message,
           ),
         );
-        this.scrollConversationToBottom();
+        this.scrollConversationToBottom('response-update');
       }
 
       if (!this.isCurrentRequest(conversationId, requestId, controller)) {
@@ -521,7 +521,7 @@ export class App {
     );
     this.updateActiveConversation();
     this.error.set('');
-    this.scrollConversationToBottom();
+    this.scrollConversationToBottom('response-update');
   }
 
   private async attachImage(file: File): Promise<void> {
@@ -571,7 +571,7 @@ export class App {
       ),
     );
     this.busy.set(false);
-    this.scrollConversationToBottom();
+    this.scrollConversationToBottom('response-update');
   }
 
   private conversationMessages(conversationId: number): ViewMessage[] {
@@ -594,7 +594,11 @@ export class App {
     }
   }
 
-  private scrollConversationToBottom(): void {
+  private scrollConversationToBottom(reason: ConversationScrollReason = 'user-action'): void {
+    if (!shouldAutoScroll(reason)) {
+      return;
+    }
+
     const scroll = () => {
       const container = this.conversation?.nativeElement;
       if (container) {
@@ -634,7 +638,7 @@ export class App {
   }
 
   private focusComposer(): void {
-    requestAnimationFrame(() => this.composerInput?.nativeElement.focus());
+    requestAnimationFrame(() => focusComposerOnDesktop(this.composerInput?.nativeElement));
   }
 
 }

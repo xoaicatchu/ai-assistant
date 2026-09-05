@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { restoreComposerAfterSend, shouldSubmitOnEnter } from './composer';
+import { focusComposerOnDesktop, restoreComposerAfterSend, shouldSubmitOnEnter } from './composer';
 
 describe('shouldSubmitOnEnter', () => {
   it('submits on Enter without Shift', () => {
@@ -52,5 +52,29 @@ describe('restoreComposerAfterSend', () => {
 
   it('does nothing when the composer is not mounted', () => {
     expect(() => restoreComposerAfterSend(undefined, { platform: 'Win32' })).not.toThrow();
+  });
+});
+
+describe('focusComposerOnDesktop', () => {
+  it('does not programmatically focus the textarea on iPhone', () => {
+    const focus = vi.fn();
+
+    focusComposerOnDesktop(
+      { focus },
+      { platform: 'iPhone', userAgent: 'Mozilla/5.0 (iPhone)', maxTouchPoints: 5 },
+    );
+
+    expect(focus).not.toHaveBeenCalled();
+  });
+
+  it('focuses the textarea on desktop', () => {
+    const focus = vi.fn();
+
+    focusComposerOnDesktop(
+      { focus },
+      { platform: 'Win32', userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', maxTouchPoints: 0 },
+    );
+
+    expect(focus).toHaveBeenCalledOnce();
   });
 });

@@ -27,6 +27,15 @@ export function restoreComposerAfterSend(
   input.focus();
 }
 
+export function focusComposerOnDesktop(
+  input: Pick<HTMLElement, 'focus'> | null | undefined,
+  environment: ComposerEnvironment = readComposerEnvironment(),
+): void {
+  if (input && !isAppleMobile(environment)) {
+    input.focus();
+  }
+}
+
 function readComposerEnvironment(): ComposerEnvironment {
   if (typeof navigator === 'undefined') {
     return {};

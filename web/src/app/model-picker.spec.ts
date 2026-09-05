@@ -8,24 +8,20 @@ describe('model picker labels', () => {
   });
 
   it('keeps custom model routes readable', () => {
-    expect(modelLabel('gpt/gpt-5.6-sol-high-fast')).toBe('GPT-5.6 Sol High Fast');
-    expect(providerLabel('gpt/gpt-5.6-sol-high-fast')).toBe('OpenAI-compatible');
+    expect(modelLabel('custom/fast-chat')).toBe('Custom Fast Chat');
+    expect(providerLabel('custom/fast-chat')).toBe('OpenAI-compatible');
   });
 
-  it('exposes only the four configured model routes', () => {
+  it('exposes only the two available built-in model routes', () => {
     expect(MODEL_OPTIONS.map((option) => option.route)).toEqual([
-      'gpt/gpt-5.6-sol-high-fast',
       'deepseek/deepseek-v4-flash',
-      'x-ai/grok-4.5',
       'x-ai/grok-4.6',
     ]);
   });
 
   it('merges saved custom routes without duplicating built-in models', () => {
     expect(allModelOptions(['x-ai/grok-4.6', 'anthropic:claude-sonnet', 'anthropic:claude-sonnet']).map((option) => option.route)).toEqual([
-      'gpt/gpt-5.6-sol-high-fast',
       'deepseek/deepseek-v4-flash',
-      'x-ai/grok-4.5',
       'x-ai/grok-4.6',
       'anthropic:claude-sonnet',
     ]);
