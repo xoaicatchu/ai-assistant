@@ -1,16 +1,16 @@
 :host {
   display: block;
-  min-height: 100dvh;
+  min-height: var(--app-viewport-height, 100dvh);
 }
 
 .app-shell {
-  min-height: 100dvh;
+  min-height: var(--app-viewport-height, 100dvh);
   background: #ffffff;
 }
 
 .chat-card {
   width: 100%;
-  height: 100dvh;
+  height: var(--app-viewport-height, 100dvh);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -974,7 +974,7 @@ textarea:disabled {
 
   .composer {
     position: relative;
-    margin-bottom: calc(8px + env(safe-area-inset-bottom));
+    margin-bottom: env(safe-area-inset-bottom);
   }
 
   .composer textarea {
