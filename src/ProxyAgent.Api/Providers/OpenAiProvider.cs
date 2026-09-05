@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using ProxyAgent.Api.Chat;
+using ProxyAgent.Api.Streaming;
 
 namespace ProxyAgent.Api.Providers;
 
@@ -55,8 +56,73 @@ public sealed class OpenAiProvider(HttpClient httpClient, IOptions<ProviderOptio
         ProviderSelection selection,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await Task.CompletedTask;
-        yield break;
+        EnsureConfigured();
+
+        using var httpRequest = CreateRequest(request, selection, stream: true);
+        using var response = await SendAsync(httpRequest, cancellationToken);
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+
+        await foreach (var item in SseReader.ReadAsync(stream, cancellationToken))
+        {
+            if (item.Data.Equals("[DONE]", StringComparison.Ordinal))
+            {
+                yield return new ChatStreamEvent
+                {
+                    Id = selection.Model,
+                    Provider = Name,
+                    Model = selection.Model,
+                    IsDone = true
+                };
+                yield break;
+            }
+
+            OpenAiStreamChunk? chunk;
+            try
+            {
+                chunk = JsonSerializer.Deserialize<OpenAiStreamChunk>(item.Data);
+            }
+            catch (JsonException exception)
+            {
+                throw new ProviderRequestException(Name, exception);
+            }
+
+            if (chunk is null)
+            {
+                continue;
+            }
+
+            var choice = chunk.Choices.FirstOrDefault();
+            var delta = choice?.Delta;
+            var toolCall = delta?.ToolCalls?.FirstOrDefault();
+            if (delta is null && choice?.FinishReason is null)
+            {
+                continue;
+            }
+
+            yield return new ChatStreamEvent
+            {
+                Id = string.IsNullOrWhiteSpace(chunk.Id) ? selection.Model : chunk.Id,
+                Provider = Name,
+                Model = string.IsNullOrWhiteSpace(chunk.Model) ? selection.Model : chunk.Model,
+                TextDelta = delta?.Content,
+                ToolCallDelta = toolCall is null
+                    ? null
+                    : new ChatToolCall
+                    {
+                        Id = toolCall.Id ?? string.Empty,
+                        Name = toolCall.Function?.Name ?? string.Empty,
+                        ArgumentsJson = toolCall.Function?.Arguments ?? string.Empty
+                    },
+                FinishReason = choice?.FinishReason,
+                Usage = chunk.Usage is null
+                    ? null
+                    : new UsageInfo
+                    {
+                        InputTokens = chunk.Usage.PromptTokens,
+                        OutputTokens = chunk.Usage.CompletionTokens
+                    }
+            };
+        }
     }
 
     private HttpRequestMessage CreateRequest(NormalizedChatRequest request, ProviderSelection selection, bool stream)

@@ -23,8 +23,8 @@ public sealed class ProviderAuthenticationException(string provider)
 {
 }
 
-public sealed class ProviderRequestException(string provider)
-    : ProviderException(provider, "provider_request_failed", "The upstream provider rejected the request.")
+public sealed class ProviderRequestException(string provider, Exception? innerException = null)
+    : ProviderException(provider, "provider_request_failed", "The upstream provider rejected the request.", innerException)
 {
 }
 

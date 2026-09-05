@@ -68,3 +68,35 @@ internal sealed class OpenAiUsage
     [JsonPropertyName("prompt_tokens")] public int PromptTokens { get; init; }
     [JsonPropertyName("completion_tokens")] public int CompletionTokens { get; init; }
 }
+
+internal sealed class OpenAiStreamChunk
+{
+    [JsonPropertyName("id")] public string Id { get; init; } = string.Empty;
+    [JsonPropertyName("model")] public string Model { get; init; } = string.Empty;
+    [JsonPropertyName("choices")] public IReadOnlyList<OpenAiStreamChoice> Choices { get; init; } = [];
+    [JsonPropertyName("usage")] public OpenAiUsage? Usage { get; init; }
+}
+
+internal sealed class OpenAiStreamChoice
+{
+    [JsonPropertyName("delta")] public OpenAiStreamDelta? Delta { get; init; }
+    [JsonPropertyName("finish_reason")] public string? FinishReason { get; init; }
+}
+
+internal sealed class OpenAiStreamDelta
+{
+    [JsonPropertyName("content")] public string? Content { get; init; }
+    [JsonPropertyName("tool_calls")] public IReadOnlyList<OpenAiStreamToolCall>? ToolCalls { get; init; }
+}
+
+internal sealed class OpenAiStreamToolCall
+{
+    [JsonPropertyName("id")] public string? Id { get; init; }
+    [JsonPropertyName("function")] public OpenAiStreamFunction? Function { get; init; }
+}
+
+internal sealed class OpenAiStreamFunction
+{
+    [JsonPropertyName("name")] public string? Name { get; init; }
+    [JsonPropertyName("arguments")] public string? Arguments { get; init; }
+}

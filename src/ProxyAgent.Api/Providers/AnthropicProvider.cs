@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using ProxyAgent.Api.Chat;
+using ProxyAgent.Api.Streaming;
 
 namespace ProxyAgent.Api.Providers;
 
@@ -55,8 +56,137 @@ public sealed class AnthropicProvider(HttpClient httpClient, IOptions<ProviderOp
         ProviderSelection selection,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await Task.CompletedTask;
-        yield break;
+        EnsureConfigured();
+
+        using var httpRequest = CreateRequest(request, selection, stream: true);
+        using var response = await SendAsync(httpRequest, cancellationToken);
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        var toolBlocks = new Dictionary<int, (string Id, string Name)>();
+        var messageId = selection.Model;
+        var model = selection.Model;
+
+        await foreach (var item in SseReader.ReadAsync(stream, cancellationToken))
+        {
+            JsonDocument document;
+            try
+            {
+                document = JsonDocument.Parse(item.Data);
+            }
+            catch (JsonException exception)
+            {
+                throw new ProviderRequestException(Name, exception);
+            }
+
+            using (document)
+            {
+                var root = document.RootElement;
+                var type = root.TryGetProperty("type", out var typeElement)
+                    ? typeElement.GetString()
+                    : item.Event;
+
+                switch (type)
+                {
+                    case "message_start":
+                        if (root.TryGetProperty("message", out var message))
+                        {
+                            messageId = GetString(message, "id") ?? messageId;
+                            model = GetString(message, "model") ?? model;
+                        }
+
+                        break;
+
+                    case "content_block_start":
+                        if (root.TryGetProperty("index", out var indexElement) &&
+                            root.TryGetProperty("content_block", out var block) &&
+                            GetString(block, "type") == "tool_use")
+                        {
+                            var index = indexElement.GetInt32();
+                            var toolCall = (GetString(block, "id") ?? string.Empty, GetString(block, "name") ?? string.Empty);
+                            toolBlocks[index] = toolCall;
+                            yield return new ChatStreamEvent
+                            {
+                                Id = messageId,
+                                Provider = Name,
+                                Model = model,
+                                ToolCallDelta = new ChatToolCall { Id = toolCall.Item1, Name = toolCall.Item2, ArgumentsJson = string.Empty }
+                            };
+                        }
+
+                        break;
+
+                    case "content_block_delta":
+                        if (!root.TryGetProperty("delta", out var delta))
+                        {
+                            break;
+                        }
+
+                        var deltaType = GetString(delta, "type");
+                        if (deltaType == "text_delta")
+                        {
+                            yield return new ChatStreamEvent
+                            {
+                                Id = messageId,
+                                Provider = Name,
+                                Model = model,
+                                TextDelta = GetString(delta, "text")
+                            };
+                        }
+                        else if (deltaType == "input_json_delta" &&
+                                 root.TryGetProperty("index", out var toolIndexElement) &&
+                                 toolBlocks.TryGetValue(toolIndexElement.GetInt32(), out var toolBlock))
+                        {
+                            yield return new ChatStreamEvent
+                            {
+                                Id = messageId,
+                                Provider = Name,
+                                Model = model,
+                                ToolCallDelta = new ChatToolCall
+                                {
+                                    Id = toolBlock.Id,
+                                    Name = toolBlock.Name,
+                                    ArgumentsJson = GetString(delta, "partial_json") ?? string.Empty
+                                }
+                            };
+                        }
+
+                        break;
+
+                    case "message_delta":
+                        var stopReason = root.TryGetProperty("delta", out var messageDelta)
+                            ? GetString(messageDelta, "stop_reason")
+                            : null;
+                        UsageInfo? usage = null;
+                        if (root.TryGetProperty("usage", out var usageElement))
+                        {
+                            usage = new UsageInfo
+                            {
+                                InputTokens = usageElement.TryGetProperty("input_tokens", out var input) ? input.GetInt32() : 0,
+                                OutputTokens = usageElement.TryGetProperty("output_tokens", out var output) ? output.GetInt32() : 0
+                            };
+                        }
+
+                        yield return new ChatStreamEvent
+                        {
+                            Id = messageId,
+                            Provider = Name,
+                            Model = model,
+                            FinishReason = stopReason,
+                            Usage = usage
+                        };
+                        break;
+
+                    case "message_stop":
+                        yield return new ChatStreamEvent
+                        {
+                            Id = messageId,
+                            Provider = Name,
+                            Model = model,
+                            IsDone = true
+                        };
+                        yield break;
+                }
+            }
+        }
     }
 
     private HttpRequestMessage CreateRequest(NormalizedChatRequest request, ProviderSelection selection, bool stream)
@@ -180,4 +310,9 @@ public sealed class AnthropicProvider(HttpClient httpClient, IOptions<ProviderOp
         "required" => new AnthropicToolChoice { Type = "any" },
         _ => null
     };
+
+    private static string? GetString(JsonElement element, string propertyName) =>
+        element.TryGetProperty(propertyName, out var value) && value.ValueKind != JsonValueKind.Null
+            ? value.GetString()
+            : null;
 }
