@@ -5,9 +5,35 @@
         <div class="brand-mark grid shrink-0 place-items-center" aria-hidden="true">
           <svg lucideHeartPulse class="h-5 w-5" aria-hidden="true"></svg>
         </div>
-        <div class="min-w-0">
+        <div class="brand-copy min-w-0">
           <p class="eyebrow">MEDICAL HARNESS AGENT</p>
-          <h1>Clinic Support AI</h1>
+          <div class="brand-title-row flex min-w-0 items-center gap-2">
+            <h1>Clinic Support AI</h1>
+            <div
+              class="connection-status"
+              [class]="'connection-status status-' + health()"
+              [attr.aria-label]="'Trạng thái: ' + healthLabel()"
+              [attr.title]="healthLabel()"
+              aria-live="polite"
+            >
+              <span class="status-icon" aria-hidden="true">
+                @switch (health()) {
+                  @case ('online') {
+                    <svg lucideWifi class="h-4 w-4" aria-hidden="true"></svg>
+                  }
+                  @case ('offline') {
+                    <svg lucideWifiOff class="h-4 w-4" aria-hidden="true"></svg>
+                  }
+                  @case ('unconfigured') {
+                    <svg lucideWifiOff class="h-4 w-4" aria-hidden="true"></svg>
+                  }
+                  @default {
+                    <svg lucideLoaderCircle class="h-4 w-4 animate-spin" aria-hidden="true"></svg>
+                  }
+                }
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -24,30 +50,6 @@
         >
           <svg lucideSettings2 class="h-4 w-4" aria-hidden="true"></svg>
         </button>
-        <div
-          class="connection-status"
-          [class]="'connection-status status-' + health()"
-          [attr.aria-label]="'Trạng thái: ' + healthLabel()"
-          [attr.title]="healthLabel()"
-          aria-live="polite"
-        >
-        <span class="status-icon" aria-hidden="true">
-          @switch (health()) {
-            @case ('online') {
-              <svg lucideWifi class="h-4 w-4" aria-hidden="true"></svg>
-            }
-            @case ('offline') {
-              <svg lucideWifiOff class="h-4 w-4" aria-hidden="true"></svg>
-            }
-            @case ('unconfigured') {
-              <svg lucideWifiOff class="h-4 w-4" aria-hidden="true"></svg>
-            }
-            @default {
-              <svg lucideLoaderCircle class="h-4 w-4 animate-spin" aria-hidden="true"></svg>
-            }
-          }
-        </span>
-        </div>
       </div>
     </header>
 
@@ -187,6 +189,20 @@
             aria-label="Tin nhắn"
             enterkeyhint="send"
           ></textarea>
+          <div class="composer-options">
+            <label class="stream-toggle composer-stream-toggle" title="Bật hoặc tắt streaming SSE">
+              <input
+                type="checkbox"
+                [ngModel]="streamEnabled()"
+                (ngModelChange)="streamEnabled.set($event)"
+                [disabled]="busy()"
+                name="composer-streaming"
+                aria-label="Streaming SSE"
+              />
+              <span class="toggle-track" aria-hidden="true"><span></span></span>
+              <span>Streaming SSE</span>
+            </label>
+          </div>
           <div class="composer-footer flex items-center justify-between gap-3">
             <div class="composer-tools flex min-w-0 items-center gap-2">
               <label class="icon-button attach-button" for="image-upload" title="Đính kèm ảnh">
@@ -194,18 +210,6 @@
                 <span class="sr-only">Đính kèm ảnh</span>
               </label>
               <input id="image-upload" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/gif" (change)="onImageSelected($event)" />
-              <label class="stream-toggle composer-stream-toggle" title="Bật hoặc tắt streaming SSE">
-                <input
-                  type="checkbox"
-                  [ngModel]="streamEnabled()"
-                  (ngModelChange)="streamEnabled.set($event)"
-                  [disabled]="busy()"
-                  name="composer-streaming"
-                  aria-label="Streaming SSE"
-                />
-                <span class="toggle-track" aria-hidden="true"><span></span></span>
-                <span>SSE</span>
-              </label>
             </div>
             <div class="composer-actions flex items-center gap-1.5">
               <div class="model-select-wrap">

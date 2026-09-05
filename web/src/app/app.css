@@ -15,6 +15,7 @@
   width: 100%;
   height: 100%;
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -33,6 +34,26 @@
 .topbar {
   min-height: 58px;
   border-bottom: 1px solid #ececf1;
+}
+
+.brand-copy {
+  min-width: 0;
+}
+
+.brand-title-row h1 {
+  min-width: 0;
+  margin-top: 0;
+}
+
+.brand-title-row .connection-status {
+  width: 21px;
+  height: 21px;
+}
+
+.brand-title-row .status-icon {
+  width: 21px;
+  height: 21px;
+  border-radius: 7px;
 }
 
 .brand-mark {
@@ -91,6 +112,7 @@ textarea:disabled {
 
 .topbar-actions {
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .settings-button,
@@ -202,6 +224,7 @@ textarea:disabled {
 .chat-panel,
 .setup-panel {
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -530,6 +553,7 @@ textarea:disabled {
   bottom: 0;
   z-index: 2;
   width: min(calc(100% - 40px), 768px);
+  max-width: 100%;
   margin: 0 auto 20px;
   padding: 4px;
   background: #ffffff;
@@ -566,6 +590,13 @@ textarea:disabled {
 
 .composer textarea::placeholder {
   color: #9a9aa6;
+}
+
+.composer-options {
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 1px 9px 2px;
 }
 
 .attachment-preview {
@@ -987,6 +1018,8 @@ textarea:disabled {
 
   .topbar {
     min-height: 56px;
+    flex-wrap: nowrap;
+    gap: 12px;
   }
 
   .conversation {
@@ -1014,6 +1047,17 @@ textarea:disabled {
   .composer textarea {
     min-height: 47px;
     font-size: 16px;
+  }
+
+  .setup-field input,
+  .setup-field textarea,
+  .model-select {
+    font-size: 16px;
+  }
+
+  .composer-options {
+    padding-right: 9px;
+    padding-left: 9px;
   }
 
   .setup-panel {

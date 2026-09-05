@@ -155,7 +155,6 @@ export class App {
       userMessage,
       { id: assistantId, requestId, role: 'assistant', text: '', status: 'pending' },
     ]);
-    this.scrollConversationToBottom();
     this.draft.set('');
     this.pendingImage.set(null);
     restoreComposerAfterSend(this.composerInput?.nativeElement);
