@@ -65,13 +65,15 @@ Mở `http://localhost:4200`. Khi chạy local, Angular dev-server proxy `/healt
 
 ## Deploy frontend lên Vercel
 
-Tạo Vercel Project với **Root Directory** là `web`. Cấu hình build mặc định trong `web/vercel.json`:
+Tạo Vercel Project từ repository này và để **Root Directory** ở thư mục gốc (để trống hoặc `.`). Cấu hình build mặc định trong `vercel.json`:
 
 - Build command: `npm run build`
-- Output directory: `dist/web/browser`
+- Output directory: `web/dist/web/browser`
 - Server environment variable: `PROXY_AGENT_BACKEND_URL=https://<public-backend-url>`
 
-Frontend dùng mặc định same-origin `/api`; function `web/api/[...path].ts` proxy request và SSE từ Vercel tới backend .NET. Vì vậy URL backend nằm ở biến môi trường server-side, không bị nhúng vào bundle trình duyệt. Backend .NET không chạy trực tiếp như Vercel static frontend; hãy deploy backend bằng Dockerfile ở root project trên một container host, sau đó dùng URL public của backend làm giá trị biến trên.
+Frontend dùng mặc định same-origin `/api`; function `api/[...path].ts` proxy request và SSE từ Vercel tới backend .NET. Vì vậy URL backend nằm ở biến môi trường server-side, không bị nhúng vào bundle trình duyệt. Backend .NET không chạy trực tiếp như Vercel static frontend; hãy deploy backend bằng Dockerfile ở root project trên một container host, sau đó dùng URL public của backend làm giá trị biến trên.
+
+Nếu Project đã đặt Root Directory là `web`, giữ thiết lập đó cũng được: dùng build command `npm run build`, output `dist/web/browser` và cấu hình trong `web/vercel.json`. Không đặt Root Directory là `src` hoặc một thư mục không chứa `package.json`.
 
 `NG_APP_API_BASE_URL` vẫn được hỗ trợ nếu muốn frontend gọi backend trực tiếp qua CORS. Trong tab Setup, có thể đổi Gateway Base URL và thêm custom model routes; cấu hình được lưu trong local storage của trình duyệt để lần sau mở lại vẫn còn.
 

@@ -26,10 +26,10 @@ The UI uses Tailwind CSS v4 through the Angular PostCSS integration and `@lucide
 
 ## Vercel deployment
 
-Set the Vercel project Root Directory to `web`. The checked-in `vercel.json` uses:
+Recommended: set the Vercel project Root Directory to the repository root (leave it blank or use `.`). The root `vercel.json` uses:
 
 - Build command: `npm run build`
-- Output directory: `dist/web/browser`
+- Output directory: `web/dist/web/browser`
 - SPA fallback to `index.html`
 
 Create this Vercel environment variable for the Production environment:
@@ -41,6 +41,8 @@ PROXY_AGENT_BACKEND_URL=https://<public-backend-url>
 The Vercel function in `api/[...path].ts` proxies `/api/*` to this backend and streams the response back to the browser. The Angular build defaults to same-origin `/api`, so the backend URL is not exposed in the browser bundle. Provider credentials remain on the .NET server.
 
 If you intentionally deploy the frontend and backend with public CORS enabled, you can instead set `NG_APP_API_BASE_URL` to the backend URL. The Setup tab can override the URL and custom model routes for the current browser; those values are persisted in local storage.
+
+You can also set Root Directory to `web`; in that mode use `dist/web/browser` as the output directory and the `web/vercel.json` configuration.
 
 ## Commands
 

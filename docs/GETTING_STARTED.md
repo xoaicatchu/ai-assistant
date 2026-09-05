@@ -127,11 +127,11 @@ Nếu dùng custom domain Vercel, thêm origin đó ở `Cors__AllowedOrigins__1
 
 Khi import repo vào Vercel:
 
-1. Đặt **Root Directory** là `web`.
-2. Dùng build command `npm run build` và output directory `dist/web/browser`.
+1. Để **Root Directory** ở thư mục gốc của repository (để trống hoặc `.`).
+2. Dùng build command `npm run build` và output directory `web/dist/web/browser`.
 3. Tạo server environment variable `PROXY_AGENT_BACKEND_URL=https://<public-backend-url>` cho Production rồi redeploy.
 
-`web/api/[...path].ts` proxy `/api/*` và cả SSE tới backend. Build Vercel mặc định dùng same-origin `/api`, nên URL backend không bị nhúng vào bundle. Nếu muốn gọi backend trực tiếp, có thể đặt `NG_APP_API_BASE_URL` và cấu hình CORS tương ứng.
+`api/[...path].ts` proxy `/api/*` và cả SSE tới backend. Build Vercel mặc định dùng same-origin `/api`, nên URL backend không bị nhúng vào bundle. Nếu muốn giữ Root Directory=`web`, dùng output `dist/web/browser` và function `web/api/[...path].ts`. Nếu muốn gọi backend trực tiếp, có thể đặt `NG_APP_API_BASE_URL` và cấu hình CORS tương ứng.
 
 ## 6. Kiểm tra process:
 
