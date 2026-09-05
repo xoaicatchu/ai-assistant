@@ -11,9 +11,12 @@ export interface ComposerEnvironment {
   maxTouchPoints?: number;
 }
 
+type ComposerSchedule = (callback: () => void) => void;
+
 export function restoreComposerAfterSend(
   input: Pick<HTMLElement, 'blur' | 'focus'> | null | undefined,
   environment: ComposerEnvironment = readComposerEnvironment(),
+  schedule: ComposerSchedule = scheduleAfterFrame,
 ): void {
   if (!input) {
     return;
@@ -21,10 +24,17 @@ export function restoreComposerAfterSend(
 
   if (isAppleMobile(environment)) {
     input.blur();
+    schedule(() => input.blur());
     return;
   }
 
   input.focus();
+}
+
+function scheduleAfterFrame(callback: () => void): void {
+  if (typeof globalThis.requestAnimationFrame === 'function') {
+    globalThis.requestAnimationFrame(() => callback());
+  }
 }
 
 export function focusComposerOnDesktop(

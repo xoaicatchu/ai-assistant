@@ -37,6 +37,22 @@ describe('restoreComposerAfterSend', () => {
     expect(focus).not.toHaveBeenCalled();
   });
 
+  it('blurs again after the iPhone submit render settles', () => {
+    const blur = vi.fn();
+    const focus = vi.fn();
+    const schedule = vi.fn((callback: () => void) => callback());
+
+    restoreComposerAfterSend(
+      { blur, focus },
+      { platform: 'iPhone', userAgent: 'Mozilla/5.0 (iPhone)', maxTouchPoints: 5 },
+      schedule,
+    );
+
+    expect(schedule).toHaveBeenCalledOnce();
+    expect(blur).toHaveBeenCalledTimes(2);
+    expect(focus).not.toHaveBeenCalled();
+  });
+
   it('keeps the textarea focused on desktop for the next message', () => {
     const blur = vi.fn();
     const focus = vi.fn();
