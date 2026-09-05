@@ -1,0 +1,295 @@
+<main class="app-shell bg-slate-50">
+  <section class="chat-card mx-auto w-full max-w-[920px]" aria-label="Medical Harness Agent">
+    <header class="topbar flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-7">
+      <div class="brand flex min-w-0 items-center gap-3">
+        <div class="brand-mark grid shrink-0 place-items-center" aria-hidden="true">
+          <svg lucideSparkles class="h-5 w-5" aria-hidden="true"></svg>
+        </div>
+        <div class="min-w-0">
+          <p class="eyebrow">MEDICAL HARNESS AGENT</p>
+          <h1>Clinical AI workspace</h1>
+        </div>
+      </div>
+
+      <div
+        class="connection-status"
+        [class]="'connection-status status-' + health()"
+        [attr.aria-label]="'Trạng thái: ' + healthLabel()"
+        [attr.title]="healthLabel()"
+        aria-live="polite"
+      >
+        <span class="status-icon" aria-hidden="true">
+          @switch (health()) {
+            @case ('online') {
+              <svg lucideWifi class="h-4 w-4" aria-hidden="true"></svg>
+            }
+            @case ('offline') {
+              <svg lucideWifiOff class="h-4 w-4" aria-hidden="true"></svg>
+            }
+            @case ('unconfigured') {
+              <svg lucideWifiOff class="h-4 w-4" aria-hidden="true"></svg>
+            }
+            @default {
+              <svg lucideLoaderCircle class="h-4 w-4 animate-spin" aria-hidden="true"></svg>
+            }
+          }
+        </span>
+      </div>
+    </header>
+
+    <nav class="tab-bar flex items-center gap-1 px-5 sm:px-7" role="tablist" aria-label="Workspace">
+      <button
+        id="chat-tab"
+        class="tab-button"
+        [class.active-tab]="activeTab() === 'chat'"
+        role="tab"
+        type="button"
+        aria-controls="chat-panel"
+        [attr.aria-selected]="activeTab() === 'chat'"
+        (click)="selectTab('chat')"
+      >
+        <svg lucideMessageCircle class="h-4 w-4" aria-hidden="true"></svg>
+        Chat
+      </button>
+      <button
+        id="setup-tab"
+        class="tab-button"
+        [class.active-tab]="activeTab() === 'setup'"
+        role="tab"
+        type="button"
+        aria-controls="setup-panel"
+        [attr.aria-selected]="activeTab() === 'setup'"
+        (click)="selectTab('setup')"
+      >
+        <svg lucideSettings2 class="h-4 w-4" aria-hidden="true"></svg>
+        Setup
+      </button>
+    </nav>
+
+    @if (activeTab() === 'chat') {
+      <section id="chat-panel" class="chat-panel" role="tabpanel" aria-labelledby="chat-tab">
+        <section #conversation class="conversation" aria-live="polite" aria-label="Conversation">
+          @if (messages().length === 0) {
+            <div class="welcome-card">
+              <div class="welcome-icon grid place-items-center" aria-hidden="true">
+                <svg lucideSparkles class="h-5 w-5" aria-hidden="true"></svg>
+              </div>
+              <h2>How can I help you today?</h2>
+            </div>
+          }
+
+          @for (message of messages(); track message.id) {
+            <article
+              class="message-row"
+              [class.user-row]="message.role === 'user'"
+              [class.assistant-row]="message.role === 'assistant'"
+            >
+              <div class="avatar" [class.user-avatar]="message.role === 'user'" aria-hidden="true">
+                @if (message.role === 'user') {
+                  <span>YOU</span>
+                } @else {
+                  <svg lucideBot class="h-4 w-4" aria-hidden="true"></svg>
+                }
+              </div>
+              <div class="message-bubble">
+                <div class="message-meta">{{ message.role === 'user' ? 'You' : 'Assistant' }}</div>
+                @if (message.image) {
+                  <img class="message-image" [src]="message.image.dataUrl" alt="Ảnh đính kèm" />
+                }
+                @if (message.text) {
+                  <div class="message-content" [innerHTML]="renderMarkdown(message.text)"></div>
+                } @else if (message.role === 'assistant' && message.status === 'pending') {
+                  <div class="typing" aria-label="Assistant đang trả lời"><span></span><span></span><span></span></div>
+                }
+              </div>
+              @if (message.role === 'user' && canRetry(message.id)) {
+                <button
+                  class="retry-button"
+                  type="button"
+                  (click)="retryMessage(message.id)"
+                  aria-label="Gửi lại tin nhắn"
+                  title="Gửi lại tin nhắn"
+                >
+                  <svg lucideRefreshCw class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                </button>
+              }
+            </article>
+          }
+
+        </section>
+
+        @if (error()) {
+          <div class="error-banner" role="alert">
+            <svg lucideCircleAlert class="h-4 w-4 shrink-0" aria-hidden="true"></svg>
+            <span>{{ error() }}</span>
+          </div>
+        }
+
+        <form class="composer" (ngSubmit)="send()">
+          @if (pendingImage(); as image) {
+            <div class="attachment-preview">
+              <img [src]="image.dataUrl" alt="Ảnh sắp gửi" />
+              <div>
+                <strong>{{ image.name }}</strong>
+                <small>Ảnh đính kèm</small>
+              </div>
+              <button class="remove-image" type="button" (click)="removeImage()" aria-label="Xóa ảnh đính kèm" title="Xóa ảnh">
+                <svg lucideX class="h-4 w-4" aria-hidden="true"></svg>
+              </button>
+            </div>
+          }
+          <textarea
+            [ngModel]="draft()"
+            (ngModelChange)="draft.set($event)"
+            (keydown)="onComposerKeydown($event)"
+            (compositionstart)="onComposerCompositionStart()"
+            (compositionend)="onComposerCompositionEnd()"
+            (paste)="onComposerPaste($event)"
+            name="message"
+            rows="2"
+            placeholder="Nhắn tin hoặc dán ảnh vào đây…"
+            aria-label="Tin nhắn"
+          ></textarea>
+          <div class="composer-footer flex items-center justify-between gap-3">
+            <div class="composer-tools flex min-w-0 items-center gap-2">
+              <label class="icon-button attach-button" for="image-upload" title="Đính kèm ảnh">
+                <svg lucidePaperclip class="h-4 w-4" aria-hidden="true"></svg>
+                <span class="sr-only">Đính kèm ảnh</span>
+              </label>
+              <input id="image-upload" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/gif" (change)="onImageSelected($event)" />
+              <span class="shortcut">Enter gửi · Shift+Enter xuống dòng</span>
+            </div>
+            <div class="composer-actions flex items-center gap-1.5">
+              <div class="model-select-wrap">
+                <select
+                  class="model-select"
+                  [ngModel]="model()"
+                  (ngModelChange)="model.set($event)"
+                  [disabled]="busy()"
+                  name="composer-model"
+                  aria-label="Model"
+                  title="Chọn model"
+                >
+                  @for (option of modelOptions(); track option.route) {
+                    <option [value]="option.route">{{ option.label }}</option>
+                  }
+                </select>
+                <svg lucideChevronDown class="model-select-chevron" aria-hidden="true"></svg>
+              </div>
+              @if (busy()) {
+                <button class="icon-button stop-button" type="button" (click)="stop()" aria-label="Dừng phản hồi" title="Dừng phản hồi">
+                  <svg lucideSquare class="h-4 w-4" aria-hidden="true"></svg>
+                </button>
+              } @else {
+                <button class="icon-button send-button" type="submit" [disabled]="!draft().trim() && !pendingImage()" aria-label="Gửi tin nhắn" title="Gửi tin nhắn">
+                  <svg lucideArrowUp class="h-4 w-4" aria-hidden="true"></svg>
+                </button>
+              }
+            </div>
+          </div>
+        </form>
+      </section>
+    } @else {
+      <section id="setup-panel" class="setup-panel" role="tabpanel" aria-labelledby="setup-tab">
+        <div class="setup-heading">
+          <p class="eyebrow">WORKSPACE SETUP</p>
+          <h2>Cấu hình phiên chat</h2>
+          <p>Chọn model route và cách nhận response. Credential luôn được giữ ở backend.</p>
+        </div>
+
+        <div class="setup-grid">
+          <label class="setup-field setup-field-wide">
+            <span>Gateway Base URL</span>
+            <input
+              [ngModel]="gatewayBaseUrl()"
+              (ngModelChange)="gatewayBaseUrl.set($event)"
+              [disabled]="busy()"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="Để trống để dùng /api hoặc proxy local"
+              aria-label="Gateway Base URL"
+            />
+            <small>Ví dụ: <code>https://api.example.com</code>. Credential không nằm ở frontend.</small>
+          </label>
+
+          <label class="setup-field setup-field-wide">
+            <span>Custom model routes</span>
+            <textarea
+              [ngModel]="customModelsText()"
+              (ngModelChange)="customModelsText.set($event)"
+              [disabled]="busy()"
+              rows="3"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="anthropic:claude-sonnet-4-5&#10;openai:gpt-4o-mini"
+              aria-label="Custom model routes"
+            ></textarea>
+            <small>Mỗi route một dòng. Bốn model mặc định vẫn luôn có sẵn trong combobox Chat.</small>
+          </label>
+
+          <div class="setup-option">
+            <div>
+              <span>Response mode</span>
+              <small>{{ streamEnabled() ? 'Nhận từng đoạn qua SSE' : 'Nhận một JSON response hoàn chỉnh' }}</small>
+            </div>
+            <label class="stream-toggle">
+              <input
+                type="checkbox"
+                [ngModel]="streamEnabled()"
+                (ngModelChange)="streamEnabled.set($event)"
+                [disabled]="busy()"
+                aria-label="Streaming SSE"
+              />
+              <span class="toggle-track" aria-hidden="true"><span></span></span>
+              <span>Streaming SSE</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="connection-card">
+          <div class="connection-card-header">
+            <span class="mini-icon grid place-items-center" aria-hidden="true">
+              <svg lucideServer class="h-4 w-4" aria-hidden="true"></svg>
+            </span>
+            <div>
+              <p class="eyebrow">GATEWAY CONNECTION</p>
+              <h3>{{ healthLabel() }}</h3>
+            </div>
+          </div>
+          <div class="endpoint-list">
+            <div class="endpoint-line"><span>Chat endpoint</span><code>/v1/chat/completions</code></div>
+            <div class="endpoint-line">
+              <span>Backend URL</span>
+              <code>{{ runtime.apiBaseUrl || 'relative path (dev proxy)' }}</code>
+            </div>
+          </div>
+        </div>
+
+        @if (health() === 'unconfigured') {
+          <div class="setup-warning" role="alert">
+            <strong>Backend proxy chưa được cấu hình.</strong>
+            Set <code>PROXY_AGENT_BACKEND_URL</code> trên Vercel hoặc nhập Base URL ở trên.
+          </div>
+        }
+
+        <div class="setup-footer">
+          <button class="primary-button" type="button" (click)="saveSetupAndOpenChat()">
+            <svg lucideShieldCheck class="h-4 w-4" aria-hidden="true"></svg>
+            Lưu và mở Chat
+          </button>
+          <div class="setup-footer-actions">
+            @if (setupMessage()) {
+              <span class="setup-message" role="status">{{ setupMessage() }}</span>
+            }
+            <button class="text-button" type="button" (click)="resetSetup()">
+              Khôi phục mặc định
+            </button>
+          </div>
+          <button class="text-button" type="button" (click)="checkHealth()" [disabled]="health() === 'checking'">
+            Kiểm tra kết nối
+          </button>
+        </div>
+      </section>
+    }
+  </section>
+</main>

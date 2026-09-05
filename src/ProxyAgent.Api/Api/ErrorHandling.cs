@@ -1,6 +1,7 @@
 using ProxyAgent.Api.Chat;
 using ProxyAgent.Api.Providers;
 using ProxyAgent.Api.Streaming;
+using ProxyAgent.Api.WebSearch;
 
 namespace ProxyAgent.Api.Api;
 
@@ -49,6 +50,7 @@ public static class ErrorHandling
         ProviderAuthenticationException authentication => new(502, authentication.Code, authentication.Message, authentication.Provider),
         ProviderRequestException request => new(502, request.Code, request.Message, request.Provider),
         ProviderUnavailableException unavailable => new(502, unavailable.Code, unavailable.Message, unavailable.Provider),
+        WebSearchException search => new(502, search.Code, search.Message, "tavily"),
         _ => new(500, "internal_error", "An unexpected server error occurred.", null)
     };
 

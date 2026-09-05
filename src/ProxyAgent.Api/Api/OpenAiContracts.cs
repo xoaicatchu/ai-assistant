@@ -18,7 +18,7 @@ public sealed class OpenAiChatRequest
 public sealed class OpenAiRequestMessage
 {
     [JsonPropertyName("role")] public string Role { get; init; } = string.Empty;
-    [JsonPropertyName("content")] public string? Content { get; init; }
+    [JsonPropertyName("content")] public JsonElement? Content { get; init; }
     [JsonPropertyName("tool_calls")] public List<OpenAiRequestToolCall> ToolCalls { get; init; } = [];
     [JsonPropertyName("tool_call_id")] public string? ToolCallId { get; init; }
     [JsonPropertyName("name")] public string? Name { get; init; }
@@ -113,7 +113,8 @@ public static class OpenAiContractMapper
             Messages = request.Messages.Select(message => new ChatMessage
             {
                 Role = message.Role,
-                Content = message.Content,
+                Content = message.Content is { ValueKind: JsonValueKind.String } content ? content.GetString() : null,
+                ContentParts = MapContentParts(message.Content),
                 ToolCallId = message.ToolCallId,
                 Name = message.Name,
                 ToolCalls = message.ToolCalls.Select(call => new ChatToolCall
@@ -130,6 +131,55 @@ public static class OpenAiContractMapper
                 Parameters = tool.Function.Parameters
             }).ToArray()
         };
+    }
+
+    private static IReadOnlyList<ChatContentPart> MapContentParts(JsonElement? content)
+    {
+        if (content is not { ValueKind: JsonValueKind.Array })
+        {
+            return [];
+        }
+
+        return content.Value.EnumerateArray().Select(part =>
+        {
+            var type = part.TryGetProperty("type", out var typeElement)
+                ? typeElement.GetString() ?? string.Empty
+                : string.Empty;
+            return type switch
+            {
+                "text" => new ChatContentPart
+                {
+                    Type = type,
+                    Text = part.TryGetProperty("text", out var text) ? text.GetString() : null
+                },
+                "image_url" => new ChatContentPart
+                {
+                    Type = type,
+                    ImageUrl = ReadImageUrl(part)
+                },
+                _ => throw new ApiValidationException($"Unsupported content part type '{type}'.")
+            };
+        }).ToArray();
+    }
+
+    private static string ReadImageUrl(JsonElement part)
+    {
+        if (!part.TryGetProperty("image_url", out var image) ||
+            !image.TryGetProperty("url", out var url) ||
+            url.ValueKind != JsonValueKind.String ||
+            string.IsNullOrWhiteSpace(url.GetString()))
+        {
+            throw new ApiValidationException("Image content part must include image_url.url.");
+        }
+
+        var imageUrl = url.GetString()!;
+        if (imageUrl.StartsWith("data:", StringComparison.OrdinalIgnoreCase) &&
+            imageUrl.Length > ChatContentLimits.MaxImageDataUrlLength)
+        {
+            throw new ApiValidationException("Image data URL must not exceed 5 MB.");
+        }
+
+        return imageUrl;
     }
 
     public static OpenAiChatResponse FromNormalized(NormalizedChatResponse response) => new()

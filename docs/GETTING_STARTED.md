@@ -38,6 +38,7 @@ Các giá trị cấu hình:
 | Key | Ý nghĩa |
 |---|---|
 | `Routing:DefaultProvider` | `openai` hoặc `anthropic` khi model không có prefix |
+| `Chat:SystemPrompt` | System prompt dùng chung được thêm vào trước lịch sử hội thoại |
 | `Providers:OpenAI:BaseUrl` | API root OpenAI-compatible |
 | `Providers:OpenAI:ApiKey` | API key OpenAI-compatible |
 | `Providers:OpenAI:DefaultModel` | Model OpenAI mặc định |
@@ -46,6 +47,14 @@ Các giá trị cấu hình:
 | `Providers:Anthropic:ApiVersion` | Header `anthropic-version` |
 | `Providers:Anthropic:DefaultModel` | Model Anthropic mặc định |
 | `Http:TimeoutSeconds` | Timeout outbound HTTP, mặc định 120 giây |
+| `WebSearch:Enabled` | Bật built-in web search agent |
+| `WebSearch:ApiKey` | Tavily API key, chỉ đặt ở User Secrets hoặc environment |
+| `WebSearch:UseToolCalling` | `true` để model tự gọi tool; `false` để backend search trước |
+| `WebSearch:SearchDepth` | `basic` hoặc `advanced` |
+| `WebSearch:MaxResults` | Số nguồn tối đa mỗi lần search, mặc định 5 |
+| `WebSearch:MaxToolCalls` | Ngân sách lượt search trước khi agent ép model tổng hợp, mặc định 2 |
+| `WebSearch:TimeoutSeconds` | Timeout gọi Tavily, mặc định 30 giây |
+| `Cors:AllowedOrigins` | Danh sách origin frontend được phép gọi API |
 
 ## 3. Chạy ứng dụng
 
@@ -57,7 +66,74 @@ dotnet run --project src/ProxyAgent.Api --launch-profile http
 
 Profile HTTP hiện chạy tại `http://localhost:5030`.
 
-Kiểm tra process:
+## 4. Chạy giao diện Angular local
+
+Giữ backend chạy ở terminal thứ nhất. Ở terminal thứ hai:
+
+```powershell
+cd web
+npm install
+npm start
+```
+
+Mở `http://localhost:4200`. Giao diện dùng endpoint `/v1/chat/completions`; proxy Angular chuyển request sang backend `http://localhost:5030`. Model mặc định của UI là `openai:x-ai/grok-4.6`, nhưng có thể sửa trực tiếp trên màn hình.
+
+Trong khung chat có thể dán ảnh trực tiếp từ clipboard hoặc bấm nút kẹp giấy để chọn ảnh. UI hỗ trợ JPG, PNG, WEBP và GIF tối đa 5 MB; Enter gửi tin, Shift+Enter chèn dòng mới. Ảnh được gửi dưới dạng OpenAI-compatible `image_url` content part và backend tự chuyển sang payload Vision tương ứng của OpenAI-compatible provider hoặc Anthropic.
+
+API key không được đưa vào frontend. Backend đọc key từ `appsettings.Development.json` hoặc biến môi trường.
+
+### System prompt
+
+`Chat:SystemPrompt` được `ChatPromptAgent` thêm vào request trước khi chuyển sang web-search agent và provider. Có thể ghi đè khi chạy production bằng biến môi trường:
+
+```text
+Chat__SystemPrompt=Trả lời trực tiếp bằng tiếng Việt và nêu rõ giả định khi thiếu dữ kiện.
+```
+
+Prompt này định hướng cách trả lời nhưng không thể vô hiệu hóa giới hạn an toàn của model hoặc upstream provider.
+
+### Bật Tavily local
+
+Project đã bật web search trong cấu hình mặc định nhưng không chứa secret. Lưu key vào .NET User Secrets:
+
+```powershell
+dotnet user-secrets set "WebSearch:ApiKey" "<tavily-api-key>" --project src/ProxyAgent.Api/ProxyAgent.Api.csproj
+```
+
+Development local đang bật `WebSearch:UseToolCalling=true` để Grok có thể tự phát sinh `web_search` tool call; backend sẽ gọi Tavily, trả tool result vào lịch sử rồi gọi model lần nữa để tổng hợp. Nếu dùng model/upstream không hỗ trợ tools, đặt lại `false` để dùng pre-search fallback.
+
+## 5. Deploy backend và frontend
+
+Vercel phù hợp để serve Angular static app. Backend .NET 10 chạy ở service/container riêng; Dockerfile ở root repo đã expose cổng `8080`.
+
+### Backend container
+
+Deploy repo bằng Docker trên host hỗ trợ container. Cấu hình các biến môi trường production, không ghi secret vào Git:
+
+```text
+ASPNETCORE_ENVIRONMENT=Production
+Providers__OpenAI__BaseUrl=https://aishop24h.com/v1
+Providers__OpenAI__ApiKey=<secret>
+Providers__OpenAI__DefaultModel=deepseek/deepseek-v4-flash
+WebSearch__Enabled=true
+WebSearch__ApiKey=<tavily-secret>
+WebSearch__UseToolCalling=false
+Cors__AllowedOrigins__0=https://<your-project>.vercel.app
+```
+
+Nếu dùng custom domain Vercel, thêm origin đó ở `Cors__AllowedOrigins__1`. Sau khi deploy, kiểm tra `https://<public-backend-url>/health` trả `{"status":"ok"}`.
+
+### Frontend Vercel
+
+Khi import repo vào Vercel:
+
+1. Đặt **Root Directory** là `web`.
+2. Dùng build command `npm run build` và output directory `dist/web/browser`.
+3. Tạo server environment variable `PROXY_AGENT_BACKEND_URL=https://<public-backend-url>` cho Production rồi redeploy.
+
+`web/api/[...path].ts` proxy `/api/*` và cả SSE tới backend. Build Vercel mặc định dùng same-origin `/api`, nên URL backend không bị nhúng vào bundle. Nếu muốn gọi backend trực tiếp, có thể đặt `NG_APP_API_BASE_URL` và cấu hình CORS tương ứng.
+
+## 6. Kiểm tra process:
 
 ```powershell
 curl.exe http://localhost:5030/health
@@ -69,7 +145,7 @@ Kết quả:
 {"status":"ok"}
 ```
 
-## 4. Gọi contract riêng `/api/chat`
+## 7. Gọi contract riêng `/api/chat`
 
 ### Request JSON đầy đủ
 
@@ -130,7 +206,7 @@ curl.exe http://localhost:5030/api/chat `
   -d '{"model":"anthropic:claude-sonnet-4-5","messages":[{"role":"user","content":"Tóm tắt HTTP trong một câu"}]}'
 ```
 
-## 5. Gọi OpenAI-compatible `/v1/chat/completions`
+## 8. Gọi OpenAI-compatible `/v1/chat/completions`
 
 Input dùng field name theo chuẩn OpenAI:
 
@@ -162,7 +238,7 @@ Response có các field chính:
 }
 ```
 
-## 6. Streaming SSE
+## 9. Streaming SSE
 
 Thêm `stream: true`:
 
@@ -188,9 +264,9 @@ data: {"type":"delta","provider":"openai","model":"gpt-4o-mini","delta":"...","d
 data: {"type":"done","provider":"openai","model":"gpt-4o-mini","done":true}
 ```
 
-## 7. Tool/function calling
+## 10. Tool/function calling
 
-Gateway chỉ chuyển tiếp tool call. Client phải tự thực thi function.
+Gateway chuyển tiếp tool call của client. Built-in `web_search` được backend thực thi khi đã cấu hình Tavily; client không cần tự gọi Tavily.
 
 Request OpenAI-compatible:
 
@@ -248,7 +324,7 @@ Nếu model trả tool call, client chạy function rồi gửi request tiếp t
 }
 ```
 
-## 8. Chạy test
+## 11. Chạy test
 
 ```powershell
 dotnet test ProxyAgent.slnx
@@ -256,7 +332,7 @@ dotnet test ProxyAgent.slnx
 
 Test dùng fake provider và fake HTTP handler, không cần API key thật.
 
-## 9. Xử lý lỗi
+## 12. Xử lý lỗi
 
 | Status | Code | Nguyên nhân |
 |---:|---|---|
@@ -265,6 +341,7 @@ Test dùng fake provider và fake HTTP handler, không cần API key thật.
 | 502 | `provider_authentication_failed` | Upstream từ chối key |
 | 502 | `provider_request_failed` | Upstream từ chối payload |
 | 502 | `provider_unavailable` | Timeout, network hoặc upstream 5xx |
+| 502 | `web_search_failed` | Tavily không khả dụng hoặc trả response không hợp lệ |
 | 503 | `provider_not_configured` | Thiếu BaseUrl/API key hoặc provider registration |
 
 ## 10. Lưu ý bảo mật

@@ -1,0 +1,142 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Microsoft.Extensions.Options;
+
+namespace ProxyAgent.Api.WebSearch;
+
+public sealed class TavilySearchProvider(
+    HttpClient httpClient,
+    IOptions<WebSearchOptions> options) : IWebSearchProvider
+{
+    private readonly WebSearchOptions settings = options.Value;
+
+    public bool IsConfigured =>
+        !string.IsNullOrWhiteSpace(settings.ApiKey) &&
+        Uri.TryCreate(settings.BaseUrl, UriKind.Absolute, out var baseUri) &&
+        baseUri.Scheme is "http" or "https";
+
+    public async Task<WebSearchResponse> SearchAsync(string query, CancellationToken cancellationToken)
+    {
+        if (!IsConfigured)
+        {
+            throw new WebSearchException("Tavily web search is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            throw new WebSearchException("The web_search query must not be empty.");
+        }
+
+        var payload = new TavilySearchRequest
+        {
+            Query = query.Trim(),
+            SearchDepth = NormalizeSearchDepth(settings.SearchDepth),
+            MaxResults = Math.Clamp(settings.MaxResults, 1, 20),
+            IncludeAnswer = false,
+            IncludeRawContent = "markdown"
+        };
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, BuildEndpoint("search"))
+        {
+            Content = JsonContent.Create(payload)
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.ApiKey);
+
+        try
+        {
+            using var response = await httpClient.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new WebSearchException($"Tavily returned HTTP {(int)response.StatusCode}.");
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<TavilySearchResponse>(
+                cancellationToken: cancellationToken);
+            if (result is null)
+            {
+                throw new WebSearchException("Tavily returned an empty response.");
+            }
+
+            return new WebSearchResponse
+            {
+                Query = string.IsNullOrWhiteSpace(result.Query) ? query.Trim() : result.Query,
+                Results = result.Results
+                    .Where(item => Uri.TryCreate(item.Url, UriKind.Absolute, out var uri) &&
+                                   uri.Scheme is "http" or "https")
+                    .Select(item => new WebSearchResult
+                    {
+                        Title = item.Title,
+                        Url = item.Url,
+                        Content = LimitContent(item.RawContent ?? item.Content ?? string.Empty),
+                        PublishedDate = item.PublishedDate
+                    })
+                    .ToArray()
+            };
+        }
+        catch (WebSearchException)
+        {
+            throw;
+        }
+        catch (HttpRequestException exception)
+        {
+            throw new WebSearchException("Tavily is unavailable.", exception);
+        }
+        catch (TaskCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new WebSearchException("Tavily search timed out.", exception);
+        }
+        catch (JsonException exception)
+        {
+            throw new WebSearchException("Tavily returned an invalid response.", exception);
+        }
+    }
+
+    private Uri BuildEndpoint(string path)
+    {
+        var baseUrl = settings.BaseUrl.TrimEnd('/') + "/";
+        return new Uri(new Uri(baseUrl, UriKind.Absolute), path);
+    }
+
+    private string LimitContent(string content)
+    {
+        var maxChars = Math.Max(settings.MaxContentCharsPerResult, 500);
+        return content.Length <= maxChars ? content : content[..maxChars] + "\n[content truncated]";
+    }
+
+    private static string NormalizeSearchDepth(string? value) =>
+        value?.Trim().ToLowerInvariant() switch
+        {
+            "advanced" => "advanced",
+            _ => "basic"
+        };
+
+    private sealed class TavilySearchRequest
+    {
+        [JsonPropertyName("query")] public string Query { get; init; } = string.Empty;
+        [JsonPropertyName("search_depth")] public string SearchDepth { get; init; } = "basic";
+        [JsonPropertyName("max_results")] public int MaxResults { get; init; }
+        [JsonPropertyName("include_answer")] public bool IncludeAnswer { get; init; }
+        [JsonPropertyName("include_raw_content")] public string IncludeRawContent { get; init; } = "markdown";
+    }
+
+    private sealed class TavilySearchResponse
+    {
+        [JsonPropertyName("query")] public string Query { get; init; } = string.Empty;
+        [JsonPropertyName("results")] public IReadOnlyList<TavilyResult> Results { get; init; } = [];
+    }
+
+    private sealed class TavilyResult
+    {
+        [JsonPropertyName("title")] public string Title { get; init; } = string.Empty;
+        [JsonPropertyName("url")] public string Url { get; init; } = string.Empty;
+        [JsonPropertyName("content")] public string? Content { get; init; }
+        [JsonPropertyName("raw_content")] public string? RawContent { get; init; }
+        [JsonPropertyName("published_date")] public string? PublishedDate { get; init; }
+    }
+}

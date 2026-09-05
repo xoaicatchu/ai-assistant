@@ -191,7 +191,9 @@ public sealed class OpenAiProvider(HttpClient httpClient, IOptions<ProviderOptio
     private static OpenAiMessage MapMessage(ChatMessage message) => new()
     {
         Role = message.Role,
-        Content = message.Content,
+        Content = message.ContentParts.Count == 0
+            ? JsonSerializer.SerializeToElement(message.Content)
+            : JsonSerializer.SerializeToElement(message.ContentParts.Select(MapContentPart).ToArray()),
         ToolCallId = message.ToolCallId,
         Name = message.Name,
         ToolCalls = message.ToolCalls.Count == 0 ? null : message.ToolCalls.Select(call => new OpenAiToolCall
@@ -216,5 +218,16 @@ public sealed class OpenAiProvider(HttpClient httpClient, IOptions<ProviderOptio
         Id = call.Id,
         Name = call.Function.Name,
         ArgumentsJson = call.Function.Arguments
+    };
+
+    private static OpenAiContentPart MapContentPart(ChatContentPart part) => part.Type switch
+    {
+        "text" => new OpenAiContentPart { Type = "text", Text = part.Text ?? string.Empty },
+        "image_url" => new OpenAiContentPart
+        {
+            Type = "image_url",
+            ImageUrl = new OpenAiImageUrl { Url = part.ImageUrl ?? string.Empty }
+        },
+        _ => throw new ProviderRequestException("openai")
     };
 }

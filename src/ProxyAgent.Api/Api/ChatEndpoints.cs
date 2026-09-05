@@ -1,5 +1,6 @@
 using ProxyAgent.Api.Chat;
 using ProxyAgent.Api.Streaming;
+using ProxyAgent.Api.WebSearch;
 
 namespace ProxyAgent.Api.Api;
 
@@ -12,7 +13,7 @@ public static class ChatEndpoints
         return endpoints;
     }
 
-    private static async Task HandleGatewayAsync(HttpContext context, GatewayChatRequest request, ChatOrchestrator orchestrator)
+    private static async Task HandleGatewayAsync(HttpContext context, GatewayChatRequest request, ChatPromptAgent orchestrator)
     {
         try
         {
@@ -35,7 +36,7 @@ public static class ChatEndpoints
         }
     }
 
-    private static async Task HandleOpenAiAsync(HttpContext context, OpenAiChatRequest request, ChatOrchestrator orchestrator)
+    private static async Task HandleOpenAiAsync(HttpContext context, OpenAiChatRequest request, ChatPromptAgent orchestrator)
     {
         try
         {

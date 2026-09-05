@@ -1,0 +1,69 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  DEFAULT_SETUP_SETTINGS,
+  loadSetupSettings,
+  normalizeGatewayBaseUrl,
+  normalizeModelRoutes,
+  saveSetupSettings,
+} from './setup-storage';
+
+describe('setup storage', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+    });
+  });
+
+  it('returns safe defaults when no saved setup exists', () => {
+    expect(loadSetupSettings()).toEqual(DEFAULT_SETUP_SETTINGS);
+  });
+
+  it('normalizes a saved setup and removes duplicate custom routes', () => {
+    const storage = {
+      getItem: vi.fn(() =>
+        JSON.stringify({
+          gatewayBaseUrl: ' https://api.example.com/// ',
+          customModels: [' custom/model ', '', 'custom/model', 'another:model'],
+          selectedModel: 'custom/model',
+        }),
+      ),
+      setItem: vi.fn(),
+    };
+    vi.stubGlobal('localStorage', storage);
+
+    expect(loadSetupSettings()).toEqual({
+      gatewayBaseUrl: 'https://api.example.com',
+      customModels: ['custom/model', 'another:model'],
+      selectedModel: 'custom/model',
+    });
+  });
+
+  it('falls back to defaults for malformed storage and invalid URLs', () => {
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => '{broken'), setItem: vi.fn() });
+
+    expect(loadSetupSettings()).toEqual(DEFAULT_SETUP_SETTINGS);
+    expect(normalizeGatewayBaseUrl('ftp://example.com')).toBe('');
+    expect(normalizeGatewayBaseUrl('not a url')).toBe('');
+  });
+
+  it('normalizes URL and model route input before saving', () => {
+    const storage = { getItem: vi.fn(() => null), setItem: vi.fn() };
+    vi.stubGlobal('localStorage', storage);
+
+    const saved = saveSetupSettings({
+      gatewayBaseUrl: 'http://localhost:5030///',
+      customModels: [' foo/bar ', 'foo/bar', ''],
+      selectedModel: 'foo/bar',
+    });
+
+    expect(saved.gatewayBaseUrl).toBe('http://localhost:5030');
+    expect(saved.customModels).toEqual(['foo/bar']);
+    expect(storage.setItem).toHaveBeenCalledOnce();
+  });
+
+  it('normalizes multiline model routes', () => {
+    expect(normalizeModelRoutes('foo/bar\n\nfoo/bar\r\nbaz:model')).toEqual(['foo/bar', 'baz:model']);
+  });
+});

@@ -30,6 +30,15 @@ internal sealed class AnthropicContentBlock
     [JsonPropertyName("input")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public JsonElement Input { get; init; }
     [JsonPropertyName("tool_use_id")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ToolUseId { get; init; }
     [JsonPropertyName("content")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Content { get; init; }
+    [JsonPropertyName("source")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public AnthropicImageSource? Source { get; init; }
+}
+
+internal sealed class AnthropicImageSource
+{
+    [JsonPropertyName("type")] public string Type { get; init; } = string.Empty;
+    [JsonPropertyName("media_type")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? MediaType { get; init; }
+    [JsonPropertyName("data")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Data { get; init; }
+    [JsonPropertyName("url")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Url { get; init; }
 }
 
 internal sealed class AnthropicTool

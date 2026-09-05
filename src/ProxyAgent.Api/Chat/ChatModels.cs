@@ -17,9 +17,23 @@ public sealed record ChatMessage
 {
     public string Role { get; init; } = string.Empty;
     public string? Content { get; init; }
+    public IReadOnlyList<ChatContentPart> ContentParts { get; init; } = [];
     public IReadOnlyList<ChatToolCall> ToolCalls { get; init; } = [];
     public string? ToolCallId { get; init; }
     public string? Name { get; init; }
+}
+
+public sealed record ChatContentPart
+{
+    public string Type { get; init; } = string.Empty;
+    public string? Text { get; init; }
+    public string? ImageUrl { get; init; }
+}
+
+public static class ChatContentLimits
+{
+    // Allows a base64 data URL representing a 5 MiB image plus its encoding overhead.
+    public const int MaxImageDataUrlLength = 7_000_000;
 }
 
 public sealed record ChatTool

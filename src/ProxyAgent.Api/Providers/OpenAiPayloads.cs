@@ -17,10 +17,22 @@ internal sealed class OpenAiChatRequest
 internal sealed class OpenAiMessage
 {
     [JsonPropertyName("role")] public string Role { get; init; } = string.Empty;
-    [JsonPropertyName("content")] public string? Content { get; init; }
+    [JsonPropertyName("content")] public JsonElement? Content { get; init; }
     [JsonPropertyName("tool_calls")] public IReadOnlyList<OpenAiToolCall>? ToolCalls { get; init; }
     [JsonPropertyName("tool_call_id")] public string? ToolCallId { get; init; }
     [JsonPropertyName("name")] public string? Name { get; init; }
+}
+
+internal sealed class OpenAiContentPart
+{
+    [JsonPropertyName("type")] public string Type { get; init; } = string.Empty;
+    [JsonPropertyName("text")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Text { get; init; }
+    [JsonPropertyName("image_url")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public OpenAiImageUrl? ImageUrl { get; init; }
+}
+
+internal sealed class OpenAiImageUrl
+{
+    [JsonPropertyName("url")] public string Url { get; init; } = string.Empty;
 }
 
 internal sealed class OpenAiTool
@@ -60,7 +72,14 @@ internal sealed class OpenAiChatResponse
 internal sealed class OpenAiChoice
 {
     [JsonPropertyName("finish_reason")] public string? FinishReason { get; init; }
-    [JsonPropertyName("message")] public OpenAiMessage? Message { get; init; }
+    [JsonPropertyName("message")] public OpenAiResponseMessage? Message { get; init; }
+}
+
+internal sealed class OpenAiResponseMessage
+{
+    [JsonPropertyName("role")] public string Role { get; init; } = "assistant";
+    [JsonPropertyName("content")] public string? Content { get; init; }
+    [JsonPropertyName("tool_calls")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyList<OpenAiToolCall>? ToolCalls { get; init; }
 }
 
 internal sealed class OpenAiUsage

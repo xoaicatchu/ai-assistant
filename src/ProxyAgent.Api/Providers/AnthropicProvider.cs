@@ -201,7 +201,7 @@ public sealed class AnthropicProvider(HttpClient httpClient, IOptions<ProviderOp
         {
             Model = selection.Model,
             MaxTokens = request.MaxTokens ?? 1024,
-            System = string.Join("\n", systemMessages.Select(message => message.Content).Where(content => content is not null)),
+            System = string.Join("\n", systemMessages.Select(GetTextContent).Where(content => content is not null)),
             Messages = messages,
             Stream = stream,
             Temperature = request.Temperature,
@@ -281,7 +281,11 @@ public sealed class AnthropicProvider(HttpClient httpClient, IOptions<ProviderOp
         }
 
         var content = new List<AnthropicContentBlock>();
-        if (message.Content is not null)
+        if (message.ContentParts.Count > 0)
+        {
+            content.AddRange(message.ContentParts.Select(MapContentPart));
+        }
+        else if (message.Content is not null)
         {
             content.Add(new AnthropicContentBlock { Type = "text", Text = message.Content });
         }
@@ -296,6 +300,59 @@ public sealed class AnthropicProvider(HttpClient httpClient, IOptions<ProviderOp
 
         return new AnthropicMessage { Role = message.Role, Content = content };
     }
+
+    private static AnthropicContentBlock MapContentPart(ChatContentPart part) => part.Type switch
+    {
+        "text" => new AnthropicContentBlock { Type = "text", Text = part.Text ?? string.Empty },
+        "image_url" => new AnthropicContentBlock
+        {
+            Type = "image",
+            Source = MapImageSource(part.ImageUrl)
+        },
+        _ => throw new ProviderRequestException("anthropic")
+    };
+
+    private static AnthropicImageSource MapImageSource(string? imageUrl)
+    {
+        if (string.IsNullOrWhiteSpace(imageUrl))
+        {
+            throw new ProviderRequestException("anthropic");
+        }
+
+        if (imageUrl.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        {
+            var commaIndex = imageUrl.IndexOf(',');
+            if (commaIndex <= 5)
+            {
+                throw new ProviderRequestException("anthropic");
+            }
+
+            var metadata = imageUrl[5..commaIndex].Split(';', StringSplitOptions.RemoveEmptyEntries);
+            var mediaType = metadata.FirstOrDefault() ?? "application/octet-stream";
+            var isBase64 = metadata.Any(item => item.Equals("base64", StringComparison.OrdinalIgnoreCase));
+            if (!isBase64)
+            {
+                throw new ProviderRequestException("anthropic");
+            }
+
+            return new AnthropicImageSource
+            {
+                Type = "base64",
+                MediaType = mediaType,
+                Data = imageUrl[(commaIndex + 1)..]
+            };
+        }
+
+        if (Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps)
+        {
+            return new AnthropicImageSource { Type = "url", Url = imageUrl };
+        }
+
+        throw new ProviderRequestException("anthropic");
+    }
+
+    private static string? GetTextContent(ChatMessage message) =>
+        message.Content ?? string.Join("\n", message.ContentParts.Where(part => part.Type == "text").Select(part => part.Text));
 
     private static AnthropicTool MapTool(ChatTool tool) => new()
     {

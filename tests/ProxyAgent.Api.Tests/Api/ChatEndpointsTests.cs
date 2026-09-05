@@ -97,6 +97,65 @@ public sealed class ChatEndpointsTests
     }
 
     [Fact]
+    public async Task OpenAi_endpoint_accepts_multimodal_content_parts()
+    {
+        var fake = new FakeChatProvider();
+        using var app = CreateApp(fake);
+
+        var response = await app.Client.PostAsJsonAsync("/v1/chat/completions", new
+        {
+            model = "openai:test-model",
+            messages = new[]
+            {
+                new
+                {
+                    role = "user",
+                    content = new object[]
+                    {
+                        new { type = "text", text = "Ảnh này có gì?" },
+                        new { type = "image_url", image_url = new { url = "data:image/png;base64,AA==" } }
+                    }
+                }
+            }
+        });
+
+        response.EnsureSuccessStatusCode();
+        var message = fake.LastRequest!.Messages.Single(item => item.Role == "user");
+        Assert.Equal("Ảnh này có gì?", message.ContentParts[0].Text);
+        Assert.Equal("data:image/png;base64,AA==", message.ContentParts[1].ImageUrl);
+    }
+
+    [Fact]
+    public async Task OpenAi_endpoint_rejects_oversized_image_data_url()
+    {
+        using var app = CreateApp(new FakeChatProvider());
+
+        var response = await app.Client.PostAsJsonAsync("/v1/chat/completions", new
+        {
+            model = "openai:test-model",
+            messages = new[]
+            {
+                new
+                {
+                    role = "user",
+                    content = new object[]
+                    {
+                        new
+                        {
+                            type = "image_url",
+                            image_url = new { url = "data:image/png;base64," + new string('A', ChatContentLimits.MaxImageDataUrlLength) }
+                        }
+                    }
+                }
+            }
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("invalid_request", body.RootElement.GetProperty("error").GetProperty("code").GetString());
+    }
+
+    [Fact]
     public async Task Unknown_provider_returns_bad_request_error()
     {
         using var app = CreateApp(new FakeChatProvider());
@@ -140,6 +199,20 @@ public sealed class ChatEndpointsTests
         Assert.False(fake.WasCalled);
     }
 
+    [Fact]
+    public async Task Health_endpoint_allows_configured_frontend_origin()
+    {
+        using var app = CreateApp(new FakeChatProvider());
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/health");
+        request.Headers.Add("Origin", "http://localhost:4200");
+
+        var response = await app.Client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        Assert.True(response.Headers.TryGetValues("Access-Control-Allow-Origin", out var values));
+        Assert.Equal("http://localhost:4200", values.Single());
+    }
+
     private static TestApp CreateApp(FakeChatProvider fake)
     {
         var factory = new TestFactory(fake);
@@ -174,10 +247,12 @@ public sealed class ChatEndpointsTests
     {
         public string Name => "openai";
         public bool WasCalled { get; private set; }
+        public NormalizedChatRequest? LastRequest { get; private set; }
 
         public Task<NormalizedChatResponse> CompleteAsync(NormalizedChatRequest request, ProviderSelection selection, CancellationToken cancellationToken)
         {
             WasCalled = true;
+            LastRequest = request;
             var message = new ChatMessage
             {
                 Role = "assistant",
@@ -202,6 +277,7 @@ public sealed class ChatEndpointsTests
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
         {
             WasCalled = true;
+            LastRequest = request;
             yield return new ChatStreamEvent { Id = "fake-1", Provider = Name, Model = selection.Model, TextDelta = "Hello from fake provider" };
             yield return new ChatStreamEvent { Id = "fake-1", Provider = Name, Model = selection.Model, IsDone = true };
             await Task.CompletedTask;
