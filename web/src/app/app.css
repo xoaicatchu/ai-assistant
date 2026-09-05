@@ -197,19 +197,18 @@ textarea:disabled {
   text-overflow: ellipsis;
   white-space: nowrap;
   background: #ffffff;
-  border: 1px solid #d9d9e2;
+  border: 0;
   border-radius: 10px;
   outline: none;
   appearance: none;
   cursor: pointer;
-  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+  transition: background 150ms ease;
 }
 
 .model-select:hover,
 .model-select:focus {
-  background: #fafafa;
-  border-color: #b8b8c5;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.07);
+  background: #f7f7f8;
+  box-shadow: none;
 }
 
 .model-select:disabled {
@@ -451,7 +450,11 @@ textarea:disabled {
   outline: none;
 }
 
-.composer textarea:focus,
+.composer textarea:focus {
+  border-color: transparent;
+  box-shadow: none;
+}
+
 .setup-field input:focus,
 .setup-field textarea:focus {
   border-color: #93b4f8;
