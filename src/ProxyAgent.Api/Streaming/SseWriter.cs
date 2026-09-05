@@ -76,6 +76,18 @@ public static class SseWriter
         return WriteRawAsync(response, "data: [DONE]\n\n", cancellationToken);
     }
 
+    public static Task WriteErrorAsync(
+        HttpResponse response,
+        string code,
+        string message,
+        string? provider,
+        CancellationToken cancellationToken) =>
+        WriteJsonEventAsync(response, new
+        {
+            type = "error",
+            error = new { code, message, provider }
+        }, cancellationToken);
+
     private static Task WriteJsonEventAsync(HttpResponse response, object value, CancellationToken cancellationToken)
     {
         EnsureSse(response);
@@ -92,7 +104,10 @@ public static class SseWriter
 
     private static void EnsureSse(HttpResponse response)
     {
-        response.ContentType = "text/event-stream";
-        response.Headers.CacheControl = "no-cache";
+        if (!response.HasStarted)
+        {
+            response.ContentType = "text/event-stream";
+            response.Headers.CacheControl = "no-cache";
+        }
     }
 }
