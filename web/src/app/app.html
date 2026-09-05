@@ -123,13 +123,13 @@
             >
               <div class="avatar" [class.user-avatar]="message.role === 'user'" aria-hidden="true">
                 @if (message.role === 'user') {
-                  <span>YOU</span>
+                  <svg lucideUserRound class="h-4 w-4" aria-hidden="true"></svg>
                 } @else {
                   <svg lucideBot class="h-4 w-4" aria-hidden="true"></svg>
                 }
               </div>
               <div class="message-bubble">
-                <div class="message-meta">{{ message.role === 'user' ? 'You' : 'Assistant' }}</div>
+                <div class="message-meta">{{ message.role === 'user' ? 'Bạn' : 'Trợ lý' }}</div>
                 @if (message.image) {
                   <img class="message-image" [src]="message.image.dataUrl" alt="Ảnh đính kèm" />
                 }

@@ -436,6 +436,11 @@ textarea:disabled {
   border-radius: 8px;
 }
 
+.user-row .user-avatar {
+  color: #555762;
+  background: #f4f4f6;
+}
+
 .assistant-row .avatar {
   color: #2563eb;
   background: #eef4ff;
