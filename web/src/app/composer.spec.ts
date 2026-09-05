@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { focusComposerOnDesktop, restoreComposerAfterSend, shouldSubmitOnEnter } from './composer';
+import {
+  dismissComposerOnSubmit,
+  focusComposerOnDesktop,
+  restoreComposerAfterSend,
+  shouldSubmitOnEnter,
+} from './composer';
 
 describe('shouldSubmitOnEnter', () => {
   it('submits on Enter without Shift', () => {
@@ -92,5 +97,29 @@ describe('focusComposerOnDesktop', () => {
     );
 
     expect(focus).toHaveBeenCalledOnce();
+  });
+});
+
+describe('dismissComposerOnSubmit', () => {
+  it('blurs the active textarea immediately on iPhone Enter', () => {
+    const blur = vi.fn();
+
+    dismissComposerOnSubmit(
+      { blur },
+      { platform: 'iPhone', userAgent: 'Mozilla/5.0 (iPhone)', maxTouchPoints: 5 },
+    );
+
+    expect(blur).toHaveBeenCalledOnce();
+  });
+
+  it('does not interrupt desktop focus before it is restored', () => {
+    const blur = vi.fn();
+
+    dismissComposerOnSubmit(
+      { blur },
+      { platform: 'Win32', userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', maxTouchPoints: 0 },
+    );
+
+    expect(blur).not.toHaveBeenCalled();
   });
 });

@@ -71,4 +71,12 @@ describe('setup storage', () => {
   it('normalizes multiline model routes', () => {
     expect(normalizeModelRoutes('foo/bar\n\nfoo/bar\r\nbaz:model')).toEqual(['foo/bar', 'baz:model']);
   });
+
+  it('removes retired built-in routes from saved custom models', () => {
+    expect(normalizeModelRoutes([
+      'gpt/gpt-5.6-sol-high-fast',
+      'x-ai/grok-4.5',
+      'anthropic:claude-sonnet',
+    ])).toEqual(['anthropic:claude-sonnet']);
+  });
 });

@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Keep the four built-in model routes: `gpt/gpt-5.6-sol-high-fast`, `deepseek/deepseek-v4-flash`, `x-ai/grok-4.5`, and `x-ai/grok-4.6`.
+- Keep the two built-in model routes: `deepseek/deepseek-v4-flash` and `x-ai/grok-4.6`.
 - Setup custom models are route strings only; no provider API key or provider credential is stored in `localStorage`.
 - A new Enter while busy aborts the old request, sends immediately, and includes the existing user/complete-assistant history.
 - Old request callbacks must be ignored after abort or supersession.
@@ -82,7 +82,7 @@ Expected: the new tests and all existing frontend tests pass.
 - `loadSetupSettings(): SetupSettings` safely reads `localStorage` key `medical-harness-agent.setup.v1` and returns defaults for malformed/missing data.
 - `saveSetupSettings(settings: SetupSettings): void` normalizes URLs/routes and catches storage failures.
 - `setRuntimeApiBaseUrl(value: string): void` updates the runtime API target used by `apiUrl()`.
-- `allModelOptions(customModels: string[]): ModelOption[]` returns the four built-ins followed by unique custom routes.
+- `allModelOptions(customModels: string[]): ModelOption[]` returns the two built-ins followed by unique custom routes.
 
 - [ ] **Step 1: Write failing storage and model option tests**
 
@@ -104,7 +104,7 @@ Add a Gateway Base URL input, a multiline custom-model route editor, Save Setup,
 
 - [ ] **Step 5: Use merged options in the compact composer combobox**
 
-Keep the combobox next to Send/Stop, display only the route/model name, and preserve the modern pill styling. Custom routes appear after the four built-ins.
+Keep the combobox next to Send/Stop, display only the route/model name, and preserve the modern pill styling. Custom routes appear after the two built-ins.
 
 - [ ] **Step 6: Run frontend tests and build**
 

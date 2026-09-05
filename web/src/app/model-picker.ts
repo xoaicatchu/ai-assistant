@@ -5,6 +5,11 @@ export interface ModelOption {
   description: string;
 }
 
+const REMOVED_MODEL_ROUTES = new Set([
+  'gpt/gpt-5.6-sol-high-fast',
+  'x-ai/grok-4.5',
+]);
+
 export const MODEL_OPTIONS: readonly ModelOption[] = [
   {
     route: 'deepseek/deepseek-v4-flash',
@@ -26,7 +31,7 @@ export function allModelOptions(customModels: readonly string[] = []): ModelOpti
 
   for (const rawRoute of customModels) {
     const route = rawRoute.trim();
-    if (!route || knownRoutes.has(route)) {
+    if (!route || knownRoutes.has(route) || isRemovedModelRoute(route)) {
       continue;
     }
 
@@ -40,6 +45,10 @@ export function allModelOptions(customModels: readonly string[] = []): ModelOpti
   }
 
   return options;
+}
+
+export function isRemovedModelRoute(route: string): boolean {
+  return REMOVED_MODEL_ROUTES.has(route.trim().toLowerCase());
 }
 
 export function modelLabel(route: string): string {

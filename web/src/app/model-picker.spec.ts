@@ -30,4 +30,16 @@ describe('model picker labels', () => {
       provider: 'Anthropic',
     });
   });
+
+  it('does not re-add removed built-in routes from saved custom models', () => {
+    expect(allModelOptions([
+      'gpt/gpt-5.6-sol-high-fast',
+      'x-ai/grok-4.5',
+      'anthropic:claude-sonnet',
+    ]).map((option) => option.route)).toEqual([
+      'deepseek/deepseek-v4-flash',
+      'x-ai/grok-4.6',
+      'anthropic:claude-sonnet',
+    ]);
+  });
 });

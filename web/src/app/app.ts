@@ -19,7 +19,12 @@ import {
   LucideWifiOff,
   LucideX,
 } from '@lucide/angular';
-import { focusComposerOnDesktop, restoreComposerAfterSend, shouldSubmitOnEnter } from './composer';
+import {
+  dismissComposerOnSubmit,
+  focusComposerOnDesktop,
+  restoreComposerAfterSend,
+  shouldSubmitOnEnter,
+} from './composer';
 import { ChatMessage, ChatService } from './chat.service';
 import { ImageAttachment, toChatMessage } from './chat-content';
 import {
@@ -446,6 +451,7 @@ export class App {
   protected onComposerKeydown(event: KeyboardEvent): void {
     if (shouldSubmitOnEnter(event, this.composing)) {
       event.preventDefault();
+      dismissComposerOnSubmit(this.composerInput?.nativeElement);
       void this.send();
     }
   }

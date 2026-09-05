@@ -31,6 +31,15 @@ export function restoreComposerAfterSend(
   input.focus();
 }
 
+export function dismissComposerOnSubmit(
+  input: Pick<HTMLElement, 'blur'> | null | undefined,
+  environment: ComposerEnvironment = readComposerEnvironment(),
+): void {
+  if (input && isAppleMobile(environment)) {
+    input.blur();
+  }
+}
+
 function scheduleAfterFrame(callback: () => void): void {
   if (typeof globalThis.requestAnimationFrame === 'function') {
     globalThis.requestAnimationFrame(() => callback());

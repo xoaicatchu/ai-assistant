@@ -1,4 +1,4 @@
-import { MODEL_OPTIONS } from './model-picker';
+import { isRemovedModelRoute, MODEL_OPTIONS } from './model-picker';
 
 const STORAGE_KEY = 'medical-harness-agent.setup.v1';
 
@@ -52,7 +52,7 @@ export function normalizeModelRoutes(value: string | string[] | null | undefined
 
   for (const item of values) {
     const route = item.trim();
-    if (route && !routes.includes(route)) {
+    if (route && !isRemovedModelRoute(route) && !routes.includes(route)) {
       routes.push(route);
     }
   }
