@@ -12,13 +12,15 @@ body {
   min-height: 100dvh;
   margin: 0;
   background: #f5f7fb;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
   color: #1d1d1f;
+  font-size: 16px;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
-  -webkit-text-size-adjust: 100%;
   overflow: hidden;
 }
 

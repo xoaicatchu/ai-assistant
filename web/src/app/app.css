@@ -396,18 +396,6 @@ textarea:disabled {
   line-height: 1.65;
 }
 
-.quick-prompt {
-  width: fit-content;
-  margin: 17px auto 0;
-  padding: 6px 9px;
-  color: #6b6c7b;
-  font-family: 'SFMono-Regular', Consolas, monospace;
-  font-size: 9px;
-  background: #f7f7f8;
-  border: 1px solid #e6e6eb;
-  border-radius: 7px;
-}
-
 .message-row {
   display: flex;
   align-items: flex-start;
@@ -555,14 +543,11 @@ textarea:disabled {
 
 .composer {
   position: relative;
-  bottom: 0;
   z-index: 2;
   width: min(calc(100% - 40px), 768px);
-  max-width: 100%;
   min-width: 0;
   margin: 0 auto 20px;
   padding: 4px;
-  box-sizing: border-box;
   background: #ffffff;
   border: 1px solid #c9c9d2;
   border-radius: 17px;
@@ -570,9 +555,7 @@ textarea:disabled {
 }
 
 .composer textarea {
-  display: block;
   width: 100%;
-  min-width: 0;
   min-height: 48px;
   padding: 8px 10px 5px;
   resize: vertical;
@@ -680,7 +663,6 @@ textarea:disabled {
   padding: 2px 6px 5px 9px;
 }
 
-.composer-tools,
 .composer-actions {
   min-width: 0;
 }
@@ -881,12 +863,6 @@ textarea:disabled {
   flex-shrink: 0;
 }
 
-.composer-stream-toggle > span:last-child {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .connection-card {
   margin-top: 16px;
   padding: 17px;
@@ -1047,6 +1023,22 @@ textarea:disabled {
     gap: 12px;
   }
 
+  .eyebrow {
+    font-size: 10px;
+  }
+
+  h1 {
+    font-size: 17px;
+  }
+
+  .tab-button {
+    font-size: 13px;
+  }
+
+  .conversation-tab {
+    font-size: 12px;
+  }
+
   .conversation {
     padding: 8px 14px 14px;
   }
@@ -1055,8 +1047,22 @@ textarea:disabled {
     padding: 25px 11px 34px;
   }
 
+  .welcome-card p:not(.eyebrow),
+  .setup-heading > p:not(.eyebrow) {
+    font-size: 14px;
+  }
+
   .message-row {
     padding: 14px 0;
+  }
+
+  .message-content {
+    font-size: 16px;
+    line-height: 1.58;
+  }
+
+  .message-meta {
+    font-size: 10px;
   }
 
   .error-banner,
@@ -1064,8 +1070,11 @@ textarea:disabled {
     width: calc(100% - 24px);
   }
 
+  .error-banner {
+    font-size: 12px;
+  }
+
   .composer {
-    position: relative;
     margin-bottom: 0;
     padding: 3px;
     overflow: hidden;
@@ -1099,7 +1108,7 @@ textarea:disabled {
   }
 
   .composer-stream-toggle {
-    font-size: 9px;
+    font-size: 12px;
   }
 
   .composer-stream-toggle .toggle-track {
@@ -1120,7 +1129,6 @@ textarea:disabled {
 
   .model-select {
     width: 100%;
-    max-width: 100%;
     padding-right: 24px;
     padding-left: 7px;
   }
@@ -1128,6 +1136,19 @@ textarea:disabled {
   .setup-panel {
     padding-right: 14px;
     padding-left: 14px;
+  }
+
+  .setup-field > span {
+    font-size: 13px;
+  }
+
+  .setup-field small {
+    font-size: 11px;
+  }
+
+  .secondary-button,
+  .primary-button {
+    font-size: 12px;
   }
 
   .setup-grid {
