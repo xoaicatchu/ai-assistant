@@ -4,18 +4,21 @@ const STORAGE_KEY = 'medical-harness-agent.setup.v1';
 
 export interface SetupSettings {
   gatewayBaseUrl: string;
+  apiKey: string;
   customModels: string[];
   selectedModel: string;
 }
 
 export interface SetupSettingsInput {
   gatewayBaseUrl?: string | null;
+  apiKey?: string | null;
   customModels?: string | string[] | null;
   selectedModel?: string | null;
 }
 
 export const DEFAULT_SETUP_SETTINGS: SetupSettings = {
   gatewayBaseUrl: '',
+  apiKey: '',
   customModels: [],
   selectedModel: 'x-ai/grok-4.6',
 };
@@ -85,6 +88,7 @@ export function saveSetupSettings(settings: SetupSettingsInput): SetupSettings {
 function normalizeSetup(settings: SetupSettingsInput): SetupSettings {
   const customModels = normalizeModelRoutes(settings.customModels);
   const gatewayBaseUrl = normalizeGatewayBaseUrl(settings.gatewayBaseUrl);
+  const apiKey = settings.apiKey?.trim() ?? '';
   const selectedModel = settings.selectedModel?.trim() ?? '';
   const availableRoutes = new Set([
     ...MODEL_OPTIONS.map((option) => option.route),
@@ -93,6 +97,7 @@ function normalizeSetup(settings: SetupSettingsInput): SetupSettings {
 
   return {
     gatewayBaseUrl,
+    apiKey,
     customModels,
     selectedModel: availableRoutes.has(selectedModel)
       ? selectedModel
@@ -111,6 +116,7 @@ function readStorage(): string | null {
 function cloneDefaults(): SetupSettings {
   return {
     gatewayBaseUrl: DEFAULT_SETUP_SETTINGS.gatewayBaseUrl,
+    apiKey: DEFAULT_SETUP_SETTINGS.apiKey,
     customModels: [...DEFAULT_SETUP_SETTINGS.customModels],
     selectedModel: DEFAULT_SETUP_SETTINGS.selectedModel,
   };

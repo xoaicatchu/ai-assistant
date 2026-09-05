@@ -33,7 +33,7 @@ describe('Vercel backend proxy URL', () => {
     const response = createResponse();
 
     await proxyRequest(
-      createRequest('POST', '/api/index?path=v1/chat/completions&stream=true', 'request-body'),
+      createRequest('POST', '/api/index?path=v1/chat/completions&stream=true', 'request-body', 'Bearer sk-test'),
       response,
       'https://backend.example.com',
       'v1/chat/completions',
@@ -43,7 +43,11 @@ describe('Vercel backend proxy URL', () => {
       'https://backend.example.com/v1/chat/completions?stream=true',
       expect.objectContaining({
         method: 'POST',
-        headers: { 'content-type': 'application/json', accept: 'text/event-stream' },
+        headers: {
+          'content-type': 'application/json',
+          accept: 'text/event-stream',
+          authorization: 'Bearer sk-test',
+        },
         body: expect.any(ArrayBuffer),
       }),
     );
@@ -53,11 +57,15 @@ describe('Vercel backend proxy URL', () => {
   });
 });
 
-function createRequest(method: string, url: string, body = ''): ProxyRequest {
+function createRequest(method: string, url: string, body = '', authorization?: string): ProxyRequest {
   return {
     method,
     url,
-    headers: { 'content-type': 'application/json', accept: 'text/event-stream' },
+    headers: {
+      'content-type': 'application/json',
+      accept: 'text/event-stream',
+      ...(authorization ? { authorization } : {}),
+    },
     on(event, listener) {
       if (event === 'data' && body) {
         listener(body);

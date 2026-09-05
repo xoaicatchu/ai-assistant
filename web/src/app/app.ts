@@ -81,6 +81,7 @@ export class App {
   protected readonly model = signal(this.initialSetup.selectedModel);
   protected readonly modelOptions = signal(allModelOptions(this.initialSetup.customModels));
   protected readonly gatewayBaseUrl = signal(runtimeConfig.isVercel ? '' : this.initialSetup.gatewayBaseUrl);
+  protected readonly apiKey = signal(this.initialSetup.apiKey);
   protected readonly customModelsText = signal(this.initialSetup.customModels.join('\n'));
   protected readonly setupMessage = signal('');
   protected readonly draft = signal('');
@@ -264,12 +265,14 @@ export class App {
   protected saveSetup(): void {
     const saved = saveSetupSettings({
       gatewayBaseUrl: runtimeConfig.isVercel ? '' : this.gatewayBaseUrl(),
+      apiKey: this.apiKey(),
       customModels: this.customModelsText(),
       selectedModel: this.model(),
     });
 
     setRuntimeApiBaseUrl(saved.gatewayBaseUrl);
     this.gatewayBaseUrl.set(saved.gatewayBaseUrl);
+    this.apiKey.set(saved.apiKey);
     this.customModelsText.set(saved.customModels.join('\n'));
     this.modelOptions.set(allModelOptions(saved.customModels));
     this.model.set(saved.selectedModel);
@@ -281,6 +284,7 @@ export class App {
     const defaults = saveSetupSettings(DEFAULT_SETUP_SETTINGS);
     setRuntimeApiBaseUrl(defaults.gatewayBaseUrl);
     this.gatewayBaseUrl.set(defaults.gatewayBaseUrl);
+    this.apiKey.set(defaults.apiKey);
     this.customModelsText.set(defaults.customModels.join('\n'));
     this.modelOptions.set(allModelOptions(defaults.customModels));
     this.model.set(defaults.selectedModel);

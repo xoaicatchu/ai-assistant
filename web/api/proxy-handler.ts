@@ -65,6 +65,7 @@ export async function proxyRequest(
   const headers: Record<string, string> = {};
   copyHeader(request.headers['content-type'], headers, 'content-type');
   copyHeader(request.headers.accept, headers, 'accept');
+  copyHeader(request.headers.authorization, headers, 'authorization');
 
   let upstream: Response;
   try {

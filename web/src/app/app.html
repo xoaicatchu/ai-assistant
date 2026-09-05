@@ -194,7 +194,7 @@
         <div class="setup-heading">
           <p class="eyebrow">WORKSPACE SETUP</p>
           <h2>Cấu hình phiên chat</h2>
-          <p>Chọn model route và cách nhận response. Credential luôn được giữ ở backend.</p>
+          <p>Chọn backend, API key và model route cho phiên chat hiện tại.</p>
         </div>
 
         <div class="setup-grid">
@@ -216,6 +216,21 @@
                 Ví dụ: <code>https://api.example.com</code>. Credential không nằm ở frontend.
               }
             </small>
+          </label>
+
+          <label class="setup-field setup-field-wide">
+            <span>OpenAI API Key</span>
+            <input
+              type="password"
+              [ngModel]="apiKey()"
+              (ngModelChange)="apiKey.set($event)"
+              [disabled]="busy()"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="sk-..."
+              aria-label="OpenAI API Key"
+            />
+            <small>Gửi bằng header <code>Authorization: Bearer ...</code>. Key được lưu trên trình duyệt.</small>
           </label>
 
           <label class="setup-field setup-field-wide">
@@ -263,10 +278,9 @@
             </div>
           </div>
           <div class="endpoint-list">
-            <div class="endpoint-line"><span>Chat endpoint</span><code>/v1/chat/completions</code></div>
             <div class="endpoint-line">
-              <span>Backend URL</span>
-              <code>{{ runtime.apiBaseUrl || 'relative path (dev proxy)' }}</code>
+              <span>Backend endpoint</span>
+              <code>{{ runtime.apiBaseUrl || '' }}/v1/chat/completions</code>
             </div>
           </div>
         </div>

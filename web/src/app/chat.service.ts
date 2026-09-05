@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { apiUrl } from './runtime-config';
+import { loadSetupSettings } from './setup-storage';
 
 export type ChatRole = 'user' | 'assistant';
 
@@ -80,7 +81,11 @@ export class ChatService {
   }
 
   async health(signal: AbortSignal): Promise<void> {
-    const response = await fetch(apiUrl('/health'), { method: 'GET', signal });
+    const response = await fetch(apiUrl('/health'), {
+      method: 'GET',
+      headers: this.authHeaders(),
+      signal,
+    });
     if (!response.ok) {
       throw new Error(`Gateway health check failed with HTTP ${response.status}.`);
     }
@@ -94,7 +99,7 @@ export class ChatService {
   ): Promise<Response> {
     const response = await fetch(apiUrl('/v1/chat/completions'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ model, messages, stream }),
       signal,
     });
@@ -104,6 +109,11 @@ export class ChatService {
     }
 
     return response;
+  }
+
+  private authHeaders(headers: Record<string, string> = {}): Record<string, string> {
+    const apiKey = loadSetupSettings().apiKey;
+    return apiKey ? { ...headers, Authorization: `Bearer ${apiKey}` } : headers;
   }
 
   private async readError(response: Response): Promise<string> {

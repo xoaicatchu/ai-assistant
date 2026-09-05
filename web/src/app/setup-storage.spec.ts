@@ -25,6 +25,7 @@ describe('setup storage', () => {
       getItem: vi.fn(() =>
         JSON.stringify({
           gatewayBaseUrl: ' https://api.example.com/// ',
+          apiKey: '  sk-test  ',
           customModels: [' custom/model ', '', 'custom/model', 'another:model'],
           selectedModel: 'custom/model',
         }),
@@ -35,6 +36,7 @@ describe('setup storage', () => {
 
     expect(loadSetupSettings()).toEqual({
       gatewayBaseUrl: 'https://api.example.com',
+      apiKey: 'sk-test',
       customModels: ['custom/model', 'another:model'],
       selectedModel: 'custom/model',
     });
@@ -54,11 +56,13 @@ describe('setup storage', () => {
 
     const saved = saveSetupSettings({
       gatewayBaseUrl: 'http://localhost:5030///',
+      apiKey: ' sk-test ',
       customModels: [' foo/bar ', 'foo/bar', ''],
       selectedModel: 'foo/bar',
     });
 
     expect(saved.gatewayBaseUrl).toBe('http://localhost:5030');
+    expect(saved.apiKey).toBe('sk-test');
     expect(saved.customModels).toEqual(['foo/bar']);
     expect(storage.setItem).toHaveBeenCalledOnce();
   });
