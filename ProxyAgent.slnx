@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ProxyAgent.Api/ProxyAgent.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ProxyAgent.Api.Tests/ProxyAgent.Api.Tests.csproj" />
+  </Folder>
+</Solution>
