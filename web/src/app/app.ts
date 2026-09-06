@@ -12,6 +12,7 @@ import {
   LucidePlus,
   LucideRefreshCw,
   LucideServer,
+  LucideShare2,
   LucideSettings2,
   LucideShieldCheck,
   LucideSparkles,
@@ -42,6 +43,11 @@ import {
   type StoredConversation,
 } from './conversation-storage';
 import { renderMarkdown } from './markdown-renderer';
+import {
+  createConversationShareUrl,
+  readConversationShare,
+  type SharedConversation,
+} from './conversation-sharing';
 import {
   allModelOptions,
   modelCapabilitiesForRoute,
@@ -105,6 +111,7 @@ function maxRequestId(conversations: readonly ChatConversation[]): number {
     LucidePlus,
     LucideRefreshCw,
     LucideServer,
+    LucideShare2,
     LucideSettings2,
     LucideShieldCheck,
     LucideSparkles,
@@ -122,6 +129,7 @@ export class App implements OnDestroy {
 
   private readonly initialSetup = loadSetupSettings();
   private readonly initialConversationState = loadConversationState();
+  private readonly initialSharedConversation = readConversationShare(globalThis.location?.href ?? '');
   protected readonly runtime = runtimeConfig;
   protected readonly brandLabel = 'MEDICAL HARNESS FRAMEWORK';
   protected readonly activeTab = signal<ActiveTab>('chat');
@@ -133,6 +141,7 @@ export class App implements OnDestroy {
   protected readonly apiKey = signal(this.initialSetup.apiKey);
   protected readonly customModelsText = signal(this.initialSetup.customModels.join('\n'));
   protected readonly setupMessage = signal('');
+  protected readonly shareMessage = signal('');
   protected readonly draft = signal('');
   protected readonly pendingImage = signal<ImageAttachment | null>(null);
   protected readonly messages = signal<ViewMessage[]>([
@@ -158,6 +167,9 @@ export class App implements OnDestroy {
 
   constructor(private readonly chatService: ChatService) {
     setRuntimeApiBaseUrl(this.initialSetup.gatewayBaseUrl);
+    if (this.initialSharedConversation) {
+      this.openSharedConversation(this.initialSharedConversation);
+    }
     void this.checkHealth();
   }
 
@@ -210,6 +222,7 @@ export class App implements OnDestroy {
     restoreComposerAfterSend(this.composerInput?.nativeElement);
     focusConversationAfterAppleSubmit(this.conversation?.nativeElement);
     this.error.set('');
+    this.shareMessage.set('');
     this.updateActiveConversation(content);
 
     await this.runRequest(
@@ -354,6 +367,60 @@ export class App implements OnDestroy {
       this.focusComposer();
     } else {
       this.voiceInput.stop();
+    }
+  }
+
+  protected async shareActiveConversation(): Promise<void> {
+    this.persistActiveConversation();
+    const conversation = this.conversations().find(
+      (item) => item.id === this.activeConversationId(),
+    );
+    if (!conversation || !conversation.messages.some((message) => message.text.trim())) {
+      this.shareMessage.set('Chưa có nội dung để tạo link chia sẻ.');
+      return;
+    }
+
+    const shareUrl = createConversationShareUrl(conversation, globalThis.location?.href ?? '');
+    if (!shareUrl) {
+      this.shareMessage.set('Không thể tạo link chia sẻ cho cuộc trò chuyện này.');
+      return;
+    }
+
+    try {
+      if (typeof globalThis.navigator?.share === 'function') {
+        await globalThis.navigator.share({
+          title: conversation.title,
+          text: 'Cuộc trò chuyện từ Clinic Support AI',
+          url: shareUrl,
+        });
+        this.replaceCurrentUrl(shareUrl);
+        this.shareMessage.set(
+          conversation.messages.some((message) => message.image)
+            ? 'Đã mở chia sẻ. Ảnh đính kèm không nằm trong link.'
+            : 'Đã mở bảng chia sẻ.',
+        );
+        return;
+      }
+
+      await this.copyToClipboard(shareUrl);
+      this.replaceCurrentUrl(shareUrl);
+      this.shareMessage.set(
+        conversation.messages.some((message) => message.image)
+          ? 'Đã sao chép link. Ảnh đính kèm không nằm trong link.'
+          : 'Đã sao chép link chia sẻ.',
+      );
+    } catch (caughtError) {
+      if (this.isShareCancellation(caughtError)) {
+        return;
+      }
+
+      try {
+        await this.copyToClipboard(shareUrl);
+        this.replaceCurrentUrl(shareUrl);
+        this.shareMessage.set('Không mở được bảng chia sẻ; đã sao chép link.');
+      } catch {
+        this.shareMessage.set('Không thể sao chép link chia sẻ trên thiết bị này.');
+      }
     }
   }
 
@@ -612,6 +679,100 @@ export class App implements OnDestroy {
       default:
         return 'Chưa xác định';
     }
+  }
+
+  private openSharedConversation(shared: SharedConversation): void {
+    const importedConversation = this.importSharedConversation(shared);
+    const currentConversations = this.conversations();
+    const hasOnlyEmptyDefault = currentConversations.length === 1 &&
+      currentConversations[0].title === 'Cuộc trò chuyện mới' &&
+      currentConversations[0].messages.length === 0;
+    this.conversations.set(
+      hasOnlyEmptyDefault ? [importedConversation] : [...currentConversations, importedConversation],
+    );
+    this.activeConversationId.set(importedConversation.id);
+    this.messages.set([...importedConversation.messages]);
+    this.persistConversations();
+    this.removeConversationShareFromUrl();
+    this.shareMessage.set('Đã mở cuộc trò chuyện từ link chia sẻ.');
+  }
+
+  private importSharedConversation(shared: SharedConversation): ChatConversation {
+    const requestIds = new Map<number, number>();
+    const messages = shared.messages.map((message) => {
+      let requestId = requestIds.get(message.requestId);
+      if (!requestId) {
+        requestId = ++this.requestGeneration;
+        requestIds.set(message.requestId, requestId);
+      }
+
+      return {
+        ...message,
+        id: this.nextMessageId++,
+        requestId,
+      };
+    });
+
+    return {
+      id: this.nextConversationId++,
+      title: shared.title,
+      messages,
+    };
+  }
+
+  private replaceCurrentUrl(url: string): void {
+    try {
+      globalThis.history?.replaceState(null, '', url);
+    } catch {
+      // Updating the address bar is optional; the copied/shared URL remains valid.
+    }
+  }
+
+  private removeConversationShareFromUrl(): void {
+    const href = globalThis.location?.href;
+    if (!href) {
+      return;
+    }
+
+    try {
+      const url = new URL(href);
+      if (!new URLSearchParams(url.hash.slice(1)).has('share')) {
+        return;
+      }
+      url.hash = '';
+      this.replaceCurrentUrl(url.toString());
+    } catch {
+      // Ignore malformed browser URLs and keep the imported conversation visible.
+    }
+  }
+
+  private async copyToClipboard(value: string): Promise<void> {
+    if (globalThis.navigator?.clipboard?.writeText) {
+      await globalThis.navigator.clipboard.writeText(value);
+      return;
+    }
+
+    const documentRef = globalThis.document;
+    if (!documentRef?.body) {
+      throw new Error('Clipboard is unavailable.');
+    }
+
+    const textarea = documentRef.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    documentRef.body.appendChild(textarea);
+    textarea.select();
+    const copied = documentRef.execCommand('copy');
+    textarea.remove();
+    if (!copied) {
+      throw new Error('Clipboard copy failed.');
+    }
+  }
+
+  private isShareCancellation(error: unknown): boolean {
+    return error instanceof DOMException && error.name === 'AbortError';
   }
 
   private setAssistantError(conversationId: number, assistantId: number, message: string): void {

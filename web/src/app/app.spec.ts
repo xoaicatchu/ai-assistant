@@ -3,6 +3,7 @@ import '@angular/compiler';
 import { App } from './app';
 import { ChatMessage, ChatService } from './chat.service';
 import { CONVERSATIONS_STORAGE_KEY } from './conversation-storage';
+import { createConversationShareUrl } from './conversation-sharing';
 
 describe('App message submission', () => {
   afterEach(() => {
@@ -105,5 +106,57 @@ describe('App message submission', () => {
 
     expect(stream).not.toHaveBeenCalled();
     expect((app as any).error()).toContain('không hỗ trợ Vision');
+  });
+
+  it('copies a shareable URL for the active conversation on desktop', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const replaceState = vi.fn();
+    vi.stubGlobal('navigator', { clipboard: { writeText } });
+    vi.stubGlobal('location', { href: 'https://example.com/' });
+    vi.stubGlobal('history', { replaceState });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+
+    const chatService = { health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService;
+    const app = new App(chatService);
+    (app as any).messages.set([
+      { id: 1, requestId: 1, role: 'user', text: 'Câu hỏi chia sẻ', status: 'complete' },
+      { id: 2, requestId: 1, role: 'assistant', text: 'Câu trả lời chia sẻ', status: 'complete' },
+    ]);
+
+    await (app as any).shareActiveConversation();
+
+    expect(writeText).toHaveBeenCalledOnce();
+    expect(writeText.mock.calls[0][0]).toMatch(/^https:\/\/example\.com\/#share=/u);
+    expect(replaceState).toHaveBeenCalledOnce();
+    expect((app as any).shareMessage()).toContain('Đã sao chép');
+  });
+
+  it('opens a shared conversation from the URL and removes the one-time hash', () => {
+    const shareUrl = createConversationShareUrl(
+      {
+        id: 9,
+        title: 'Cuộc trò chuyện được gửi',
+        messages: [
+          { id: 20, requestId: 8, role: 'user', text: 'Nội dung gửi cho người khác', status: 'complete' },
+          { id: 21, requestId: 8, role: 'assistant', text: 'Nội dung đã chia sẻ', status: 'complete' },
+        ],
+      },
+      'https://example.com/',
+    );
+    const replaceState = vi.fn();
+    vi.stubGlobal('location', { href: shareUrl });
+    vi.stubGlobal('history', { replaceState });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+
+    const chatService = { health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService;
+    const app = new App(chatService);
+
+    expect((app as any).messages().map((message: { text: string }) => message.text)).toEqual([
+      'Nội dung gửi cho người khác',
+      'Nội dung đã chia sẻ',
+    ]);
+    expect((app as any).conversations()).toHaveLength(1);
+    expect((app as any).shareMessage()).toContain('Đã mở cuộc trò chuyện');
+    expect(replaceState).toHaveBeenCalledWith(null, '', 'https://example.com/');
   });
 });

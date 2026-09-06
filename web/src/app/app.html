@@ -39,6 +39,16 @@
 
       <div class="topbar-actions flex items-center gap-2">
         <button
+          class="share-button"
+          type="button"
+          [disabled]="!messages().length"
+          aria-label="Chia sẻ cuộc trò chuyện"
+          title="Chia sẻ cuộc trò chuyện"
+          (click)="shareActiveConversation()"
+        >
+          <svg lucideShare2 class="h-4 w-4" aria-hidden="true"></svg>
+        </button>
+        <button
           id="customize-button"
           class="settings-button"
           type="button"
@@ -159,6 +169,13 @@
           <div class="error-banner" role="alert">
             <svg lucideCircleAlert class="h-4 w-4 shrink-0" aria-hidden="true"></svg>
             <span>{{ error() }}</span>
+          </div>
+        }
+
+        @if (shareMessage()) {
+          <div class="share-feedback" role="status">
+            <svg lucideShare2 class="h-4 w-4 shrink-0" aria-hidden="true"></svg>
+            <span>{{ shareMessage() }}</span>
           </div>
         }
 

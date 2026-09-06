@@ -119,6 +119,7 @@ textarea:disabled {
 }
 
 .settings-button,
+.share-button,
 .new-conversation-button {
   width: 28px;
   height: 28px;
@@ -135,6 +136,7 @@ textarea:disabled {
 
 .settings-button:hover,
 .settings-button.active-settings,
+.share-button:hover:not(:disabled),
 .new-conversation-button:hover {
   color: #2563eb;
   background: #eef4ff;
@@ -529,19 +531,29 @@ textarea:disabled {
   }
 }
 
-.error-banner {
+.error-banner,
+.share-feedback {
   width: min(calc(100% - 40px), 768px);
   display: flex;
   align-items: center;
   gap: 8px;
   margin: 0 auto 9px;
   padding: 8px 10px;
-  color: #b42318;
   font-size: 10px;
   line-height: 1.45;
+  border-radius: 9px;
+}
+
+.error-banner {
+  color: #b42318;
   background: #fff6f5;
   border: 1px solid #ffd5d1;
-  border-radius: 9px;
+}
+
+.share-feedback {
+  color: #17633f;
+  background: #f1fbf6;
+  border: 1px solid #cbeed9;
 }
 
 .composer {
@@ -1131,6 +1143,7 @@ textarea:disabled {
   }
 
   .error-banner,
+  .share-feedback,
   .composer {
     width: calc(100% - 24px);
   }
