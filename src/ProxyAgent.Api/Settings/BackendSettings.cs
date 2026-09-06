@@ -18,11 +18,13 @@ public interface IBackendSettings
 
 public sealed class BackendSettingsService : IBackendSettings
 {
+    private static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(5);
     private readonly object gate = new();
     private readonly IBackendSettingsStore store;
     private readonly ProvidersOptions defaultsProviders;
     private readonly WebSearchOptions defaultsWebSearch;
     private BackendSettingsSnapshot current;
+    private DateTimeOffset lastRefreshUtc;
 
     public BackendSettingsService(
         IOptions<ProvidersOptions> providers,
@@ -33,6 +35,7 @@ public sealed class BackendSettingsService : IBackendSettings
         defaultsProviders = Clone(providers.Value);
         defaultsWebSearch = Clone(webSearch.Value);
         current = Apply(defaultsProviders, defaultsWebSearch, store.Get());
+        lastRefreshUtc = DateTimeOffset.UtcNow;
     }
 
     public BackendSettingsSnapshot Current
@@ -41,6 +44,7 @@ public sealed class BackendSettingsService : IBackendSettings
         {
             lock (gate)
             {
+                RefreshIfStale();
                 return current;
             }
         }
@@ -53,6 +57,29 @@ public sealed class BackendSettingsService : IBackendSettings
         lock (gate)
         {
             current = next;
+            lastRefreshUtc = DateTimeOffset.UtcNow;
+        }
+    }
+
+    private void RefreshIfStale()
+    {
+        if (DateTimeOffset.UtcNow - lastRefreshUtc < RefreshInterval)
+        {
+            return;
+        }
+
+        try
+        {
+            current = Apply(defaultsProviders, defaultsWebSearch, store.Get());
+        }
+        catch
+        {
+            // Keep the last known-good settings when another instance/database connection is
+            // temporarily unavailable. The next access will retry after the interval.
+        }
+        finally
+        {
+            lastRefreshUtc = DateTimeOffset.UtcNow;
         }
     }
 

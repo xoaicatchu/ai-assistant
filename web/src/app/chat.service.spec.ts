@@ -4,21 +4,53 @@ import { ChatService } from './chat.service';
 describe('ChatService streaming', () => {
   it('creates a server-backed conversation and returns its opaque ID', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ id: 'Abc_123-opaque-id' }), {
+      new Response(JSON.stringify({
+        id: 'Abc_123-opaque-id',
+        ownerToken: 'owner-token-for-tests',
+      }), {
         status: 201,
         headers: { 'Content-Type': 'application/json' },
       }),
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    const id = await new ChatService().createConversation('Hà Nội', [
+    const created = await new ChatService().createConversation('Hà Nội', [
       { id: 1, requestId: 1, role: 'user', text: 'Xin chào', status: 'complete' },
     ]);
 
-    expect(id).toBe('Abc_123-opaque-id');
+    expect(created).toEqual({
+      id: 'Abc_123-opaque-id',
+      ownerToken: 'owner-token-for-tests',
+      isPublic: undefined,
+    });
     expect(fetchMock).toHaveBeenCalledWith('/api/conversations', expect.objectContaining({
       method: 'POST',
       body: JSON.stringify({
+        title: 'Hà Nội',
+        messages: [{ id: 1, requestId: 1, role: 'user', text: 'Xin chào', status: 'complete' }],
+      }),
+    }));
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps a client-created conversation ID when creating its server record', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        id: 'Abc_123-opaque-id',
+        ownerToken: 'owner-token-for-tests',
+      }), { status: 201 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await new ChatService().createConversation(
+      'Hà Nội',
+      [{ id: 1, requestId: 1, role: 'user', text: 'Xin chào', status: 'complete' }],
+      'Abc_123-opaque-id',
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/conversations', expect.objectContaining({
+      body: JSON.stringify({
+        id: 'Abc_123-opaque-id',
         title: 'Hà Nội',
         messages: [{ id: 1, requestId: 1, role: 'user', text: 'Xin chào', status: 'complete' }],
       }),
@@ -43,6 +75,29 @@ describe('ChatService streaming', () => {
       messages: [{ id: 1, requestId: 1, role: 'user', text: 'Xin chào', status: 'complete' }],
     });
     expect(fetchMock).toHaveBeenCalledWith('/api/conversations/Abc_123-opaque-id', expect.objectContaining({ method: 'GET' }));
+    vi.unstubAllGlobals();
+  });
+
+  it('sends the conversation owner token when publishing', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        id: 'Abc_123-opaque-id',
+        title: 'Hà Nội',
+        messages: [],
+        isPublic: true,
+      }), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await new ChatService().publishConversation('Abc_123-opaque-id', 'owner-token');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/conversations/Abc_123-opaque-id/publish',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'X-Conversation-Token': 'owner-token' },
+      }),
+    );
     vi.unstubAllGlobals();
   });
 

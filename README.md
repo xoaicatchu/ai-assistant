@@ -11,6 +11,7 @@ Gateway HTTP trên .NET 10 để gọi OpenAI và Anthropic qua một contract t
 - Client-side tool/function calling vẫn được hỗ trợ cho tool riêng của client.
 - `GET /health`: kiểm tra process mà không gọi provider.
 - `POST/GET/PUT /api/conversations`: lưu và mở conversation bằng ID ổn định để chia sẻ.
+- `POST /api/conversations/{id}/publish`: công khai conversation để người không đăng nhập xem được.
 - `/admin`: trang quản trị có đăng nhập, cấu hình provider và Tavily server-side.
 - Angular chat UI trong `web/`, chạy local ở `http://localhost:4200` và deploy static lên Vercel.
 
@@ -97,12 +98,13 @@ Tài khoản admin được tạo một lần khi database chưa có tài khoả
 ```text
 Admin__InitialUsername=admin
 Admin__InitialPassword=<mat-khau-it-nhat-8-ky-tu>
-Storage__SqlitePath=App_Data/proxy-agent.db
+Storage__Provider=postgres
+ConnectionStrings__Postgres=Host=db.uwfeuedubwoggcmrblzx.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=<mat-khau-postgres>;SSL Mode=Require;Trust Server Certificate=true
 ```
 
-Sau khi backend khởi động, mở `https://<frontend>/admin`, đăng nhập rồi nhập Base URL, API key, model mặc định và cấu hình Tavily. API key chỉ được lưu ở backend và trang admin chỉ trả về trạng thái đã có key cùng phần che; có thể đổi mật khẩu ngay trong trang này. Các thay đổi có hiệu lực cho request mới.
+Sau khi backend khởi động, mở `https://<frontend>/admin`, đăng nhập rồi nhập Base URL, API key, model mặc định và cấu hình Tavily. API key chỉ được lưu ở backend và trang admin chỉ trả về trạng thái đã có key cùng phần che; có thể đổi mật khẩu ngay trong trang này. Các thay đổi có hiệu lực cho request mới. PostgreSQL được chọn tự động khi có `ConnectionStrings__Postgres`; production đã đặt provider là `postgres` để không quay lại SQLite.
 
-Mỗi conversation được cấp server ID trước lượt chat đầu tiên và đồng bộ qua `PUT` sau khi nhận xong câu trả lời. Nút chia sẻ chỉ có nhiệm vụ công khai link `/conversation/<id>`; người nhận mở đúng dữ liệu từ server, không phải snapshot nằm trong URL. Nếu backend lưu trữ tạm thời bị lỗi, câu trả lời vẫn giữ trên thiết bị và sẽ thử đồng bộ ở lượt sau. SQLite là storage thay thế được qua các interface trong `Storage/`; nếu path cấu hình không ghi được, backend tự chuyển sang file tạm để không làm chết service, nhưng dữ liệu ở đó vẫn có thể mất khi instance Vercel/container thay đổi. Khi cần dữ liệu bền vững, thay implementation bằng PostgreSQL mà không phải sửa API/UI.
+Mỗi tab conversation được cấp ID opaque ngay khi tạo và URL đổi ngay sang `/conversation/<id>`. Token sở hữu được lưu trên thiết bị để đồng bộ riêng tư; GET không có token chỉ đọc được conversation đã public. Nút chia sẻ chỉ cập nhật bản ghi hiện tại rồi gọi `publish`, không tạo snapshot và không nhúng nội dung vào URL. PostgreSQL lưu conversation, tài khoản admin và backend settings dùng chung giữa các instance Vercel; SQLite vẫn được giữ cho local/test khi không cấu hình PostgreSQL.
 
 ## Web search agent qua Tavily
 

@@ -12,15 +12,17 @@ public sealed record ConversationMessage(
 public sealed record ConversationDocument(
     string Id,
     string Title,
-    IReadOnlyList<ConversationMessage> Messages);
+    IReadOnlyList<ConversationMessage> Messages,
+    bool IsPublic = false);
 
 public sealed class ConversationWriteRequest
 {
+    public string? Id { get; init; }
     public string? Title { get; init; }
     public IReadOnlyList<ConversationMessage>? Messages { get; init; }
 }
 
-public sealed record ConversationCreatedResponse(string Id);
+public sealed record ConversationCreatedResponse(string Id, string OwnerToken);
 
 public sealed record ProviderSettingsOverride(
     string? BaseUrl,

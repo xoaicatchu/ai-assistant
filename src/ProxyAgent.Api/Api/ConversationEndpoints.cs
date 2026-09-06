@@ -4,11 +4,14 @@ namespace ProxyAgent.Api.Api;
 
 public static class ConversationEndpoints
 {
+    private const string ConversationTokenHeader = "X-Conversation-Token";
+
     public static IEndpointRouteBuilder MapConversationEndpoints(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapPost("/api/conversations", CreateAsync);
         endpoints.MapGet("/api/conversations/{id}", GetAsync);
         endpoints.MapPut("/api/conversations/{id}", UpdateAsync);
+        endpoints.MapPost("/api/conversations/{id}/publish", PublishAsync);
         return endpoints;
     }
 
@@ -22,17 +25,23 @@ public static class ConversationEndpoints
             });
         }
 
-        var document = store.Create(title, messages);
-        return Results.Created($"/api/conversations/{document.Id}", new ConversationCreatedResponse(document.Id));
+        var created = store.Create(title, messages, request?.Id);
+        return Results.Created(
+            $"/api/conversations/{created.Id}",
+            new ConversationCreatedResponse(created.Id, created.OwnerToken));
     }
 
-    private static IResult Get(string id, IConversationStore store)
+    private static IResult Get(string id, HttpContext context, IConversationStore store)
     {
-        var document = store.Get(id);
+        var document = store.Get(id, ReadConversationToken(context));
         return document is null ? Results.NotFound() : Results.Ok(document);
     }
 
-    private static IResult Update(string id, ConversationWriteRequest? request, IConversationStore store)
+    private static IResult Update(
+        string id,
+        ConversationWriteRequest? request,
+        HttpContext context,
+        IConversationStore store)
     {
         if (!TryReadRequest(request, out var title, out var messages, out var error))
         {
@@ -42,7 +51,13 @@ public static class ConversationEndpoints
             });
         }
 
-        var document = store.Update(id, title, messages);
+        var document = store.Update(id, title, messages, ReadConversationToken(context));
+        return document is null ? Results.NotFound() : Results.Ok(document);
+    }
+
+    private static IResult Publish(string id, HttpContext context, IConversationStore store)
+    {
+        var document = store.Publish(id, ReadConversationToken(context));
         return document is null ? Results.NotFound() : Results.Ok(document);
     }
 
@@ -74,9 +89,21 @@ public static class ConversationEndpoints
     private static Task<IResult> CreateAsync(ConversationWriteRequest? request, IConversationStore store)
         => Task.FromResult(Create(request, store));
 
-    private static Task<IResult> GetAsync(string id, IConversationStore store)
-        => Task.FromResult(Get(id, store));
+    private static Task<IResult> GetAsync(string id, HttpContext context, IConversationStore store)
+        => Task.FromResult(Get(id, context, store));
 
-    private static Task<IResult> UpdateAsync(string id, ConversationWriteRequest? request, IConversationStore store)
-        => Task.FromResult(Update(id, request, store));
+    private static Task<IResult> UpdateAsync(
+        string id,
+        ConversationWriteRequest? request,
+        HttpContext context,
+        IConversationStore store)
+        => Task.FromResult(Update(id, request, context, store));
+
+    private static Task<IResult> PublishAsync(string id, HttpContext context, IConversationStore store)
+        => Task.FromResult(Publish(id, context, store));
+
+    private static string? ReadConversationToken(HttpContext context)
+        => context.Request.Headers.TryGetValue(ConversationTokenHeader, out var value)
+            ? value.ToString()
+            : null;
 }

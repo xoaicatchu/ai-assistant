@@ -18,7 +18,7 @@ public sealed class SqliteStorageTests
             ]);
 
             var second = CreateStore(path);
-            var loaded = second.Get(created.Id);
+            var loaded = second.Get(created.Id, created.OwnerToken);
 
             Assert.NotNull(loaded);
             Assert.Equal(created.Id, loaded!.Id);
@@ -46,7 +46,7 @@ public sealed class SqliteStorageTests
                     new ConversationMessage(4, 1, "system", "Không được lưu", "complete")
                 ]);
 
-            var loaded = store.Get(created.Id);
+            var loaded = store.Get(created.Id, created.OwnerToken);
 
             Assert.NotNull(loaded);
             Assert.Equal(80, loaded!.Title.Length);
@@ -79,12 +79,38 @@ public sealed class SqliteStorageTests
 
             var updated = store.Update(created.Id, "Đã cập nhật", [
                 new ConversationMessage(1, 1, "user", "Hai", "complete")
-            ]);
+            ], created.OwnerToken);
 
             Assert.NotNull(updated);
             Assert.Equal(created.Id, updated!.Id);
             Assert.Equal("Đã cập nhật", updated.Title);
             Assert.Equal("Hai", updated.Messages[0].Text);
+        }
+        finally
+        {
+            DeleteTempDatabase(path);
+        }
+    }
+
+    [Fact]
+    public void Conversation_is_private_until_the_owner_publishes_it()
+    {
+        var path = CreateTempDatabasePath();
+        try
+        {
+            var store = CreateStore(path);
+            var created = store.Create("Riêng tư", [
+                new ConversationMessage(1, 1, "user", "Nội dung", "complete")
+            ]);
+
+            Assert.Null(store.Get(created.Id));
+            Assert.Null(store.Update(created.Id, "Không được sửa", [], "sai-token"));
+
+            var published = store.Publish(created.Id, created.OwnerToken);
+
+            Assert.NotNull(published);
+            Assert.True(published!.IsPublic);
+            Assert.NotNull(store.Get(created.Id));
         }
         finally
         {

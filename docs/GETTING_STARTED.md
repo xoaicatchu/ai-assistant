@@ -55,6 +55,9 @@ Các giá trị cấu hình:
 | `WebSearch:MaxToolCalls` | Ngân sách lượt search trước khi agent ép model tổng hợp, mặc định 2 |
 | `WebSearch:TimeoutSeconds` | Timeout gọi Tavily, mặc định 30 giây |
 | `Storage:SqlitePath` | Đường dẫn database SQLite, mặc định `App_Data/proxy-agent.db` |
+| `Storage:Provider` | `postgres` để bắt buộc dùng PostgreSQL; production đã cấu hình sẵn |
+| `ConnectionStrings:Postgres` | Connection string PostgreSQL; ưu tiên đặt bằng `ConnectionStrings__Postgres` trong environment |
+| `Storage:PostgresConnectionString` | Tên thay thế cho connection string nếu không dùng `ConnectionStrings:Postgres` |
 | `Admin:InitialUsername` | Tên tài khoản admin tạo lần đầu nếu database chưa có tài khoản |
 | `Admin:InitialPassword` | Mật khẩu bootstrap admin; bắt buộc dài 8-256 ký tự |
 | `Cors:AllowedOrigins` | Danh sách origin frontend được phép gọi API |
@@ -94,9 +97,9 @@ dotnet user-secrets set "Admin:InitialUsername" "admin" --project src/ProxyAgent
 dotnet user-secrets set "Admin:InitialPassword" "<mat-khau-it-nhat-8-ky-tu>" --project src/ProxyAgent.Api/ProxyAgent.Api.csproj
 ```
 
-Mở `http://localhost:4200/admin`, đăng nhập, sau đó có thể lưu Base URL, API key, model mặc định của OpenAI-compatible/Anthropic và cấu hình Tavily. Mật khẩu được băm PBKDF2 và lưu trong SQLite; API key không được trả lại đầy đủ trong response admin.
+Mở `http://localhost:4200/admin`, đăng nhập, sau đó có thể lưu Base URL, API key, model mặc định của OpenAI-compatible/Anthropic và cấu hình Tavily. Mật khẩu được băm PBKDF2 và lưu cùng database đang chọn; API key không được trả lại đầy đủ trong response admin.
 
-Mỗi conversation được cấp ID server trước lượt chat đầu tiên và được đồng bộ qua API backend. Nút chia sẻ tạo link `/conversation/<id>` để người khác mở đúng conversation; nội dung không nằm trong URL. Nếu backend lưu trữ tạm thời lỗi, bản trên thiết bị vẫn được giữ và app sẽ thử đồng bộ ở lượt sau. SQLite được bọc sau các interface storage để có thể thay bằng PostgreSQL sau này. Nếu filesystem không ghi được, backend dùng file tạm để giữ service hoạt động; với Vercel/container ngắn hạn, dữ liệu SQLite vẫn không đảm bảo tồn tại sau redeploy hoặc khi instance thay đổi. Production cần chuyển sang database có volume hoặc PostgreSQL.
+Mỗi tab conversation được cấp ID opaque ngay khi tạo và URL đổi ngay sang `/conversation/<id>`. Token sở hữu được lưu trên thiết bị để đồng bộ riêng tư. Nút chia sẻ cập nhật bản ghi hiện tại rồi public chính conversation đó; người nhận mở đúng dữ liệu từ PostgreSQL, không phải snapshot nằm trong URL. Nếu backend tạm thời lỗi, bản trên thiết bị vẫn được giữ và app thử đồng bộ lại. SQLite vẫn có cho local/test, còn production dùng PostgreSQL để dữ liệu không phụ thuộc instance Vercel.
 
 ### System prompt
 
@@ -135,6 +138,8 @@ WebSearch__Enabled=true
 WebSearch__ApiKey=<tavily-secret>
 WebSearch__UseToolCalling=false
 Cors__AllowedOrigins__0=https://<your-project>.vercel.app
+Storage__Provider=postgres
+ConnectionStrings__Postgres=Host=db.uwfeuedubwoggcmrblzx.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=<postgres-secret>;SSL Mode=Require;Trust Server Certificate=true
 ```
 
 Nếu dùng custom domain Vercel, thêm origin đó ở `Cors__AllowedOrigins__1`. Sau khi deploy, kiểm tra `https://<public-backend-url>/health` trả `{"status":"ok"}`.
@@ -145,7 +150,7 @@ Khi import repo vào Vercel:
 
 1. Để **Root Directory** ở thư mục gốc của repository (để trống hoặc `.`).
 2. Dùng build command `npm run build` và output directory `web/dist/web/browser`.
-3. Chọn framework **Services** trong Project Settings rồi redeploy. Provider credentials và `Cors__AllowedOrigins__0` đặt trong Environment Variables của backend service.
+3. Chọn framework **Services** trong Project Settings rồi redeploy. Provider credentials, `Storage__Provider=postgres`, connection string PostgreSQL và `Cors__AllowedOrigins__0` đặt trong Environment Variables của backend service. Không commit connection string có mật khẩu vào Git.
 
 Vercel dùng same-origin `/api` và route path này trực tiếp tới backend container service. Deployment không phải Vercel mới dùng `NG_APP_API_BASE_URL` để gọi backend trực tiếp và cần cấu hình CORS tương ứng.
 

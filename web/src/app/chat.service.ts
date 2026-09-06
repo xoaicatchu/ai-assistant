@@ -43,6 +43,23 @@ class ChatStreamError extends Error {
   }
 }
 
+export class ConversationRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = 'ConversationRequestError';
+  }
+}
+
+export interface ConversationCreated {
+  id: string;
+  ownerToken: string;
+  isPublic?: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ChatService {
   async complete(model: string, messages: ChatMessage[], signal: AbortSignal): Promise<string> {
@@ -124,17 +141,30 @@ export class ChatService {
     }
   }
 
-  async createConversation(title: string, messages: readonly ConversationApiMessage[]): Promise<string> {
-    const response = await this.requestConversation('/conversations', 'POST', { title, messages });
-    const payload = (await response.json()) as { id?: string };
-    if (!payload.id) {
-      throw new Error('The server did not return a conversation ID.');
+  async createConversation(
+    title: string,
+    messages: readonly ConversationApiMessage[],
+    requestedId?: string,
+  ): Promise<ConversationCreated> {
+    const response = await this.requestConversation('/conversations', 'POST', {
+      ...(requestedId ? { id: requestedId } : {}),
+      title,
+      messages,
+    });
+    const payload = (await response.json()) as Partial<ConversationCreated>;
+    if (!payload.id || !payload.ownerToken) {
+      throw new Error('The server did not return conversation ownership details.');
     }
-    return payload.id;
+    return { id: payload.id, ownerToken: payload.ownerToken, isPublic: payload.isPublic };
   }
 
-  async getConversation(id: string): Promise<ConversationApiDocument> {
-    const response = await this.requestConversation(`/conversations/${encodeURIComponent(id)}`, 'GET');
+  async getConversation(id: string, ownerToken?: string): Promise<ConversationApiDocument> {
+    const response = await this.requestConversation(
+      `/conversations/${encodeURIComponent(id)}`,
+      'GET',
+      undefined,
+      ownerToken,
+    );
     return (await response.json()) as ConversationApiDocument;
   }
 
@@ -142,11 +172,23 @@ export class ChatService {
     id: string,
     title: string,
     messages: readonly ConversationApiMessage[],
+    ownerToken: string,
   ): Promise<ConversationApiDocument> {
     const response = await this.requestConversation(
       `/conversations/${encodeURIComponent(id)}`,
       'PUT',
       { title, messages },
+      ownerToken,
+    );
+    return (await response.json()) as ConversationApiDocument;
+  }
+
+  async publishConversation(id: string, ownerToken: string): Promise<ConversationApiDocument> {
+    const response = await this.requestConversation(
+      `/conversations/${encodeURIComponent(id)}/publish`,
+      'POST',
+      undefined,
+      ownerToken,
     );
     return (await response.json()) as ConversationApiDocument;
   }
@@ -180,21 +222,30 @@ export class ChatService {
     path: string,
     method: 'GET' | 'POST' | 'PUT',
     body?: unknown,
+    ownerToken?: string,
   ): Promise<Response> {
+    const headers = body === undefined
+      ? this.authHeaders()
+      : this.authHeaders({ 'Content-Type': 'application/json' });
+    if (ownerToken) {
+      headers['X-Conversation-Token'] = ownerToken;
+    }
+
     let response: Response;
     try {
       response = await fetch(serverApiUrl(path), {
         method,
-        headers: body === undefined
-          ? this.authHeaders()
-          : this.authHeaders({ 'Content-Type': 'application/json' }),
+        headers,
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
     } catch (caughtError) {
       throw this.toGatewayError(caughtError);
     }
     if (!response.ok) {
-      throw new Error(await this.readError(response));
+      throw new ConversationRequestError(
+        await this.readError(response),
+        response.status,
+      );
     }
     return response;
   }

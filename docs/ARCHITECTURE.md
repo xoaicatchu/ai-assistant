@@ -130,7 +130,7 @@ Frontend không giữ provider key của backend; custom backend key trong phầ
 
 ### Storage và admin
 
-`Storage/` định nghĩa các port `IConversationStore`, `IAdminAccountStore` và `IBackendSettingsStore`; implementation hiện tại dùng `Microsoft.Data.Sqlite`. `SqliteDatabase` tự tạo schema gồm conversation, admin account và backend settings. `AdminAuthService` chỉ seed tài khoản nếu chưa có account và đã nhận đủ `Admin:InitialUsername`/`Admin:InitialPassword`; mật khẩu lưu dưới dạng PBKDF2 hash. `BackendSettingsService` overlay override SQLite lên cấu hình environment/appsettings, vì vậy có thể thay storage implementation bằng PostgreSQL mà không đổi endpoint hoặc provider.
+`Storage/` định nghĩa các port `IConversationStore`, `IAdminAccountStore` và `IBackendSettingsStore`; backend có adapter SQLite cho local/test và adapter `Npgsql` cho production. `Storage:Provider=postgres` hoặc `ConnectionStrings:Postgres` chọn PostgreSQL; adapter tự chạy migration idempotent cho conversation, admin account và backend settings. Conversation lưu hash của owner token và cờ public, còn GET không có token chỉ trả bản ghi đã public. `AdminAuthService` chỉ seed tài khoản nếu chưa có account và đã nhận đủ `Admin:InitialUsername`/`Admin:InitialPassword`; mật khẩu lưu dưới dạng PBKDF2 hash. `BackendSettingsService` overlay override từ database đang chọn lên cấu hình environment/appsettings, nên đổi vendor database không lan sang endpoint/provider.
 
 ## Luồng request không streaming
 

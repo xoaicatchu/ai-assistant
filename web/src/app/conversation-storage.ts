@@ -8,6 +8,9 @@ export interface StoredConversation {
   title: string;
   messages: ViewMessage[];
   serverId?: string;
+  serverToken?: string;
+  isPublic?: boolean;
+  serverSyncedFingerprint?: string;
 }
 
 export interface ConversationStateSnapshot {
@@ -102,6 +105,13 @@ function normalizeConversation(value: unknown): StoredConversation | null {
   const serverId = typeof storedServerId === 'string' && isOpaqueConversationId(storedServerId)
     ? storedServerId
     : undefined;
+  const serverToken = typeof value['serverToken'] === 'string' && value['serverToken'].length >= 20
+    ? value['serverToken']
+    : undefined;
+  const isPublic = value['isPublic'] === true;
+  const serverSyncedFingerprint = typeof value['serverSyncedFingerprint'] === 'string'
+    ? value['serverSyncedFingerprint']
+    : undefined;
   const rawMessages = Array.isArray(value['messages']) ? value['messages'] : [];
   const seenMessageIds = new Set<number>();
   const messages = rawMessages
@@ -114,7 +124,15 @@ function normalizeConversation(value: unknown): StoredConversation | null {
       return true;
     });
 
-  return { id, title, messages, ...(serverId ? { serverId } : {}) };
+  return {
+    id,
+    title,
+    messages,
+    ...(serverId ? { serverId } : {}),
+    ...(serverToken ? { serverToken } : {}),
+    ...(isPublic ? { isPublic } : {}),
+    ...(serverSyncedFingerprint ? { serverSyncedFingerprint } : {}),
+  };
 }
 
 function normalizeMessage(value: unknown): ViewMessage | null {

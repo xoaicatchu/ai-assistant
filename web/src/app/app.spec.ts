@@ -45,7 +45,10 @@ describe('App message submission', () => {
   });
 
   it('creates a server ID before the first request and syncs the conversation after streaming', async () => {
-    const createConversation = vi.fn().mockResolvedValue('abcdefghijklmnopqrstuv');
+    const createConversation = vi.fn().mockResolvedValue({
+      id: 'abcdefghijklmnopqrstuv',
+      ownerToken: 'owner-token-for-tests',
+    });
     const updateConversation = vi.fn().mockResolvedValue({});
     const stream = vi.fn(async (
       _model: string,
@@ -75,7 +78,7 @@ describe('App message submission', () => {
     expect(createConversation).toHaveBeenCalledBefore(stream);
     expect(createConversation).toHaveBeenCalledWith('Câu hỏi cần lưu', [
       expect.objectContaining({ role: 'user', text: 'Câu hỏi cần lưu', status: 'complete' }),
-    ]);
+    ], expect.any(String));
     expect(updateConversation).toHaveBeenCalledWith(
       'abcdefghijklmnopqrstuv',
       'Câu hỏi cần lưu',
@@ -83,6 +86,7 @@ describe('App message submission', () => {
         expect.objectContaining({ role: 'user', text: 'Câu hỏi cần lưu' }),
         expect.objectContaining({ role: 'assistant', text: 'Câu trả lời', status: 'complete' }),
       ]),
+      'owner-token-for-tests',
     );
     expect((app as any).conversations()[0].serverId).toBe('abcdefghijklmnopqrstuv');
   });
@@ -198,6 +202,23 @@ describe('App message submission', () => {
     ]);
   });
 
+  it('assigns an opaque conversation ID to the URL before the first message', () => {
+    const replaceState = vi.fn();
+    vi.stubGlobal('location', { href: 'https://example.com/' });
+    vi.stubGlobal('history', { replaceState });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
+    const serverId = (app as any).conversations()[0].serverId;
+
+    expect(serverId).toMatch(/^[A-Za-z0-9_-]{22}$/u);
+    expect(replaceState).toHaveBeenCalledWith(
+      null,
+      '',
+      `https://example.com/conversation/${serverId}`,
+    );
+  });
+
   it('does not send an image to a known text-only model', async () => {
     const stream = vi.fn();
     const chatService = {
@@ -231,7 +252,15 @@ describe('App message submission', () => {
 
     const chatService = {
       health: vi.fn().mockResolvedValue(undefined),
-      createConversation: vi.fn().mockResolvedValue('abcdefghijklmnopqrstuv'),
+      createConversation: vi.fn().mockResolvedValue({
+        id: 'abcdefghijklmnopqrstuv',
+        ownerToken: 'owner-token-for-tests',
+      }),
+      updateConversation: vi.fn().mockResolvedValue({}),
+      publishConversation: vi.fn().mockResolvedValue({
+        id: 'abcdefghijklmnopqrstuv',
+        isPublic: true,
+      }),
     } as unknown as ChatService;
     const app = new App(chatService);
     (app as any).messages.set([
@@ -244,8 +273,12 @@ describe('App message submission', () => {
     expect(writeText).toHaveBeenCalledOnce();
     expect(writeText.mock.calls[0][0]).toBe('https://example.com/conversation/abcdefghijklmnopqrstuv');
     expect(chatService.createConversation).toHaveBeenCalledOnce();
-    expect(replaceState).toHaveBeenCalledOnce();
+    expect(replaceState).toHaveBeenCalledTimes(3);
     expect((app as any).shareMessage()).toContain('Đã sao chép');
+    expect(chatService.publishConversation).toHaveBeenCalledWith(
+      'abcdefghijklmnopqrstuv',
+      'owner-token-for-tests',
+    );
   });
 
   it('loads a shared conversation from its server ID without removing the URL', async () => {

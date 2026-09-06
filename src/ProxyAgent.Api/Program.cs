@@ -16,6 +16,21 @@ builder.Services.Configure<ChatPromptOptions>(builder.Configuration.GetSection("
 builder.Services.Configure<WebSearchOptions>(builder.Configuration.GetSection("WebSearch"));
 builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection("Storage"));
 builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection("Admin"));
+var storageOptions = builder.Configuration.GetSection("Storage").Get<StorageOptions>() ?? new StorageOptions();
+var postgresConnectionString = builder.Configuration.GetConnectionString("Postgres");
+if (string.IsNullOrWhiteSpace(postgresConnectionString))
+{
+    postgresConnectionString = storageOptions.PostgresConnectionString;
+}
+
+var usePostgres = string.Equals(storageOptions.Provider, "postgres", StringComparison.OrdinalIgnoreCase) ||
+    !string.IsNullOrWhiteSpace(postgresConnectionString);
+if (usePostgres && string.IsNullOrWhiteSpace(postgresConnectionString))
+{
+    throw new InvalidOperationException(
+        "Storage is configured for PostgreSQL, but ConnectionStrings:Postgres is missing.");
+}
+
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options => options.AddPolicy("frontend", policy =>
     policy.WithOrigins(allowedOrigins)
@@ -25,10 +40,24 @@ builder.Services.AddSingleton<IModelSelector>(services => new ModelSelector(
     services.GetRequiredService<IOptions<RoutingOptions>>(),
     services.GetRequiredService<IBackendSettings>()));
 builder.Services.AddSingleton<ChatOrchestrator>();
-builder.Services.AddSingleton<SqliteDatabase>();
-builder.Services.AddSingleton<IConversationStore, SqliteConversationStore>();
-builder.Services.AddSingleton<IAdminAccountStore, SqliteAdminAccountStore>();
-builder.Services.AddSingleton<IBackendSettingsStore, SqliteBackendSettingsStore>();
+if (usePostgres)
+{
+    builder.Services.AddSingleton(new PostgresDatabase(postgresConnectionString!));
+    builder.Services.AddSingleton<IStorageInitializer>(services =>
+        services.GetRequiredService<PostgresDatabase>());
+    builder.Services.AddSingleton<IConversationStore, PostgresConversationStore>();
+    builder.Services.AddSingleton<IAdminAccountStore, PostgresAdminAccountStore>();
+    builder.Services.AddSingleton<IBackendSettingsStore, PostgresBackendSettingsStore>();
+}
+else
+{
+    builder.Services.AddSingleton<SqliteDatabase>();
+    builder.Services.AddSingleton<IStorageInitializer>(services =>
+        services.GetRequiredService<SqliteDatabase>());
+    builder.Services.AddSingleton<IConversationStore, SqliteConversationStore>();
+    builder.Services.AddSingleton<IAdminAccountStore, SqliteAdminAccountStore>();
+    builder.Services.AddSingleton<IBackendSettingsStore, SqliteBackendSettingsStore>();
+}
 builder.Services.AddSingleton<IBackendSettings, BackendSettingsService>();
 builder.Services.AddSingleton<AdminAuthService>();
 builder.Services.AddAuthentication(AdminAuthService.AuthenticationScheme)
@@ -88,7 +117,7 @@ builder.Services.AddSingleton<IChatProvider>(services =>
 
 var app = builder.Build();
 
-var database = app.Services.GetRequiredService<SqliteDatabase>();
+var database = app.Services.GetRequiredService<IStorageInitializer>();
 var databaseInitialized = false;
 try
 {
@@ -97,7 +126,10 @@ try
 }
 catch (Exception exception)
 {
-    app.Logger.LogError(exception, "SQLite initialization failed; the API will remain available without persistence.");
+    app.Logger.LogError(
+        exception,
+        "{StorageProvider} initialization failed; the API will remain available without persistence.",
+        usePostgres ? "PostgreSQL" : "SQLite");
 }
 
 if (databaseInitialized)

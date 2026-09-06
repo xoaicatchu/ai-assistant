@@ -28,7 +28,7 @@ import {
   restoreComposerAfterSend,
   shouldSubmitOnEnter,
 } from './composer';
-import { ChatMessage, ChatService } from './chat.service';
+import { ChatMessage, ChatService, ConversationCreated, ConversationRequestError } from './chat.service';
 import { ImageAttachment, toChatMessage } from './chat-content';
 import {
   buildRequestMessages,
@@ -45,6 +45,7 @@ import {
 import { renderMarkdown } from './markdown-renderer';
 import {
   createConversationUrl,
+  createOpaqueConversationId,
   readConversationId,
   type ConversationApiDocument,
   type ConversationApiMessage,
@@ -178,6 +179,8 @@ export class App implements OnDestroy {
     setRuntimeApiBaseUrl(this.initialSetup.gatewayBaseUrl);
     if (this.initialSharedConversationId) {
       void this.loadSharedConversation(this.initialSharedConversationId);
+    } else {
+      this.ensureActiveConversationIdentity();
     }
     void this.checkHealth();
   }
@@ -412,10 +415,20 @@ export class App implements OnDestroy {
       return;
     }
 
-    const hadServerId = Boolean(conversation.serverId);
-    let serverId: string | null = conversation.serverId ?? null;
+    if (conversation.isPublic && conversation.serverId && !conversation.serverToken) {
+      const publicUrl = createConversationUrl(conversation.serverId, globalThis.location?.href ?? '');
+      if (!publicUrl) {
+        this.shareMessage.set('Conversation có ID không hợp lệ.');
+        return;
+      }
+
+      await this.deliverShareUrl(conversation.title, publicUrl);
+      return;
+    }
+
+    let serverId: string | null = null;
     try {
-      serverId = serverId ?? await this.ensureServerConversation(conversation.id);
+      serverId = await this.ensureServerConversation(conversation.id);
       if (!serverId) {
         this.shareMessage.set('Chưa lưu được conversation lên server để tạo link.');
         return;
@@ -427,12 +440,50 @@ export class App implements OnDestroy {
         return;
       }
       const latestMessages = this.conversationMessagesForApi(latestConversation.messages);
-      if (hadServerId) {
-        await this.chatService.updateConversation(serverId, latestConversation.title, latestMessages);
+      const ownerToken = latestConversation.serverToken;
+      if (!ownerToken) {
+        this.shareMessage.set('Không còn quyền sở hữu conversation trên thiết bị này.');
+        return;
       }
-    } catch {
-      this.shareMessage.set('Không thể lưu cuộc trò chuyện để tạo link chia sẻ.');
-      return;
+      await this.chatService.updateConversation(
+        serverId,
+        latestConversation.title,
+        latestMessages,
+        ownerToken,
+      );
+      await this.chatService.publishConversation(serverId, ownerToken);
+      this.setConversationPublic(conversation.id, true);
+      this.markConversationSynced(conversation.id);
+    } catch (caughtError) {
+      if (!this.isMissingConversationError(caughtError)) {
+        this.shareMessage.set('Không thể lưu cuộc trò chuyện để tạo link chia sẻ.');
+        return;
+      }
+
+      this.rotateServerIdentity(conversation.id);
+      serverId = await this.ensureServerConversation(conversation.id);
+      const recoveredConversation = this.conversations().find((item) => item.id === conversation.id);
+      const recoveredToken = recoveredConversation?.serverToken;
+      if (!serverId || !recoveredConversation || !recoveredToken) {
+        this.shareMessage.set('Không thể lưu cuộc trò chuyện để tạo link chia sẻ.');
+        return;
+      }
+
+      try {
+        const recoveredMessages = this.conversationMessagesForApi(recoveredConversation.messages);
+        await this.chatService.updateConversation(
+          serverId,
+          recoveredConversation.title,
+          recoveredMessages,
+          recoveredToken,
+        );
+        await this.chatService.publishConversation(serverId, recoveredToken);
+        this.setConversationPublic(conversation.id, true);
+        this.markConversationSynced(conversation.id);
+      } catch {
+        this.shareMessage.set('Không thể lưu cuộc trò chuyện để tạo link chia sẻ.');
+        return;
+      }
     }
 
     const shareUrl = createConversationUrl(serverId, globalThis.location?.href ?? '');
@@ -441,10 +492,14 @@ export class App implements OnDestroy {
       return;
     }
 
+    await this.deliverShareUrl(conversation.title, shareUrl);
+  }
+
+  private async deliverShareUrl(title: string, shareUrl: string): Promise<void> {
     try {
       if (typeof globalThis.navigator?.share === 'function') {
         await globalThis.navigator.share({
-          title: conversation.title,
+          title,
           text: 'Cuộc trò chuyện từ Clinic Support AI',
           url: shareUrl,
         });
@@ -475,9 +530,15 @@ export class App implements OnDestroy {
     this.voiceInput.stop();
     this.persistActiveConversation();
     const id = this.nextConversationId++;
+    const conversation = {
+      id,
+      title: 'Cuộc trò chuyện mới',
+      messages: [],
+      serverId: createOpaqueConversationId(),
+    };
     this.conversations.update((conversations) => [
       ...conversations,
-      { id, title: 'Cuộc trò chuyện mới', messages: [] },
+      conversation,
     ]);
     this.activeConversationId.set(id);
     this.messages.set([]);
@@ -487,6 +548,7 @@ export class App implements OnDestroy {
     this.busy.set(false);
     this.focusComposer();
     this.persistConversations();
+    this.replaceConversationUrl(conversation.serverId);
   }
 
   protected selectConversation(id: number): void {
@@ -501,8 +563,16 @@ export class App implements OnDestroy {
       return;
     }
 
+    const selected = conversation.serverId
+      ? conversation
+      : { ...conversation, serverId: createOpaqueConversationId() };
+    if (selected !== conversation) {
+      this.conversations.update((conversations) => conversations.map((item) =>
+        item.id === id ? selected : item,
+      ));
+    }
     this.activeConversationId.set(id);
-    this.messages.set([...conversation.messages]);
+    this.messages.set([...selected.messages]);
     this.error.set('');
     this.draft.set('');
     this.pendingImage.set(null);
@@ -510,6 +580,7 @@ export class App implements OnDestroy {
     this.persistConversations();
     this.scrollConversationToBottom();
     this.focusComposer();
+    this.replaceConversationUrl(selected.serverId!);
   }
 
   protected deleteConversation(id: number, event: Event): void {
@@ -524,8 +595,15 @@ export class App implements OnDestroy {
     const remaining = this.conversations().filter((conversation) => conversation.id !== id);
     if (remaining.length === 0) {
       this.clear();
-      this.conversations.set([{ id: this.activeConversationId(), title: 'Cuộc trò chuyện mới', messages: [] }]);
+      const replacement = {
+        id: this.activeConversationId(),
+        title: 'Cuộc trò chuyện mới',
+        messages: [],
+        serverId: createOpaqueConversationId(),
+      };
+      this.conversations.set([replacement]);
       this.persistConversations();
+      this.replaceConversationUrl(replacement.serverId);
       return;
     }
 
@@ -539,6 +617,7 @@ export class App implements OnDestroy {
       this.pendingImage.set(null);
       this.busy.set(false);
       this.focusComposer();
+      this.replaceConversationUrl(next.serverId ?? this.ensureLocalConversationIdentity(next.id));
     }
     this.persistConversations();
   }
@@ -729,8 +808,25 @@ export class App implements OnDestroy {
   }
 
   private async loadSharedConversation(shareId: string): Promise<void> {
+    const localConversation = this.conversations().find(
+      (conversation) => conversation.serverId === shareId,
+    );
+    if (localConversation && !localConversation.isPublic) {
+      this.activeConversationId.set(localConversation.id);
+      this.messages.set([...localConversation.messages]);
+      this.persistConversations();
+      return;
+    }
+
     try {
       const shared = await this.chatService.getConversation(shareId);
+      if (localConversation?.serverToken && this.hasUnsyncedLocalChanges(localConversation)) {
+        this.activeConversationId.set(localConversation.id);
+        this.messages.set([...localConversation.messages]);
+        this.persistConversations();
+        this.shareMessage.set('Đã giữ lại nội dung mới trên thiết bị; chưa ghi đè bằng bản server.');
+        return;
+      }
       this.openSharedConversation(shared);
     } catch {
       this.shareMessage.set('Không thể mở cuộc trò chuyện từ link này.');
@@ -740,14 +836,33 @@ export class App implements OnDestroy {
   private openSharedConversation(shared: ConversationApiDocument): void {
     const importedConversation = this.importSharedConversation(shared);
     const currentConversations = this.conversations();
+    const existingConversation = currentConversations.find(
+      (conversation) => conversation.serverId === shared.id,
+    );
     const hasOnlyEmptyDefault = currentConversations.length === 1 &&
       currentConversations[0].title === 'Cuộc trò chuyện mới' &&
       currentConversations[0].messages.length === 0;
+    const nextConversation = existingConversation
+      ? {
+          ...importedConversation,
+          id: existingConversation.id,
+          serverToken: existingConversation.serverToken,
+          ...(existingConversation.serverToken
+            ? { serverSyncedFingerprint: this.conversationFingerprint(importedConversation) }
+            : {}),
+        }
+      : importedConversation;
     this.conversations.set(
-      hasOnlyEmptyDefault ? [importedConversation] : [...currentConversations, importedConversation],
+      existingConversation
+        ? currentConversations.map((conversation) =>
+            conversation.id === existingConversation.id ? nextConversation : conversation,
+          )
+        : hasOnlyEmptyDefault
+          ? [importedConversation]
+          : [...currentConversations, importedConversation],
     );
-    this.activeConversationId.set(importedConversation.id);
-    this.messages.set([...importedConversation.messages]);
+    this.activeConversationId.set(nextConversation.id);
+    this.messages.set([...nextConversation.messages]);
     this.persistConversations();
     this.shareMessage.set('Đã mở cuộc trò chuyện từ link chia sẻ.');
   }
@@ -772,6 +887,7 @@ export class App implements OnDestroy {
       id: this.nextConversationId++,
       title: shared.title,
       serverId: shared.id,
+      isPublic: shared.isPublic === true,
       messages,
     };
   }
@@ -941,11 +1057,118 @@ export class App implements OnDestroy {
     this.persistConversations();
   }
 
-  private setConversationServerId(conversationId: number, serverId: string): void {
-    this.conversations.update((conversations) => conversations.map((conversation) =>
-      conversation.id === conversationId ? { ...conversation, serverId } : conversation,
+  private ensureActiveConversationIdentity(): void {
+    const serverId = this.ensureLocalConversationIdentity(this.activeConversationId());
+    this.replaceConversationUrl(serverId);
+  }
+
+  private ensureLocalConversationIdentity(conversationId: number): string | null {
+    const conversation = this.conversations().find((item) => item.id === conversationId);
+    if (!conversation) {
+      return null;
+    }
+    if (conversation.serverId) {
+      return conversation.serverId;
+    }
+
+    const serverId = createOpaqueConversationId();
+    this.conversations.update((conversations) => conversations.map((item) =>
+      item.id === conversationId ? { ...item, serverId } : item,
     ));
     this.persistConversations();
+    return serverId;
+  }
+
+  private replaceConversationUrl(serverId: string | null | undefined): void {
+    if (!serverId) {
+      return;
+    }
+
+    const url = createConversationUrl(serverId, globalThis.location?.href ?? '');
+    if (url) {
+      this.replaceCurrentUrl(url);
+    }
+  }
+
+  private setConversationServerIdentity(
+    conversationId: number,
+    created: ConversationCreated,
+  ): void {
+    this.conversations.update((conversations) => conversations.map((conversation) =>
+      conversation.id === conversationId
+        ? {
+            ...conversation,
+            serverId: created.id,
+            serverToken: created.ownerToken,
+            isPublic: created.isPublic === true,
+            serverSyncedFingerprint: this.conversationFingerprint(conversation),
+          }
+        : conversation,
+    ));
+    this.persistConversations();
+    if (this.activeConversationId() === conversationId) {
+      this.replaceConversationUrl(created.id);
+    }
+  }
+
+  private setConversationPublic(conversationId: number, isPublic: boolean): void {
+    this.conversations.update((conversations) => conversations.map((conversation) =>
+      conversation.id === conversationId ? { ...conversation, isPublic } : conversation,
+    ));
+    this.persistConversations();
+  }
+
+  private markConversationSynced(conversationId: number): void {
+    const conversation = this.conversations().find((item) => item.id === conversationId);
+    if (!conversation) {
+      return;
+    }
+
+    const serverSyncedFingerprint = this.conversationFingerprint(conversation);
+    this.conversations.update((conversations) => conversations.map((item) =>
+      item.id === conversationId ? { ...item, serverSyncedFingerprint } : item,
+    ));
+    this.persistConversations();
+  }
+
+  private hasUnsyncedLocalChanges(conversation: ChatConversation): boolean {
+    return !conversation.serverSyncedFingerprint ||
+      conversation.serverSyncedFingerprint !== this.conversationFingerprint(conversation);
+  }
+
+  private conversationFingerprint(conversation: ChatConversation): string {
+    return JSON.stringify({
+      title: conversation.title,
+      messages: this.conversationMessagesForApi(conversation.messages),
+    });
+  }
+
+  private rotateServerIdentity(conversationId: number): string | null {
+    const serverId = createOpaqueConversationId();
+    let found = false;
+    this.conversations.update((conversations) => conversations.map((conversation) => {
+      if (conversation.id !== conversationId) {
+        return conversation;
+      }
+
+      found = true;
+      return {
+        ...conversation,
+        serverId,
+        serverToken: undefined,
+        isPublic: undefined,
+        serverSyncedFingerprint: undefined,
+      };
+    }));
+    if (!found) {
+      return null;
+    }
+
+    this.persistConversations();
+    if (this.activeConversationId() === conversationId) {
+      this.replaceConversationUrl(serverId);
+    }
+    return serverId;
   }
 
   private async ensureServerConversation(conversationId: number): Promise<string | null> {
@@ -953,7 +1176,7 @@ export class App implements OnDestroy {
     if (!conversation) {
       return null;
     }
-    if (conversation.serverId) {
+    if (conversation.serverId && conversation.serverToken) {
       return conversation.serverId;
     }
 
@@ -974,9 +1197,13 @@ export class App implements OnDestroy {
       }
 
       try {
-        const serverId = await this.chatService.createConversation(current.title, messages);
-        this.setConversationServerId(conversationId, serverId);
-        return serverId;
+        const created = await this.chatService.createConversation(
+          current.title,
+          messages,
+          current.serverId,
+        );
+        this.setConversationServerIdentity(conversationId, created);
+        return created.id;
       } catch {
         if (this.activeConversationId() === conversationId) {
           this.shareMessage.set('Conversation chưa đồng bộ lên server; câu trả lời vẫn được giữ trên thiết bị.');
@@ -997,7 +1224,7 @@ export class App implements OnDestroy {
 
   private async syncConversation(conversationId: number): Promise<void> {
     const conversation = this.conversations().find((item) => item.id === conversationId);
-    if (!conversation?.serverId) {
+    if (!conversation?.serverId || !conversation.serverToken) {
       return;
     }
 
@@ -1007,8 +1234,34 @@ export class App implements OnDestroy {
     }
 
     try {
-      await this.chatService.updateConversation(conversation.serverId, conversation.title, messages);
-    } catch {
+      await this.chatService.updateConversation(
+        conversation.serverId,
+        conversation.title,
+        messages,
+        conversation.serverToken,
+      );
+      this.markConversationSynced(conversationId);
+    } catch (caughtError) {
+      if (this.isMissingConversationError(caughtError)) {
+        try {
+          this.rotateServerIdentity(conversationId);
+          const recoveredId = await this.ensureServerConversation(conversationId);
+          const recovered = this.conversations().find((item) => item.id === conversationId);
+          if (recoveredId && recovered?.serverToken) {
+            await this.chatService.updateConversation(
+              recoveredId,
+              recovered.title,
+              this.conversationMessagesForApi(recovered.messages),
+              recovered.serverToken,
+            );
+            this.markConversationSynced(conversationId);
+            return;
+          }
+        } catch {
+          // Keep the local conversation even when the recovery request also fails.
+        }
+      }
+
       if (this.activeConversationId() === conversationId) {
         this.shareMessage.set('Không đồng bộ được conversation lên server; bản trên thiết bị vẫn còn nguyên.');
       }
@@ -1026,6 +1279,10 @@ export class App implements OnDestroy {
         text,
         status: role === 'user' || status === 'pending' ? 'complete' : status,
       }));
+  }
+
+  private isMissingConversationError(error: unknown): boolean {
+    return error instanceof ConversationRequestError && error.status === 404;
   }
 
   private persistConversations(): void {

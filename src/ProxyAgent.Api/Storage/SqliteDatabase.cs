@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 
 namespace ProxyAgent.Api.Storage;
 
-public sealed class SqliteDatabase
+public sealed class SqliteDatabase : IStorageInitializer
 {
     private string connectionString = string.Empty;
 
@@ -73,6 +73,8 @@ public sealed class SqliteDatabase
                 id TEXT PRIMARY KEY,
                 title TEXT NOT NULL,
                 messages_json TEXT NOT NULL,
+                owner_token_hash TEXT NOT NULL DEFAULT '',
+                is_public INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             );
@@ -92,6 +94,46 @@ public sealed class SqliteDatabase
             );
             """;
         command.ExecuteNonQuery();
+        EnsureConversationColumns(connection);
+    }
+
+    private static void EnsureConversationColumns(SqliteConnection connection)
+    {
+        using var columns = connection.CreateCommand();
+        columns.CommandText = "PRAGMA table_info(conversations);";
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var reader = columns.ExecuteReader())
+        {
+            while (reader.Read())
+            {
+                names.Add(reader.GetString(1));
+            }
+        }
+
+        if (!names.Contains("owner_token_hash"))
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "ALTER TABLE conversations ADD COLUMN owner_token_hash TEXT NOT NULL DEFAULT '';";
+            command.ExecuteNonQuery();
+        }
+
+        if (!names.Contains("is_public"))
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "ALTER TABLE conversations ADD COLUMN is_public INTEGER NOT NULL DEFAULT 0;";
+            command.ExecuteNonQuery();
+        }
+
+        // Before owner tokens existed, every persisted conversation was readable by its opaque ID.
+        // Keep those legacy links readable after the schema upgrade; newly created rows always have
+        // a non-empty owner hash and remain private until explicitly published.
+        using var legacy = connection.CreateCommand();
+        legacy.CommandText = """
+            UPDATE conversations
+            SET is_public = 1
+            WHERE owner_token_hash = '' AND is_public = 0;
+            """;
+        legacy.ExecuteNonQuery();
     }
 
     private void ConfigurePath(string path)
