@@ -607,6 +607,36 @@ export class App implements OnDestroy {
     }
   }
 
+  protected selectedEndpointLabel(): string {
+    const endpoint = this.modelEndpoint();
+    try {
+      const origin = globalThis.location?.origin ?? 'http://localhost';
+      const url = new URL(endpoint, origin);
+      return url.origin === origin ? url.pathname : `${url.host}${url.pathname}`;
+    } catch {
+      return endpoint;
+    }
+  }
+
+  protected serverEndpointLabel(server: ModelServer): string {
+    if (server === 'default') {
+      return '/api/v1/chat/completions';
+    }
+
+    const base = normalizeGatewayBaseUrl(this.customGatewayBaseUrl());
+    if (!base) {
+      return 'Chưa cấu hình';
+    }
+
+    return base.endsWith('/v1')
+      ? `${base}/chat/completions`
+      : `${base}/v1/chat/completions`;
+  }
+
+  protected serverHealthState(server: ModelServer): HealthState {
+    return this.serverHealth()[server];
+  }
+
   protected switchServer(choice: ServerChoice): void {
     const currentGateway = this.gatewayBaseUrl().trim();
     const rememberedCustom = this.customGatewayBaseUrl().trim();

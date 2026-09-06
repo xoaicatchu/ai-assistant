@@ -150,6 +150,15 @@ describe('App message submission', () => {
     expect((app as any).brandLabel).toBe('MEDICAL HARNESS FRAMEWORK');
   });
 
+  it('shows the active chat endpoint instead of a generic server label', () => {
+    vi.stubGlobal('location', { origin: 'https://example.com', pathname: '/' });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
+
+    expect((app as any).selectedEndpointLabel()).toBe('/api/v1/chat/completions');
+    expect((app as any).serverEndpointLabel('default')).toBe('/api/v1/chat/completions');
+  });
+
   it('toggles and saves the dark mode preference', () => {
     const setItem = vi.fn();
     vi.stubGlobal('localStorage', { getItem: vi.fn(() => 'light'), setItem });

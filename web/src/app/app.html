@@ -42,7 +42,10 @@
             (click)="toggleServerMenu()"
           >
             <svg lucideServer class="h-4 w-4" aria-hidden="true"></svg>
-            <span class="server-button-label">{{ isUsingDefaultServer() ? 'Server gốc' : 'Server tùy chỉnh' }}</span>
+            <span
+              class="server-button-label"
+              [attr.title]="modelEndpoint()"
+            >{{ selectedEndpointLabel() }}</span>
             <span
               class="connection-status"
               [class]="'connection-status status-' + health()"
@@ -70,10 +73,19 @@
                 (click)="switchServer('default')"
               >
                 <span>
-                  <strong>Server gốc</strong>
-                  <small>/api của ứng dụng</small>
+                  <strong>{{ serverEndpointLabel('default') }}</strong>
                 </span>
-                <span class="server-option-status">{{ serverHealthLabel('default') }}</span>
+                <span
+                  class="server-option-status"
+                  [attr.aria-label]="'Trạng thái server: ' + serverHealthLabel('default')"
+                  [attr.title]="serverHealthLabel('default')"
+                >
+                  @switch (serverHealthState('default')) {
+                    @case ('online') { <span class="online-dot"></span> }
+                    @case ('offline') { <svg lucideWifiOff class="h-3.5 w-3.5" aria-hidden="true"></svg> }
+                    @default { <svg lucideLoaderCircle class="h-3.5 w-3.5 animate-spin" aria-hidden="true"></svg> }
+                  }
+                </span>
                 @if (isUsingDefaultServer()) {
                   <span class="server-menu-check" aria-hidden="true">✓</span>
                 }
@@ -88,10 +100,19 @@
                 (click)="switchServer('custom')"
               >
                 <span>
-                  <strong>Server tùy chỉnh</strong>
-                  <small>{{ customServerLabel() }}</small>
+                  <strong>{{ serverEndpointLabel('custom') }}</strong>
                 </span>
-                <span class="server-option-status">{{ serverHealthLabel('custom') }}</span>
+                <span
+                  class="server-option-status"
+                  [attr.aria-label]="'Trạng thái server: ' + serverHealthLabel('custom')"
+                  [attr.title]="serverHealthLabel('custom')"
+                >
+                  @switch (serverHealthState('custom')) {
+                    @case ('online') { <span class="online-dot"></span> }
+                    @case ('offline') { <svg lucideWifiOff class="h-3.5 w-3.5" aria-hidden="true"></svg> }
+                    @default { <svg lucideLoaderCircle class="h-3.5 w-3.5 animate-spin" aria-hidden="true"></svg> }
+                  }
+                </span>
                 @if (!isUsingDefaultServer() && hasCustomServer()) {
                   <span class="server-menu-check" aria-hidden="true">✓</span>
                 }

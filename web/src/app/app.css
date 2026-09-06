@@ -238,10 +238,9 @@ textarea:disabled {
 }
 
 .server-button-label {
-  max-width: 120px;
+  max-width: 200px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 10px;
 }
 
 .settings-button:hover,
