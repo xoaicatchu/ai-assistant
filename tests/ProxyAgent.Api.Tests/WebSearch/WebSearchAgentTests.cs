@@ -74,6 +74,36 @@ public sealed class WebSearchAgentTests
     }
 
     [Fact]
+    public async Task StreamAsync_yields_plain_text_before_upstream_stream_finishes()
+    {
+        var provider = new EarlyTextProvider();
+        var agent = CreateAgent(provider, new FakeWebSearchProvider());
+        await using var stream = agent.StreamAsync(
+            new NormalizedChatRequest
+            {
+                Model = "openai:grok-4.6",
+                Stream = true,
+                Messages = [new ChatMessage { Role = "user", Content = "What is new?" }]
+            },
+            CancellationToken.None).GetAsyncEnumerator();
+
+        var firstEvent = await stream.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.True(firstEvent);
+        Assert.Equal("Đang trả lời", stream.Current.TextDelta);
+
+        provider.Release();
+        var events = new List<ChatStreamEvent> { stream.Current };
+        while (await stream.MoveNextAsync())
+        {
+            events.Add(stream.Current);
+        }
+
+        Assert.Equal("Đang trả lời xong.", string.Concat(events.Select(item => item.TextDelta)));
+        Assert.True(events[^1].IsDone);
+    }
+
+    [Fact]
     public async Task CompleteAsync_pre_searches_current_question_without_provider_tools()
     {
         var provider = new FakeChatProvider();
@@ -395,6 +425,52 @@ public sealed class WebSearchAgentTests
             yield return new ChatStreamEvent { Id = "stream", Provider = Name, Model = selection.Model, IsDone = true };
             await Task.CompletedTask;
         }
+    }
+
+    private sealed class EarlyTextProvider : IChatProvider
+    {
+        private readonly TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public string Name => "openai";
+
+        public Task<NormalizedChatResponse> CompleteAsync(
+            NormalizedChatRequest request,
+            ProviderSelection selection,
+            CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public async IAsyncEnumerable<ChatStreamEvent> StreamAsync(
+            NormalizedChatRequest request,
+            ProviderSelection selection,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            yield return new ChatStreamEvent
+            {
+                Id = "early-text",
+                Provider = Name,
+                Model = selection.Model,
+                TextDelta = "Đang trả lời"
+            };
+
+            await release.Task.WaitAsync(cancellationToken);
+
+            yield return new ChatStreamEvent
+            {
+                Id = "early-text",
+                Provider = Name,
+                Model = selection.Model,
+                TextDelta = " xong."
+            };
+            yield return new ChatStreamEvent
+            {
+                Id = "early-text",
+                Provider = Name,
+                Model = selection.Model,
+                IsDone = true
+            };
+        }
+
+        public void Release() => release.TrySetResult();
     }
 
     private sealed class RepeatingToolCallProvider : IChatProvider

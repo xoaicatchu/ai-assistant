@@ -108,6 +108,10 @@ public sealed class WebSearchAgent
         while (true)
         {
             var textEvents = new List<ChatStreamEvent>();
+            var streamedContent = new StringBuilder();
+            var emittedLength = 0;
+            var markerIndex = -1;
+            ChatStreamEvent? lastTextEvent = null;
             var toolCalls = new List<ChatToolCall>();
             ChatStreamEvent? lastEvent = null;
 
@@ -116,6 +120,27 @@ public sealed class WebSearchAgent
                 if (!string.IsNullOrEmpty(item.TextDelta))
                 {
                     textEvents.Add(item);
+                    lastTextEvent = item;
+                    streamedContent.Append(item.TextDelta);
+
+                    markerIndex = markerIndex >= 0
+                        ? markerIndex
+                        : streamedContent.ToString().IndexOf("<tool_call", StringComparison.OrdinalIgnoreCase);
+                    var partialMarkerIndex = markerIndex < 0
+                        ? FindPartialToolCallStart(streamedContent.ToString(), "<tool_call")
+                        : -1;
+                    var safeLength = markerIndex >= 0
+                        ? markerIndex
+                        : partialMarkerIndex >= 0
+                            ? partialMarkerIndex
+                            : streamedContent.Length;
+                    if (safeLength > emittedLength)
+                    {
+                        yield return CreateTextDeltaEvent(
+                            item,
+                            streamedContent.ToString(emittedLength, safeLength - emittedLength));
+                        emittedLength = safeLength;
+                    }
                 }
 
                 if (item.ToolCallDelta is not null)
@@ -143,9 +168,12 @@ public sealed class WebSearchAgent
 
             if (toolCalls.Count == 0)
             {
-                foreach (var item in textEvents)
+                var assistantContentLength = assistantContent.Length;
+                if (emittedLength < assistantContentLength)
                 {
-                    yield return item;
+                    yield return CreateTextDeltaEvent(
+                        lastTextEvent,
+                        assistantContent[emittedLength..]);
                 }
 
                 yield return lastEvent ?? new ChatStreamEvent
