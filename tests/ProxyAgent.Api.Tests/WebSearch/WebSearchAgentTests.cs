@@ -18,7 +18,7 @@ public sealed class WebSearchAgentTests
         var response = await agent.CompleteAsync(
             new NormalizedChatRequest
             {
-                Model = "openai:test-model",
+                Model = "openai:grok-4.6",
                 Messages = [new ChatMessage { Role = "user", Content = "What is new?" }]
             },
             CancellationToken.None);
@@ -39,7 +39,7 @@ public sealed class WebSearchAgentTests
         await foreach (var item in agent.StreamAsync(
                            new NormalizedChatRequest
                            {
-                               Model = "openai:test-model",
+                               Model = "openai:grok-4.6",
                                Stream = true,
                                Messages = [new ChatMessage { Role = "user", Content = "What is new?" }]
                            },
@@ -66,7 +66,7 @@ public sealed class WebSearchAgentTests
         var response = await agent.CompleteAsync(
             new NormalizedChatRequest
             {
-                Model = "openai:test-model",
+                Model = "openai:grok-4.6",
                 Messages = [new ChatMessage { Role = "user", Content = "Ngày mai thời tiết Hà Nội thế nào?" }]
             },
             CancellationToken.None);
@@ -79,6 +79,29 @@ public sealed class WebSearchAgentTests
     }
 
     [Fact]
+    public async Task CompleteAsync_uses_pre_search_for_an_unverified_model_without_provider_tools()
+    {
+        var provider = new FakeChatProvider();
+        var webSearch = new FakeWebSearchProvider();
+        var agent = CreateAgent(provider, webSearch);
+
+        var response = await agent.CompleteAsync(
+            new NormalizedChatRequest
+            {
+                Model = "openai:custom-model",
+                Messages = [new ChatMessage { Role = "user", Content = "Ngày mai thời tiết Hà Nội thế nào?" }]
+            },
+            CancellationToken.None);
+
+        Assert.Equal("Tổng hợp từ nguồn web.", response.Message.Content);
+        Assert.Single(provider.Requests);
+        Assert.Empty(provider.Requests[0].Tools);
+        Assert.Contains(provider.Requests[0].Messages, message =>
+            message.Role == "system" && message.Content!.Contains("https://example.com/source", StringComparison.Ordinal));
+        Assert.Equal(1, webSearch.SearchCount);
+    }
+
+    [Fact]
     public async Task CompleteAsync_executes_textual_tool_calls_in_pre_search_mode()
     {
         var provider = new FakeChatProvider(emitTextToolCall: true);
@@ -88,7 +111,7 @@ public sealed class WebSearchAgentTests
         var response = await agent.CompleteAsync(
             new NormalizedChatRequest
             {
-                Model = "openai:test-model",
+                Model = "openai:grok-4.6",
                 Messages = [new ChatMessage { Role = "user", Content = "Aeon Hà Đông" }]
             },
             CancellationToken.None);
@@ -110,7 +133,7 @@ public sealed class WebSearchAgentTests
         var response = await agent.CompleteAsync(
             new NormalizedChatRequest
             {
-                Model = "openai:test-model",
+                Model = "openai:grok-4.6",
                 Messages = [new ChatMessage { Role = "user", Content = "What is new?" }]
             },
             CancellationToken.None);
@@ -131,7 +154,7 @@ public sealed class WebSearchAgentTests
         var response = await agent.CompleteAsync(
             new NormalizedChatRequest
             {
-                Model = "openai:test-model",
+                Model = "openai:grok-4.6",
                 Messages = [new ChatMessage { Role = "user", Content = "Thời tiết Hà Nội hôm nay thế nào?" }]
             },
             CancellationToken.None);
@@ -153,7 +176,7 @@ public sealed class WebSearchAgentTests
         await foreach (var item in agent.StreamAsync(
                            new NormalizedChatRequest
                            {
-                               Model = "openai:test-model",
+                               Model = "openai:grok-4.6",
                                Stream = true,
                                Messages = [new ChatMessage { Role = "user", Content = "What is new?" }]
                            },
@@ -181,7 +204,7 @@ public sealed class WebSearchAgentTests
         await foreach (var item in agent.StreamAsync(
                            new NormalizedChatRequest
                            {
-                               Model = "openai:test-model",
+                               Model = "openai:grok-4.6",
                                Stream = true,
                                Messages = [new ChatMessage { Role = "user", Content = "Thời tiết Hà Nội hôm nay thế nào?" }]
                            },
@@ -209,7 +232,7 @@ public sealed class WebSearchAgentTests
         await foreach (var item in agent.StreamAsync(
                            new NormalizedChatRequest
                            {
-                               Model = "openai:test-model",
+                               Model = "openai:grok-4.6",
                                Stream = true,
                                Messages = [new ChatMessage { Role = "user", Content = "Aeon Hà Đông" }]
                            },

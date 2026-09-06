@@ -42,7 +42,12 @@ import {
   type StoredConversation,
 } from './conversation-storage';
 import { renderMarkdown } from './markdown-renderer';
-import { allModelOptions, modelLabel } from './model-picker';
+import {
+  allModelOptions,
+  modelCapabilitiesForRoute,
+  modelLabel,
+  type ModelCapabilitySupport,
+} from './model-picker';
 import { runtimeConfig, setRuntimeApiBaseUrl } from './runtime-config';
 import { scrollToBottom, shouldAutoScroll, type ConversationScrollReason } from './scrolling';
 import {
@@ -177,6 +182,9 @@ export class App implements OnDestroy {
       this.error.set('Hãy nhập model trước khi gửi.');
       return;
     }
+    if (!this.canSendImage(selectedModel, image)) {
+      return;
+    }
 
     const requestMessages = buildRequestMessages(this.messages());
     requestMessages.push(toChatMessage('user', content, image?.dataUrl));
@@ -234,6 +242,9 @@ export class App implements OnDestroy {
     const selectedModel = this.model().trim();
     if (!selectedModel) {
       this.error.set('Hãy nhập model trước khi gửi lại.');
+      return;
+    }
+    if (!this.canSendImage(selectedModel, originalUser.image ?? null)) {
       return;
     }
 
@@ -461,6 +472,19 @@ export class App implements OnDestroy {
     return modelLabel(this.model());
   }
 
+  protected selectedModelCapabilitySummary(): string {
+    const capabilities = modelCapabilitiesForRoute(this.model());
+    return `${modelLabel(this.model())} — Vision: ${this.capabilityStatusLabel(capabilities.vision)}; Tool call: ${this.capabilityStatusLabel(capabilities.toolCalling)}`;
+  }
+
+  protected capabilityBadgeLabel(name: string, capability: ModelCapabilitySupport): string {
+    return `${name} ${capability === 'supported' ? '✓' : capability === 'unsupported' ? '—' : '?'}`;
+  }
+
+  protected capabilityAriaLabel(name: string, capability: ModelCapabilitySupport): string {
+    return `${name}: ${this.capabilityStatusLabel(capability)}`;
+  }
+
   protected stop(): void {
     this.stopActiveRequest('Đã dừng phản hồi.');
   }
@@ -566,6 +590,28 @@ export class App implements OnDestroy {
 
   private errorMessage(caughtError: unknown): string {
     return caughtError instanceof Error ? caughtError.message : 'Không thể kết nối tới gateway.';
+  }
+
+  private canSendImage(selectedModel: string, image: ImageAttachment | null): boolean {
+    if (!image || modelCapabilitiesForRoute(selectedModel).vision !== 'unsupported') {
+      return true;
+    }
+
+    this.error.set(
+      `Model ${modelLabel(selectedModel)} không hỗ trợ Vision. Hãy chọn model có nhãn Vision để gửi ảnh.`,
+    );
+    return false;
+  }
+
+  private capabilityStatusLabel(capability: ModelCapabilitySupport): string {
+    switch (capability) {
+      case 'supported':
+        return 'Có';
+      case 'unsupported':
+        return 'Không';
+      default:
+        return 'Chưa xác định';
+    }
   }
 
   private setAssistantError(conversationId: number, assistantId: number, message: string): void {

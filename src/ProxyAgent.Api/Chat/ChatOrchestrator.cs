@@ -19,6 +19,9 @@ public sealed class ChatOrchestrator(IModelSelector modelSelector, IEnumerable<I
         return provider.StreamAsync(request, selection, cancellationToken);
     }
 
+    public ModelCapabilities CapabilitiesFor(string? model) =>
+        ModelCapabilityCatalog.For(modelSelector.Select(model).Model);
+
     private (IChatProvider Provider, ProviderSelection Selection) Resolve(string? model)
     {
         var selection = modelSelector.Select(model);

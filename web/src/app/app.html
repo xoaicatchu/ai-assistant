@@ -206,7 +206,7 @@
                   [disabled]="busy()"
                   name="composer-model"
                   aria-label="Model"
-                  title="Chọn model"
+                  [attr.title]="selectedModelCapabilitySummary()"
                 >
                   @for (option of modelOptions(); track option.route) {
                     <option [value]="option.route">{{ option.label }}</option>
@@ -300,6 +300,51 @@
 
         </div>
 
+        <section class="capability-card" aria-labelledby="model-capability-heading">
+          <div>
+            <div class="capability-card-heading">
+              <span class="mini-icon grid place-items-center" aria-hidden="true">
+                <svg lucideShieldCheck class="h-4 w-4" aria-hidden="true"></svg>
+              </span>
+              <div>
+                <p class="eyebrow">MODEL CAPABILITIES</p>
+                <h3 id="model-capability-heading">Vision và Tool call</h3>
+              </div>
+            </div>
+          </div>
+          <div class="capability-list">
+            @for (option of modelOptions(); track option.route) {
+              <div class="capability-row">
+                <div class="capability-model">
+                  <strong>{{ option.label }}</strong>
+                  <code>{{ option.route }}</code>
+                </div>
+                <div class="capability-badges">
+                  <span
+                    class="capability-badge"
+                    [class.capability-supported]="option.capabilities.vision === 'supported'"
+                    [class.capability-unsupported]="option.capabilities.vision === 'unsupported'"
+                    [class.capability-unknown]="option.capabilities.vision === 'unknown'"
+                    [attr.aria-label]="capabilityAriaLabel('Vision', option.capabilities.vision)"
+                  >
+                    {{ capabilityBadgeLabel('Vision', option.capabilities.vision) }}
+                  </span>
+                  <span
+                    class="capability-badge"
+                    [class.capability-supported]="option.capabilities.toolCalling === 'supported'"
+                    [class.capability-unsupported]="option.capabilities.toolCalling === 'unsupported'"
+                    [class.capability-unknown]="option.capabilities.toolCalling === 'unknown'"
+                    [attr.aria-label]="capabilityAriaLabel('Tool call', option.capabilities.toolCalling)"
+                  >
+                    {{ capabilityBadgeLabel('Tool call', option.capabilities.toolCalling) }}
+                  </span>
+                </div>
+              </div>
+            }
+          </div>
+          <p class="capability-help">Vision = nhận ảnh. Tool call = model có thể gọi function/tool. Route custom chưa được xác minh.</p>
+        </section>
+
         <div class="connection-card">
           <div class="connection-card-header">
             <div class="connection-card-heading">
@@ -341,7 +386,8 @@
             @if (setupMessage()) {
               <span class="setup-message" role="status">{{ setupMessage() }}</span>
             }
-            <button class="text-button" type="button" (click)="resetSetup()">
+            <button class="secondary-button reset-button" type="button" (click)="resetSetup()">
+              <svg lucideRefreshCw class="h-3.5 w-3.5" aria-hidden="true"></svg>
               Khôi phục mặc định
             </button>
           </div>

@@ -1,8 +1,16 @@
+export type ModelCapabilitySupport = 'supported' | 'unsupported' | 'unknown';
+
+export interface ModelCapabilities {
+  vision: ModelCapabilitySupport;
+  toolCalling: ModelCapabilitySupport;
+}
+
 export interface ModelOption {
   route: string;
   label: string;
   provider: string;
   description: string;
+  capabilities: ModelCapabilities;
 }
 
 const REMOVED_MODEL_ROUTES = new Set([
@@ -10,18 +18,34 @@ const REMOVED_MODEL_ROUTES = new Set([
   'x-ai/grok-4.5',
 ]);
 
+const MODEL_CAPABILITIES: Record<string, ModelCapabilities> = {
+  'deepseek/deepseek-v4-flash': { vision: 'unsupported', toolCalling: 'supported' },
+  'deepseek-v4-flash': { vision: 'unsupported', toolCalling: 'supported' },
+  'deepseek/deepseek-v4-flash-vision-exp': { vision: 'supported', toolCalling: 'supported' },
+  'deepseek-v4-flash-vision-exp': { vision: 'supported', toolCalling: 'supported' },
+  'x-ai/grok-4.6': { vision: 'supported', toolCalling: 'supported' },
+  'grok-4.6': { vision: 'supported', toolCalling: 'supported' },
+};
+
+export function modelCapabilitiesForRoute(route: string): ModelCapabilities {
+  const capabilities = MODEL_CAPABILITIES[normalizeRoute(route)];
+  return capabilities ? { ...capabilities } : { vision: 'unknown', toolCalling: 'unknown' };
+}
+
 export const MODEL_OPTIONS: readonly ModelOption[] = [
   {
     route: 'deepseek/deepseek-v4-flash',
     label: 'DeepSeek V4 Flash',
     provider: 'OpenAI-compatible',
-    description: 'Nhẹ, nhanh cho kiểm tra gateway',
+    description: 'Text + tool call; không nhận ảnh',
+    capabilities: modelCapabilitiesForRoute('deepseek/deepseek-v4-flash'),
   },
   {
     route: 'x-ai/grok-4.6',
     label: 'Grok 4.6',
     provider: 'OpenAI-compatible',
-    description: 'Nhanh, phù hợp cho chat và web search',
+    description: 'Vision + tool call; phù hợp cho chat và web search',
+    capabilities: modelCapabilitiesForRoute('x-ai/grok-4.6'),
   },
 ];
 
@@ -39,7 +63,8 @@ export function allModelOptions(customModels: readonly string[] = []): ModelOpti
       route,
       label: modelLabel(route),
       provider: providerLabel(route),
-      description: 'Custom model route',
+      description: 'Custom model route; capability chưa xác định',
+      capabilities: modelCapabilitiesForRoute(route),
     });
     knownRoutes.add(route);
   }
@@ -72,4 +97,10 @@ export function providerLabel(route: string): string {
 
 export function optionForRoute(route: string): ModelOption | undefined {
   return MODEL_OPTIONS.find((option) => option.route === route.trim());
+}
+
+function normalizeRoute(route: string): string {
+  const value = route.trim().toLowerCase();
+  const separator = value.indexOf(':');
+  return separator > 0 ? value.slice(separator + 1).trim() : value;
 }

@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Options;
+using ProxyAgent.Api.Api;
 using ProxyAgent.Api.Chat;
 using ProxyAgent.Api.Providers;
 using ProxyAgent.Api.WebSearch;
@@ -26,6 +27,31 @@ public sealed class ChatPromptAgentTests
         Assert.Equal("user", provider.LastRequest.Messages[1].Role);
     }
 
+    [Fact]
+    public async Task CompleteAsync_rejects_images_for_a_known_text_only_model()
+    {
+        var provider = new CapturingProvider();
+        var agent = CreateAgent(provider, "Trả lời trực tiếp và hữu ích.");
+
+        var error = await Assert.ThrowsAsync<ApiValidationException>(() => agent.CompleteAsync(
+            new NormalizedChatRequest
+            {
+                Model = "deepseek/deepseek-v4-flash",
+                Messages =
+                [
+                    new ChatMessage
+                    {
+                        Role = "user",
+                        ContentParts = [new ChatContentPart { Type = "image_url", ImageUrl = "data:image/png;base64,AA==" }]
+                    }
+                ]
+            },
+            CancellationToken.None));
+
+        Assert.Contains("does not support image", error.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Null(provider.LastRequest);
+    }
+
     private static ChatPromptAgent CreateAgent(CapturingProvider provider, string systemPrompt)
     {
         var modelSelector = new ModelSelector(
@@ -41,6 +67,7 @@ public sealed class ChatPromptAgentTests
             Options.Create(new WebSearchOptions { Enabled = false }));
         return new ChatPromptAgent(
             webSearchAgent,
+            orchestrator,
             Options.Create(new ChatPromptOptions { SystemPrompt = systemPrompt }));
     }
 

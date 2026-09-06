@@ -42,7 +42,7 @@ public sealed class WebSearchAgent(
             return await chatOrchestrator.CompleteAsync(request, cancellationToken);
         }
 
-        if (!settings.UseToolCalling)
+        if (!ShouldUseToolCalling(request))
         {
             var preparedRequest = ShouldAutoSearch(request)
                 ? await PreparePreSearchAsync(request, cancellationToken)
@@ -67,7 +67,7 @@ public sealed class WebSearchAgent(
             yield break;
         }
 
-        if (!settings.UseToolCalling)
+        if (!ShouldUseToolCalling(request))
         {
             var preparedRequest = ShouldAutoSearch(request)
                 ? await PreparePreSearchAsync(request, cancellationToken)
@@ -478,6 +478,10 @@ public sealed class WebSearchAgent(
         settings.Enabled &&
         webSearchProvider.IsConfigured &&
         !string.Equals(request.ToolChoice, "none", StringComparison.OrdinalIgnoreCase);
+
+    private bool ShouldUseToolCalling(NormalizedChatRequest request) =>
+        settings.UseToolCalling &&
+        chatOrchestrator.CapabilitiesFor(request.Model).ToolCalling == ModelCapabilitySupport.Supported;
 
     private static bool ShouldAutoSearch(NormalizedChatRequest request)
     {

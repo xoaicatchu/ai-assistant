@@ -83,4 +83,27 @@ describe('App message submission', () => {
       'Câu trả lời cũ',
     ]);
   });
+
+  it('does not send an image to a known text-only model', async () => {
+    const stream = vi.fn();
+    const chatService = {
+      health: vi.fn().mockResolvedValue(undefined),
+      stream,
+    } as unknown as ChatService;
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+
+    const app = new App(chatService);
+    (app as any).model.set('deepseek/deepseek-v4-flash');
+    (app as any).draft.set('Đọc ảnh này');
+    (app as any).pendingImage.set({
+      dataUrl: 'data:image/png;base64,AA==',
+      name: 'test.png',
+      type: 'image/png',
+    });
+
+    await (app as any).send();
+
+    expect(stream).not.toHaveBeenCalled();
+    expect((app as any).error()).toContain('không hỗ trợ Vision');
+  });
 });

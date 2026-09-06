@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { MODEL_OPTIONS, allModelOptions, modelLabel, providerLabel } from './model-picker';
+import {
+  MODEL_OPTIONS,
+  allModelOptions,
+  modelCapabilitiesForRoute,
+  modelLabel,
+  providerLabel,
+} from './model-picker';
 
 describe('model picker labels', () => {
   it('turns a routed model into a compact display label', () => {
@@ -41,5 +47,25 @@ describe('model picker labels', () => {
       'x-ai/grok-4.6',
       'anthropic:claude-sonnet',
     ]);
+  });
+
+  it('exposes the capability matrix for the built-in model routes', () => {
+    expect(modelCapabilitiesForRoute('deepseek/deepseek-v4-flash')).toEqual({
+      vision: 'unsupported',
+      toolCalling: 'supported',
+    });
+    expect(modelCapabilitiesForRoute('x-ai/grok-4.6')).toEqual({
+      vision: 'supported',
+      toolCalling: 'supported',
+    });
+  });
+
+  it('marks custom routes as unknown instead of claiming capabilities', () => {
+    expect(allModelOptions(['custom/unknown-model']).at(-1)).toMatchObject({
+      capabilities: {
+        vision: 'unknown',
+        toolCalling: 'unknown',
+      },
+    });
   });
 });
