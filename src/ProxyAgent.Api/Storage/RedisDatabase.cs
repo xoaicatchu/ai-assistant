@@ -102,7 +102,15 @@ public static class RedisConnectionStringNormalizer
     public static ConfigurationOptions CreateOptions(string connectionString)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
-        var value = connectionString.Trim();
+        var value = connectionString.Trim().Trim('"');
+        if (value.StartsWith("redis\\://", StringComparison.OrdinalIgnoreCase))
+        {
+            value = $"redis://{value["redis\\://".Length..]}";
+        }
+        else if (value.StartsWith("rediss\\://", StringComparison.OrdinalIgnoreCase))
+        {
+            value = $"rediss://{value["rediss\\://".Length..]}";
+        }
 
         var looksLikeRedisUri = value.StartsWith("redis://", StringComparison.OrdinalIgnoreCase) ||
             value.StartsWith("rediss://", StringComparison.OrdinalIgnoreCase);

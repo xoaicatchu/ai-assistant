@@ -26,4 +26,14 @@ public sealed class RedisConnectionStringTests
         Assert.Throws<ArgumentException>(() =>
             RedisConnectionStringNormalizer.CreateOptions("rediss://default:secret@"));
     }
+
+    [Fact]
+    public void Accepts_a_shell_escaped_or_quoted_rediss_uri()
+    {
+        var options = RedisConnectionStringNormalizer.CreateOptions(
+            "\"rediss\\://default:secret@redis.example.com:6379\"");
+
+        Assert.True(options.Ssl);
+        Assert.Contains("redis.example.com:6379", options.EndPoints.Single().ToString(), StringComparison.Ordinal);
+    }
 }
