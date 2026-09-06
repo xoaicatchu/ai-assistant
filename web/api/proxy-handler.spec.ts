@@ -97,6 +97,28 @@ describe('Vercel backend proxy URL', () => {
     );
     expect(response.headers['set-cookie']).toContain('__proxy_agent_admin=session');
   });
+
+  it('turns an upstream SSE read failure into a structured stream error', async () => {
+    const read = vi.fn().mockRejectedValue(new Error('upstream socket closed'));
+    const fetchMock = vi.fn(async () => ({
+      status: 200,
+      headers: new Headers({ 'content-type': 'text/event-stream' }),
+      body: { getReader: () => ({ read }) },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const response = createResponse();
+
+    await proxyRequest(
+      createRequest('POST', '/api/index?path=v1/chat/completions', 'request-body'),
+      response,
+      'https://backend.example.com',
+      'v1/chat/completions',
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('backend_stream_interrupted');
+    expect(response.body).toContain('Backend stream was interrupted.');
+  });
 });
 
 function createRequest(

@@ -31,7 +31,7 @@ describe('conversation storage', () => {
         {
           id: 7,
           title: 'Hà Nội',
-          shareId: 'abcdefghijklmnopqrstuv',
+          serverId: 'abcdefghijklmnopqrstuv',
           messages: [userMessage(11, 4, 'Thời tiết hôm nay thế nào?')],
         },
       ],
@@ -49,7 +49,7 @@ describe('conversation storage', () => {
         {
           id: 7,
           title: 'Hà Nội',
-          shareId: 'abcdefghijklmnopqrstuv',
+          serverId: 'abcdefghijklmnopqrstuv',
           messages: [userMessage(11, 4, 'Thời tiết hôm nay thế nào?')],
         },
       ],
@@ -78,6 +78,42 @@ describe('conversation storage', () => {
     expect(loadConversationState().conversations[0].messages).toEqual([
       userMessage(1, 1, 'Câu hỏi cũ'),
     ]);
+  });
+
+  it('migrates the previous share ID field to the server conversation ID', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => JSON.stringify({
+        activeConversationId: 1,
+        conversations: [{
+          id: 1,
+          title: 'Cũ',
+          shareId: 'abcdefghijklmnopqrstuv',
+          messages: [userMessage(1, 1, 'Câu hỏi cũ')],
+        }],
+      })),
+      setItem: vi.fn(),
+    });
+
+    expect(loadConversationState().conversations[0].serverId).toBe('abcdefghijklmnopqrstuv');
+  });
+
+  it('removes the old inline transport error from persisted assistant text', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => JSON.stringify({
+        activeConversationId: 1,
+        conversations: [{
+          id: 1,
+          title: 'Cũ',
+          messages: [
+            userMessage(1, 1, 'Câu hỏi'),
+            { id: 2, requestId: 1, role: 'assistant', text: 'Phần đã nhận\n\n> **Lỗi:** Load failed', status: 'error' },
+          ],
+        }],
+      })),
+      setItem: vi.fn(),
+    });
+
+    expect(loadConversationState().conversations[0].messages[1].text).toBe('Phần đã nhận');
   });
 
   it('falls back to a fresh conversation when storage is invalid', () => {

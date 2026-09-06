@@ -91,4 +91,67 @@ describe('ChatService streaming', () => {
 
     vi.unstubAllGlobals();
   });
+
+  it('recovers a broken SSE transport with one non-streaming completion', async () => {
+    const reader = {
+      read: vi.fn()
+        .mockResolvedValueOnce({
+          done: false,
+          value: new TextEncoder().encode('data: {"choices":[{"delta":{"content":"Một phần"}}]}\n\n'),
+        })
+        .mockRejectedValueOnce(new TypeError('Load failed')),
+      cancel: vi.fn().mockResolvedValue(undefined),
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, body: { getReader: () => reader } })
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        choices: [{ message: { content: 'Câu trả lời đầy đủ' } }],
+      }), { status: 200 }));
+    const replace = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await new ChatService().stream(
+      'openai:test-model',
+      [{ role: 'user', content: 'Hi' }],
+      new AbortController().signal,
+      vi.fn(),
+      replace,
+    );
+
+    expect(replace).toHaveBeenCalledWith('Câu trả lời đầy đủ');
+    expect(reader.cancel).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1][1]).toEqual(expect.objectContaining({
+      body: JSON.stringify({
+        model: 'openai:test-model',
+        messages: [{ role: 'user', content: 'Hi' }],
+        stream: false,
+      }),
+    }));
+
+    vi.unstubAllGlobals();
+  });
+
+  it('recovers when the browser rejects the streaming request before headers arrive', async () => {
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new TypeError('Load failed'))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        choices: [{ message: { content: 'Câu trả lời khôi phục' } }],
+      }), { status: 200 }));
+    const replace = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await new ChatService().stream(
+      'openai:test-model',
+      [{ role: 'user', content: 'Hi' }],
+      new AbortController().signal,
+      vi.fn(),
+      replace,
+    );
+
+    expect(replace).toHaveBeenCalledWith('Câu trả lời khôi phục');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    vi.unstubAllGlobals();
+  });
 });

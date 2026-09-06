@@ -102,7 +102,7 @@ Storage__SqlitePath=App_Data/proxy-agent.db
 
 Sau khi backend khởi động, mở `https://<frontend>/admin`, đăng nhập rồi nhập Base URL, API key, model mặc định và cấu hình Tavily. API key chỉ được lưu ở backend và trang admin chỉ trả về trạng thái đã có key cùng phần che; có thể đổi mật khẩu ngay trong trang này. Các thay đổi có hiệu lực cho request mới.
 
-Nút chia sẻ trong Chat lưu conversation vào `POST /api/conversations` lần đầu, các lần sau cập nhật bằng `PUT`; link có dạng `/conversation/<id>` nên người nhận mở đúng dữ liệu từ server, không phải snapshot nằm trong URL. SQLite là storage thay thế được qua các interface trong `Storage/`, nhưng filesystem của instance Vercel/container ngắn hạn có thể bị mất khi redeploy hoặc instance thay đổi. Khi cần dữ liệu bền vững, thay implementation bằng PostgreSQL mà không phải sửa API/UI.
+Mỗi conversation được cấp server ID trước lượt chat đầu tiên và đồng bộ qua `PUT` sau khi nhận xong câu trả lời. Nút chia sẻ chỉ có nhiệm vụ công khai link `/conversation/<id>`; người nhận mở đúng dữ liệu từ server, không phải snapshot nằm trong URL. Nếu backend lưu trữ tạm thời bị lỗi, câu trả lời vẫn giữ trên thiết bị và sẽ thử đồng bộ ở lượt sau. SQLite là storage thay thế được qua các interface trong `Storage/`, nhưng filesystem của instance Vercel/container ngắn hạn có thể bị mất khi redeploy hoặc instance thay đổi. Khi cần dữ liệu bền vững, thay implementation bằng PostgreSQL mà không phải sửa API/UI.
 
 ## Web search agent qua Tavily
 

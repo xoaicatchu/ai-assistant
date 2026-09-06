@@ -44,6 +44,108 @@ describe('App message submission', () => {
     expect((app as any).messages()[0].text).toBe('Câu hỏi cần gửi');
   });
 
+  it('creates a server ID before the first request and syncs the conversation after streaming', async () => {
+    const createConversation = vi.fn().mockResolvedValue('abcdefghijklmnopqrstuv');
+    const updateConversation = vi.fn().mockResolvedValue({});
+    const stream = vi.fn(async (
+      _model: string,
+      _messages: ChatMessage[],
+      _signal: AbortSignal,
+      onDelta: (text: string) => void,
+    ) => {
+      onDelta('Câu trả lời');
+    });
+    const chatService = {
+      health: vi.fn().mockResolvedValue(undefined),
+      createConversation,
+      updateConversation,
+      stream,
+    } as unknown as ChatService;
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
+      callback();
+      return 0;
+    });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+
+    const app = new App(chatService);
+    (app as any).draft.set('Câu hỏi cần lưu');
+
+    await (app as any).send();
+
+    expect(createConversation).toHaveBeenCalledBefore(stream);
+    expect(createConversation).toHaveBeenCalledWith('Câu hỏi cần lưu', [
+      expect.objectContaining({ role: 'user', text: 'Câu hỏi cần lưu', status: 'complete' }),
+    ]);
+    expect(updateConversation).toHaveBeenCalledWith(
+      'abcdefghijklmnopqrstuv',
+      'Câu hỏi cần lưu',
+      expect.arrayContaining([
+        expect.objectContaining({ role: 'user', text: 'Câu hỏi cần lưu' }),
+        expect.objectContaining({ role: 'assistant', text: 'Câu trả lời', status: 'complete' }),
+      ]),
+    );
+    expect((app as any).conversations()[0].serverId).toBe('abcdefghijklmnopqrstuv');
+  });
+
+  it('continues answering when conversation persistence is temporarily unavailable', async () => {
+    const createConversation = vi.fn().mockRejectedValue(new Error('Database unavailable'));
+    const stream = vi.fn(async (
+      _model: string,
+      _messages: ChatMessage[],
+      _signal: AbortSignal,
+      onDelta: (text: string) => void,
+    ) => {
+      onDelta('Câu trả lời vẫn hiển thị');
+    });
+    const chatService = {
+      health: vi.fn().mockResolvedValue(undefined),
+      createConversation,
+      stream,
+    } as unknown as ChatService;
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
+      callback();
+      return 0;
+    });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+
+    const app = new App(chatService);
+    (app as any).draft.set('Câu hỏi không được mất');
+
+    await (app as any).send();
+
+    expect(createConversation).toHaveBeenCalledOnce();
+    expect(stream).toHaveBeenCalledOnce();
+    expect((app as any).messages().map((message: { text: string }) => message.text)).toEqual([
+      'Câu hỏi không được mất',
+      'Câu trả lời vẫn hiển thị',
+    ]);
+    expect((app as any).shareMessage()).toContain('chưa đồng bộ');
+  });
+
+  it('keeps a transport error out of the assistant message markup', () => {
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
+      callback();
+      return 0;
+    });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
+    (app as any).messages.set([
+      { id: 1, requestId: 1, role: 'user', text: 'Câu hỏi', status: 'complete' },
+      { id: 2, requestId: 1, role: 'assistant', text: 'Phần đã nhận', status: 'pending' },
+    ]);
+    (app as any).conversations.set([{
+      id: 1,
+      title: 'Câu hỏi',
+      messages: (app as any).messages(),
+    }]);
+
+    (app as any).setAssistantError(1, 2, 'Kết nối tới gateway bị gián đoạn. Hãy thử gửi lại.');
+
+    expect((app as any).messages()[1].text).toBe('Phần đã nhận');
+    expect((app as any).messages()[1].text).not.toContain('Lỗi:');
+    expect((app as any).error()).toContain('Kết nối tới gateway');
+  });
+
   it('uses the Medical Harness Framework brand label', () => {
     const chatService = {
       health: vi.fn().mockResolvedValue(undefined),

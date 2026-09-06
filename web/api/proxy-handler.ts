@@ -118,6 +118,16 @@ export async function proxyRequest(
       }
       response.write(chunk.value);
     }
+  } catch {
+    if (upstream.headers.get('content-type')?.includes('text/event-stream')) {
+      try {
+        response.write(new TextEncoder().encode(
+          'data: {"type":"error","error":{"code":"backend_stream_interrupted","message":"Backend stream was interrupted."}}\n\n',
+        ));
+      } catch {
+        // The browser may already have disconnected from the proxy.
+      }
+    }
   } finally {
     response.end();
   }

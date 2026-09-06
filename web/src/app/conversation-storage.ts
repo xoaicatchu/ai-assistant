@@ -7,7 +7,7 @@ export interface StoredConversation {
   id: number;
   title: string;
   messages: ViewMessage[];
-  shareId?: string;
+  serverId?: string;
 }
 
 export interface ConversationStateSnapshot {
@@ -96,8 +96,11 @@ function normalizeConversation(value: unknown): StoredConversation | null {
   const title = typeof value['title'] === 'string'
     ? value['title'].trim().slice(0, 80) || 'Cuộc trò chuyện mới'
     : 'Cuộc trò chuyện mới';
-  const shareId = typeof value['shareId'] === 'string' && isOpaqueConversationId(value['shareId'])
-    ? value['shareId']
+  const storedServerId = typeof value['serverId'] === 'string'
+    ? value['serverId']
+    : value['shareId'];
+  const serverId = typeof storedServerId === 'string' && isOpaqueConversationId(storedServerId)
+    ? storedServerId
     : undefined;
   const rawMessages = Array.isArray(value['messages']) ? value['messages'] : [];
   const seenMessageIds = new Set<number>();
@@ -111,7 +114,7 @@ function normalizeConversation(value: unknown): StoredConversation | null {
       return true;
     });
 
-  return { id, title, messages, ...(shareId ? { shareId } : {}) };
+  return { id, title, messages, ...(serverId ? { serverId } : {}) };
 }
 
 function normalizeMessage(value: unknown): ViewMessage | null {
@@ -126,9 +129,9 @@ function normalizeMessage(value: unknown): ViewMessage | null {
   const status = VALID_MESSAGE_STATUSES.includes(rawStatus as MessageStatus)
     ? rawStatus as MessageStatus
     : null;
-  const text = typeof value['text'] === 'string' ? value['text'] : null;
+  const rawText = typeof value['text'] === 'string' ? value['text'] : null;
 
-  if (!id || !requestId || !role || !status || text === null) {
+  if (!id || !requestId || !role || !status || rawText === null) {
     return null;
   }
   if (role === 'assistant' && status === 'pending') {
@@ -137,6 +140,7 @@ function normalizeMessage(value: unknown): ViewMessage | null {
   }
 
   const image = normalizeImage(value['image']);
+  const text = removeLegacyErrorBlock(rawText, role, status);
   if (role === 'user' && !text && !image) {
     return null;
   }
@@ -149,6 +153,14 @@ function normalizeMessage(value: unknown): ViewMessage | null {
     status: role === 'user' ? 'complete' : status,
     ...(image ? { image } : {}),
   };
+}
+
+function removeLegacyErrorBlock(text: string, role: ViewMessage['role'], status: MessageStatus): string {
+  if (role !== 'assistant' || status !== 'error') {
+    return text;
+  }
+
+  return text.replace(/\n+\s*>\s*\*\*Lỗi:\*\*[\s\S]*$/u, '').trimEnd();
 }
 
 function normalizeImage(value: unknown): ImageAttachment | undefined {

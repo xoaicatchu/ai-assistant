@@ -33,7 +33,14 @@ interface ChatStreamChunk {
   choices?: Array<{
     delta?: { content?: string | null };
   }>;
-  error?: { message?: string | null };
+  error?: { code?: string | null; message?: string | null };
+}
+
+class ChatStreamError extends Error {
+  constructor(message: string, readonly code?: string | null) {
+    super(message);
+    this.name = 'ChatStreamError';
+  }
 }
 
 @Injectable({ providedIn: 'root' })
@@ -49,8 +56,19 @@ export class ChatService {
     messages: ChatMessage[],
     signal: AbortSignal,
     onDelta: (text: string) => void,
+    onRecovered: (text: string) => void = onDelta,
   ): Promise<void> {
-    const response = await this.request(model, messages, true, signal);
+    let response: Response;
+    try {
+      response = await this.request(model, messages, true, signal);
+    } catch (caughtError) {
+      if (!signal.aborted && this.isTransientTransportError(caughtError)) {
+        await this.recoverWithCompletion(model, messages, signal, onRecovered);
+        return;
+      }
+
+      throw this.toGatewayError(caughtError);
+    }
     if (!response.body) {
       throw new Error('Gateway did not return a streaming response body.');
     }
@@ -59,25 +77,39 @@ export class ChatService {
     const decoder = new TextDecoder();
     let pending = '';
 
-    while (true) {
-      const { done, value } = await reader.read();
-      pending += decoder.decode(value, { stream: !done });
-      const lines = pending.split(/\r?\n/);
-      pending = lines.pop() ?? '';
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        pending += decoder.decode(value, { stream: !done });
+        const lines = pending.split(/\r?\n/);
+        pending = lines.pop() ?? '';
 
-      for (const line of lines) {
-        if (this.consumeSseLine(line, onDelta)) {
-          await reader.cancel();
+        for (const line of lines) {
+          if (this.consumeSseLine(line, onDelta)) {
+            await reader.cancel();
+            return;
+          }
+        }
+
+        if (done) {
+          if (pending) {
+            this.consumeSseLine(pending, onDelta);
+          }
           return;
         }
       }
-
-      if (done) {
-        if (pending) {
-          this.consumeSseLine(pending, onDelta);
+    } catch (caughtError) {
+      if (!signal.aborted && this.isTransientTransportError(caughtError)) {
+        try {
+          await reader.cancel();
+        } catch {
+          // The reader may already be closed after a transport failure.
         }
+        await this.recoverWithCompletion(model, messages, signal, onRecovered);
         return;
       }
+
+      throw this.toGatewayError(caughtError);
     }
   }
 
@@ -125,12 +157,17 @@ export class ChatService {
     stream: boolean,
     signal: AbortSignal,
   ): Promise<Response> {
-    const response = await fetch(apiUrl('/v1/chat/completions'), {
-      method: 'POST',
-      headers: this.authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ model, messages, stream }),
-      signal,
-    });
+    let response: Response;
+    try {
+      response = await fetch(apiUrl('/v1/chat/completions'), {
+        method: 'POST',
+        headers: this.authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ model, messages, stream }),
+        signal,
+      });
+    } catch (caughtError) {
+      throw this.toGatewayError(caughtError);
+    }
 
     if (!response.ok) {
       throw new Error(await this.readError(response));
@@ -144,13 +181,18 @@ export class ChatService {
     method: 'GET' | 'POST' | 'PUT',
     body?: unknown,
   ): Promise<Response> {
-    const response = await fetch(serverApiUrl(path), {
-      method,
-      headers: body === undefined
-        ? this.authHeaders()
-        : this.authHeaders({ 'Content-Type': 'application/json' }),
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    });
+    let response: Response;
+    try {
+      response = await fetch(serverApiUrl(path), {
+        method,
+        headers: body === undefined
+          ? this.authHeaders()
+          : this.authHeaders({ 'Content-Type': 'application/json' }),
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+    } catch (caughtError) {
+      throw this.toGatewayError(caughtError);
+    }
     if (!response.ok) {
       throw new Error(await this.readError(response));
     }
@@ -191,13 +233,54 @@ export class ChatService {
     }
 
     const chunk = JSON.parse(data) as ChatStreamChunk;
-    if (chunk.error?.message) {
-      throw new Error(chunk.error.message);
+    if (chunk.error) {
+      throw new ChatStreamError(
+        chunk.error.message || 'Gateway stream failed.',
+        chunk.error.code,
+      );
     }
     const text = chunk.choices?.[0]?.delta?.content;
     if (text) {
       onDelta(text);
     }
     return false;
+  }
+
+  private async recoverWithCompletion(
+    model: string,
+    messages: ChatMessage[],
+    signal: AbortSignal,
+    onRecovered: (text: string) => void,
+  ): Promise<void> {
+    const text = await this.complete(model, messages, signal);
+    if (!text.trim()) {
+      throw new Error('Gateway returned an empty response after the streaming connection failed.');
+    }
+    onRecovered(text);
+  }
+
+  private isTransientTransportError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+
+    return (
+      (error instanceof ChatStreamError && error.code === 'backend_stream_interrupted')
+      || /load failed|failed to fetch|networkerror|network request failed|kết nối tới gateway bị gián đoạn/iu.test(error.message)
+    );
+  }
+
+  private toGatewayError(error: unknown): Error {
+    if (this.isAbortError(error)) {
+      return error instanceof Error ? error : new Error('Request was cancelled.');
+    }
+    if (this.isTransientTransportError(error)) {
+      return new Error('Kết nối tới gateway bị gián đoạn. Hãy thử gửi lại.');
+    }
+    return error instanceof Error ? error : new Error('Không thể kết nối tới gateway.');
+  }
+
+  private isAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'AbortError';
   }
 }
