@@ -88,8 +88,29 @@ builder.Services.AddSingleton<IChatProvider>(services =>
 
 var app = builder.Build();
 
-app.Services.GetRequiredService<SqliteDatabase>().Initialize();
-app.Services.GetRequiredService<AdminAuthService>().EnsureSeeded();
+var database = app.Services.GetRequiredService<SqliteDatabase>();
+var databaseInitialized = false;
+try
+{
+    database.Initialize();
+    databaseInitialized = true;
+}
+catch (Exception exception)
+{
+    app.Logger.LogError(exception, "SQLite initialization failed; the API will remain available without persistence.");
+}
+
+if (databaseInitialized)
+{
+    try
+    {
+        app.Services.GetRequiredService<AdminAuthService>().EnsureSeeded();
+    }
+    catch (Exception exception)
+    {
+        app.Logger.LogError(exception, "Admin account seeding failed; the API will remain available.");
+    }
+}
 
 app.UseCors("frontend");
 app.UseAuthentication();
