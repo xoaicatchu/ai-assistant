@@ -37,7 +37,7 @@ import {
   ViewMessage,
 } from './conversation-state';
 import { renderMarkdown } from './markdown-renderer';
-import { allModelOptions } from './model-picker';
+import { allModelOptions, modelLabel } from './model-picker';
 import { runtimeConfig, setRuntimeApiBaseUrl } from './runtime-config';
 import { scrollToBottom, shouldAutoScroll, type ConversationScrollReason } from './scrolling';
 import {
@@ -422,6 +422,10 @@ export class App {
 
   protected renderMarkdown(content: string): string {
     return renderMarkdown(content);
+  }
+
+  protected modelDisplayLabel(): string {
+    return modelLabel(this.model());
   }
 
   protected stop(): void {

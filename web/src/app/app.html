@@ -224,6 +224,7 @@
                     <option [value]="option.route">{{ option.label }}</option>
                   }
                 </select>
+                <span class="model-select-label" aria-hidden="true">{{ modelDisplayLabel() }}</span>
                 <svg lucideChevronDown class="model-select-chevron" aria-hidden="true"></svg>
               </div>
               @if (busy()) {
