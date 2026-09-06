@@ -334,7 +334,7 @@ textarea:disabled {
 }
 
 .setup-panel {
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .conversation-tabs {
