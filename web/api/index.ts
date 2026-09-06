@@ -1,4 +1,9 @@
-import { proxyRequest, type ProxyRequest, type ProxyResponse } from './proxy-handler';
+import {
+  proxyRequest,
+  resolveBackendPath,
+  type ProxyRequest,
+  type ProxyResponse,
+} from './proxy-handler';
 
 interface VercelRequest extends ProxyRequest {
   query?: Record<string, string | string[] | undefined>;
@@ -16,5 +21,10 @@ export default async function handler(request: VercelRequest, response: ProxyRes
   const processRef = (globalThis as typeof globalThis & {
     process?: { env?: Record<string, string | undefined> };
   }).process;
-  await proxyRequest(request, response, processRef?.env?.PROXY_AGENT_BACKEND_URL ?? '', requestPath);
+  await proxyRequest(
+    request,
+    response,
+    processRef?.env?.PROXY_AGENT_BACKEND_URL ?? '',
+    resolveBackendPath(requestPath),
+  );
 }

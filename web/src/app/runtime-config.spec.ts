@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { apiUrl, runtimeConfig, setRuntimeApiBaseUrl } from './runtime-config';
+import { apiUrl, runtimeConfig, serverApiUrl, setRuntimeApiBaseUrl } from './runtime-config';
 
 describe('runtime config', () => {
   afterEach(() => {
@@ -11,6 +11,7 @@ describe('runtime config', () => {
 
     expect(runtimeConfig.apiBaseUrl).toBe('https://api.example.com');
     expect(apiUrl('/health')).toBe('https://api.example.com/health');
+    expect(serverApiUrl('/conversations')).toBe('https://api.example.com/api/conversations');
   });
 
   it('falls back to the generated URL for invalid setup input', () => {
@@ -27,10 +28,12 @@ describe('runtime config', () => {
 
     expect(runtimeConfig.apiBaseUrl).toBe('https://aishop24h.com');
     expect(apiUrl('/health')).toBe('https://aishop24h.com/health');
+    expect(serverApiUrl('/conversations')).toBe('https://aishop24h.com/api/conversations');
 
     setRuntimeApiBaseUrl('');
     expect(runtimeConfig.apiBaseUrl).toBe('/api');
     expect(apiUrl('/health')).toBe('/api/health');
+    expect(serverApiUrl('/conversations')).toBe('/api/conversations');
 
     runtimeConfig.isVercel = originalIsVercel;
   });

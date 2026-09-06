@@ -54,6 +54,9 @@ Các giá trị cấu hình:
 | `WebSearch:MaxResults` | Số nguồn tối đa mỗi lần search, mặc định 5 |
 | `WebSearch:MaxToolCalls` | Ngân sách lượt search trước khi agent ép model tổng hợp, mặc định 2 |
 | `WebSearch:TimeoutSeconds` | Timeout gọi Tavily, mặc định 30 giây |
+| `Storage:SqlitePath` | Đường dẫn database SQLite, mặc định `App_Data/proxy-agent.db` |
+| `Admin:InitialUsername` | Tên tài khoản admin tạo lần đầu nếu database chưa có tài khoản |
+| `Admin:InitialPassword` | Mật khẩu bootstrap admin; bắt buộc dài 12-256 ký tự |
 | `Cors:AllowedOrigins` | Danh sách origin frontend được phép gọi API |
 
 ## 3. Chạy ứng dụng
@@ -80,7 +83,20 @@ Mở `http://localhost:4200`. Giao diện dùng endpoint `/v1/chat/completions`;
 
 Trong khung chat có thể dán ảnh trực tiếp từ clipboard hoặc bấm nút kẹp giấy để chọn ảnh. UI hỗ trợ JPG, PNG, WEBP và GIF tối đa 5 MB; Enter gửi tin, Shift+Enter chèn dòng mới. Ảnh được gửi dưới dạng OpenAI-compatible `image_url` content part và backend tự chuyển sang payload Vision tương ứng của OpenAI-compatible provider hoặc Anthropic.
 
-API key không được đưa vào frontend. Backend đọc key từ `appsettings.Development.json` hoặc biến môi trường.
+API key provider không được đưa vào frontend. Backend đọc key từ `appsettings.Development.json`, biến môi trường hoặc override đã lưu từ trang `/admin`.
+
+### Trang admin
+
+Đặt tài khoản bootstrap bằng User Secrets hoặc environment trước lần chạy đầu tiên:
+
+```powershell
+dotnet user-secrets set "Admin:InitialUsername" "admin" --project src/ProxyAgent.Api/ProxyAgent.Api.csproj
+dotnet user-secrets set "Admin:InitialPassword" "<mat-khau-it-nhat-12-ky-tu>" --project src/ProxyAgent.Api/ProxyAgent.Api.csproj
+```
+
+Mở `http://localhost:4200/admin`, đăng nhập, sau đó có thể lưu Base URL, API key, model mặc định của OpenAI-compatible/Anthropic và cấu hình Tavily. Mật khẩu được băm PBKDF2 và lưu trong SQLite; API key không được trả lại đầy đủ trong response admin.
+
+Nút chia sẻ tạo link `/conversation/<id>` và lưu nội dung qua API backend. SQLite được bọc sau các interface storage để có thể thay bằng PostgreSQL sau này. Với Vercel/container ngắn hạn, SQLite không đảm bảo dữ liệu tồn tại sau redeploy; production cần chuyển sang database có volume hoặc PostgreSQL.
 
 ### System prompt
 

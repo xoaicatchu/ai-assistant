@@ -31,6 +31,7 @@ describe('conversation storage', () => {
         {
           id: 7,
           title: 'Hà Nội',
+          shareId: 'abcdefghijklmnopqrstuv',
           messages: [userMessage(11, 4, 'Thời tiết hôm nay thế nào?')],
         },
       ],
@@ -48,6 +49,7 @@ describe('conversation storage', () => {
         {
           id: 7,
           title: 'Hà Nội',
+          shareId: 'abcdefghijklmnopqrstuv',
           messages: [userMessage(11, 4, 'Thời tiết hôm nay thế nào?')],
         },
       ],

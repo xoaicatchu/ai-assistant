@@ -44,10 +44,11 @@ import {
 } from './conversation-storage';
 import { renderMarkdown } from './markdown-renderer';
 import {
-  createConversationShareUrl,
-  readConversationShare,
-  type SharedConversation,
-} from './conversation-sharing';
+  createConversationUrl,
+  readConversationId,
+  type ConversationApiDocument,
+  type ConversationApiMessage,
+} from './conversation-link';
 import {
   allModelOptions,
   modelCapabilitiesForRoute,
@@ -62,6 +63,7 @@ import {
   saveSetupSettings,
 } from './setup-storage';
 import { VoiceInputController } from './voice-input';
+import { AdminPage } from './admin-page';
 
 type HealthState = 'checking' | 'online' | 'offline' | 'unconfigured';
 type ActiveTab = 'chat' | 'setup';
@@ -99,6 +101,7 @@ function maxRequestId(conversations: readonly ChatConversation[]): number {
 @Component({
   selector: 'app-root',
   imports: [
+    AdminPage,
     FormsModule,
     LucideArrowUp,
     LucideBot,
@@ -127,9 +130,10 @@ export class App implements OnDestroy {
   @ViewChild('conversation') private conversation?: ElementRef<HTMLElement>;
   @ViewChild('composerInput') private composerInput?: ElementRef<HTMLTextAreaElement>;
 
+  protected readonly isAdminRoute = globalThis.location?.pathname?.startsWith('/admin') ?? false;
   private readonly initialSetup = loadSetupSettings();
   private readonly initialConversationState = loadConversationState();
-  private readonly initialSharedConversation = readConversationShare(globalThis.location?.href ?? '');
+  private readonly initialSharedConversationId = readConversationId(globalThis.location?.href ?? '');
   protected readonly runtime = runtimeConfig;
   protected readonly brandLabel = 'MEDICAL HARNESS FRAMEWORK';
   protected readonly activeTab = signal<ActiveTab>('chat');
@@ -166,9 +170,13 @@ export class App implements OnDestroy {
   private readonly voiceInput = new VoiceInputController();
 
   constructor(private readonly chatService: ChatService) {
+    if (this.isAdminRoute) {
+      return;
+    }
+
     setRuntimeApiBaseUrl(this.initialSetup.gatewayBaseUrl);
-    if (this.initialSharedConversation) {
-      this.openSharedConversation(this.initialSharedConversation);
+    if (this.initialSharedConversationId) {
+      void this.loadSharedConversation(this.initialSharedConversationId);
     }
     void this.checkHealth();
   }
@@ -311,6 +319,7 @@ export class App implements OnDestroy {
     });
     this.busy.set(true);
 
+    let requestCompleted = false;
     try {
       await this.chatService.stream(selectedModel, requestMessages, controller.signal, (delta) => {
         if (!this.isCurrentRequest(conversationId, requestId, controller)) {
@@ -328,6 +337,8 @@ export class App implements OnDestroy {
         return;
       }
 
+      requestCompleted = true;
+
       const assistant = this.conversationMessages(conversationId).find((message) => message.id === assistantId);
       if (assistant && !assistant.text) {
         this.setAssistantError(conversationId, assistantId, 'Gateway trả về thành công nhưng không có nội dung text.');
@@ -341,8 +352,12 @@ export class App implements OnDestroy {
     } catch (caughtError) {
       if (!controller.signal.aborted && this.isCurrentRequest(conversationId, requestId, controller)) {
         this.setAssistantError(conversationId, assistantId, this.errorMessage(caughtError));
+        requestCompleted = true;
       }
     } finally {
+      if (requestCompleted) {
+        await this.syncSharedConversation(conversationId);
+      }
       if (this.activeRequests.get(conversationId)?.controller === controller) {
         this.activeRequests.delete(conversationId);
         if (this.activeConversationId() === conversationId) {
@@ -375,14 +390,35 @@ export class App implements OnDestroy {
     const conversation = this.conversations().find(
       (item) => item.id === this.activeConversationId(),
     );
-    if (!conversation || !conversation.messages.some((message) => message.text.trim())) {
+    if (!conversation) {
       this.shareMessage.set('Chưa có nội dung để tạo link chia sẻ.');
       return;
     }
 
-    const shareUrl = createConversationShareUrl(conversation, globalThis.location?.href ?? '');
+    const shareMessages = this.shareMessages(conversation.messages);
+    if (shareMessages.length === 0) {
+      this.shareMessage.set('Chưa có nội dung để tạo link chia sẻ.');
+      return;
+    }
+
+    let shareId = conversation.shareId;
+    try {
+      shareId = shareId
+        ? shareId
+        : await this.chatService.createConversation(conversation.title, shareMessages);
+      if (!conversation.shareId) {
+        this.setConversationShareId(conversation.id, shareId);
+      } else {
+        await this.chatService.updateConversation(shareId, conversation.title, shareMessages);
+      }
+    } catch {
+      this.shareMessage.set('Không thể lưu cuộc trò chuyện để tạo link chia sẻ.');
+      return;
+    }
+
+    const shareUrl = createConversationUrl(shareId, globalThis.location?.href ?? '');
     if (!shareUrl) {
-      this.shareMessage.set('Không thể tạo link chia sẻ cho cuộc trò chuyện này.');
+      this.shareMessage.set('Server trả về ID cuộc trò chuyện không hợp lệ.');
       return;
     }
 
@@ -394,21 +430,13 @@ export class App implements OnDestroy {
           url: shareUrl,
         });
         this.replaceCurrentUrl(shareUrl);
-        this.shareMessage.set(
-          conversation.messages.some((message) => message.image)
-            ? 'Đã mở chia sẻ. Ảnh đính kèm không nằm trong link.'
-            : 'Đã mở bảng chia sẻ.',
-        );
+        this.shareMessage.set('Đã mở bảng chia sẻ.');
         return;
       }
 
       await this.copyToClipboard(shareUrl);
       this.replaceCurrentUrl(shareUrl);
-      this.shareMessage.set(
-        conversation.messages.some((message) => message.image)
-          ? 'Đã sao chép link. Ảnh đính kèm không nằm trong link.'
-          : 'Đã sao chép link chia sẻ.',
-      );
+      this.shareMessage.set('Đã sao chép link chia sẻ.');
     } catch (caughtError) {
       if (this.isShareCancellation(caughtError)) {
         return;
@@ -681,7 +709,16 @@ export class App implements OnDestroy {
     }
   }
 
-  private openSharedConversation(shared: SharedConversation): void {
+  private async loadSharedConversation(shareId: string): Promise<void> {
+    try {
+      const shared = await this.chatService.getConversation(shareId);
+      this.openSharedConversation(shared);
+    } catch {
+      this.shareMessage.set('Không thể mở cuộc trò chuyện từ link này.');
+    }
+  }
+
+  private openSharedConversation(shared: ConversationApiDocument): void {
     const importedConversation = this.importSharedConversation(shared);
     const currentConversations = this.conversations();
     const hasOnlyEmptyDefault = currentConversations.length === 1 &&
@@ -693,11 +730,10 @@ export class App implements OnDestroy {
     this.activeConversationId.set(importedConversation.id);
     this.messages.set([...importedConversation.messages]);
     this.persistConversations();
-    this.removeConversationShareFromUrl();
     this.shareMessage.set('Đã mở cuộc trò chuyện từ link chia sẻ.');
   }
 
-  private importSharedConversation(shared: SharedConversation): ChatConversation {
+  private importSharedConversation(shared: ConversationApiDocument): ChatConversation {
     const requestIds = new Map<number, number>();
     const messages = shared.messages.map((message) => {
       let requestId = requestIds.get(message.requestId);
@@ -716,6 +752,7 @@ export class App implements OnDestroy {
     return {
       id: this.nextConversationId++,
       title: shared.title,
+      shareId: shared.id,
       messages,
     };
   }
@@ -725,24 +762,6 @@ export class App implements OnDestroy {
       globalThis.history?.replaceState(null, '', url);
     } catch {
       // Updating the address bar is optional; the copied/shared URL remains valid.
-    }
-  }
-
-  private removeConversationShareFromUrl(): void {
-    const href = globalThis.location?.href;
-    if (!href) {
-      return;
-    }
-
-    try {
-      const url = new URL(href);
-      if (!new URLSearchParams(url.hash.slice(1)).has('share')) {
-        return;
-      }
-      url.hash = '';
-      this.replaceCurrentUrl(url.toString());
-    } catch {
-      // Ignore malformed browser URLs and keep the imported conversation visible.
     }
   }
 
@@ -903,6 +922,46 @@ export class App implements OnDestroy {
       ),
     );
     this.persistConversations();
+  }
+
+  private setConversationShareId(conversationId: number, shareId: string): void {
+    this.conversations.update((conversations) => conversations.map((conversation) =>
+      conversation.id === conversationId ? { ...conversation, shareId } : conversation,
+    ));
+    this.persistConversations();
+  }
+
+  private async syncSharedConversation(conversationId: number): Promise<void> {
+    const conversation = this.conversations().find((item) => item.id === conversationId);
+    if (!conversation?.shareId) {
+      return;
+    }
+
+    const messages = this.shareMessages(conversation.messages);
+    if (messages.length === 0) {
+      return;
+    }
+
+    try {
+      await this.chatService.updateConversation(conversation.shareId, conversation.title, messages);
+    } catch {
+      if (this.activeConversationId() === conversationId) {
+        this.shareMessage.set('Không đồng bộ được link conversation mới nhất.');
+      }
+    }
+  }
+
+  private shareMessages(messages: readonly ViewMessage[]): ConversationApiMessage[] {
+    return messages
+      .filter((message) => Boolean(message.text.trim()))
+      .filter((message) => message.role === 'user' || message.status !== 'pending')
+      .map(({ id, requestId, role, text, status }) => ({
+        id,
+        requestId,
+        role,
+        text,
+        status: role === 'user' || status === 'pending' ? 'complete' : status,
+      }));
   }
 
   private persistConversations(): void {

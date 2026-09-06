@@ -7,7 +7,7 @@ export interface ProxyRequest {
 
 export interface ProxyResponse {
   statusCode: number;
-  setHeader(name: string, value: string): void;
+  setHeader(name: string, value: string | string[]): void;
   write(chunk: Uint8Array): boolean;
   end(chunk?: Uint8Array | string): void;
 }
@@ -31,6 +31,15 @@ export function buildBackendUrl(baseUrl: string, requestPath: string, search = '
   } catch {
     return '';
   }
+}
+
+export function resolveBackendPath(requestPath: string): string {
+  const normalizedPath = requestPath.replace(/^\/+|\/+$/gu, '');
+  if (!normalizedPath || normalizedPath === 'health' || normalizedPath.startsWith('v1/')) {
+    return normalizedPath;
+  }
+
+  return `api/${normalizedPath}`;
 }
 
 export async function proxyRequest(
@@ -66,6 +75,7 @@ export async function proxyRequest(
   copyHeader(request.headers['content-type'], headers, 'content-type');
   copyHeader(request.headers.accept, headers, 'accept');
   copyHeader(request.headers.authorization, headers, 'authorization');
+  copyHeader(request.headers.cookie, headers, 'cookie');
 
   let upstream: Response;
   try {
@@ -88,6 +98,10 @@ export async function proxyRequest(
     if (value) {
       response.setHeader(name, value);
     }
+  }
+  const setCookieHeaders = getSetCookieHeaders(upstream.headers);
+  if (setCookieHeaders.length > 0) {
+    response.setHeader('set-cookie', setCookieHeaders.length === 1 ? setCookieHeaders[0] : setCookieHeaders);
   }
 
   if (!upstream.body) {
@@ -133,6 +147,16 @@ function copyHeader(
   } else if (Array.isArray(value) && value.length > 0) {
     target[name] = value.join(', ');
   }
+}
+
+function getSetCookieHeaders(headers: Headers): string[] {
+  const headersWithSetCookie = headers as Headers & { getSetCookie?: () => string[] };
+  if (typeof headersWithSetCookie.getSetCookie === 'function') {
+    return headersWithSetCookie.getSetCookie();
+  }
+
+  const value = headers.get('set-cookie');
+  return value ? [value] : [];
 }
 
 function readRequestBody(request: ProxyRequest): Promise<Uint8Array> {

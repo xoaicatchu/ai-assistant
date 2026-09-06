@@ -7,6 +7,7 @@ export interface StoredConversation {
   id: number;
   title: string;
   messages: ViewMessage[];
+  shareId?: string;
 }
 
 export interface ConversationStateSnapshot {
@@ -95,6 +96,9 @@ function normalizeConversation(value: unknown): StoredConversation | null {
   const title = typeof value['title'] === 'string'
     ? value['title'].trim().slice(0, 80) || 'Cuộc trò chuyện mới'
     : 'Cuộc trò chuyện mới';
+  const shareId = typeof value['shareId'] === 'string' && isOpaqueConversationId(value['shareId'])
+    ? value['shareId']
+    : undefined;
   const rawMessages = Array.isArray(value['messages']) ? value['messages'] : [];
   const seenMessageIds = new Set<number>();
   const messages = rawMessages
@@ -107,7 +111,7 @@ function normalizeConversation(value: unknown): StoredConversation | null {
       return true;
     });
 
-  return { id, title, messages };
+  return { id, title, messages, ...(shareId ? { shareId } : {}) };
 }
 
 function normalizeMessage(value: unknown): ViewMessage | null {
@@ -193,4 +197,8 @@ function positiveInteger(value: unknown): number | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function isOpaqueConversationId(value: string): boolean {
+  return /^[A-Za-z0-9_-]{22}$/u.test(value);
 }

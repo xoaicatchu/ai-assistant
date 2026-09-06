@@ -28,3 +28,15 @@ export function apiUrl(path: string): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${runtimeConfig.apiBaseUrl}${normalizedPath}`;
 }
+
+export function serverApiUrl(path: string): string {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const baseUrl = runtimeConfig.apiBaseUrl.replace(/\/+$/u, '');
+  if (baseUrl === '') {
+    return `/api${normalizedPath}`;
+  }
+
+  return baseUrl === '/api' || baseUrl.endsWith('/api')
+    ? `${baseUrl}${normalizedPath}`
+    : `${baseUrl}/api${normalizedPath}`;
+}

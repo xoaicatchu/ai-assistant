@@ -1,7 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildBackendUrl, proxyRequest, type ProxyRequest, type ProxyResponse } from './proxy-handler';
+import {
+  buildBackendUrl,
+  proxyRequest,
+  resolveBackendPath,
+  type ProxyRequest,
+  type ProxyResponse,
+} from './proxy-handler';
 
 describe('Vercel backend proxy URL', () => {
+  it('keeps legacy gateway paths and restores the API prefix for application routes', () => {
+    expect(resolveBackendPath('health')).toBe('health');
+    expect(resolveBackendPath('v1/chat/completions')).toBe('v1/chat/completions');
+    expect(resolveBackendPath('admin/session')).toBe('api/admin/session');
+    expect(resolveBackendPath('conversations/example')).toBe('api/conversations/example');
+  });
+
   it('joins the configured backend with the API path and preserves query parameters', () => {
     expect(buildBackendUrl('https://backend.example.com///', '/v1/chat/completions', '?stream=true')).toBe(
       'https://backend.example.com/v1/chat/completions?stream=true',
@@ -55,9 +68,44 @@ describe('Vercel backend proxy URL', () => {
     expect(response.headers['content-type']).toBe('text/event-stream');
     expect(response.body).toBe('data: {"ok":true}\n\n');
   });
+
+  it('forwards the admin session cookie in both directions', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ authenticated: true }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+          'set-cookie': '__proxy_agent_admin=session; Path=/api/admin; HttpOnly; SameSite=Lax',
+        },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const response = createResponse();
+
+    await proxyRequest(
+      createRequest('GET', '/api/index?path=admin/session', '', undefined, '__proxy_agent_admin=session'),
+      response,
+      'https://backend.example.com',
+      'admin/session',
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://backend.example.com/admin/session',
+      expect.objectContaining({
+        headers: expect.objectContaining({ cookie: '__proxy_agent_admin=session' }),
+      }),
+    );
+    expect(response.headers['set-cookie']).toContain('__proxy_agent_admin=session');
+  });
 });
 
-function createRequest(method: string, url: string, body = '', authorization?: string): ProxyRequest {
+function createRequest(
+  method: string,
+  url: string,
+  body = '',
+  authorization?: string,
+  cookie?: string,
+): ProxyRequest {
   return {
     method,
     url,
@@ -65,6 +113,7 @@ function createRequest(method: string, url: string, body = '', authorization?: s
       'content-type': 'application/json',
       accept: 'text/event-stream',
       ...(authorization ? { authorization } : {}),
+      ...(cookie ? { cookie } : {}),
     },
     on(event, listener) {
       if (event === 'data' && body) {
@@ -83,8 +132,8 @@ function createResponse(): ProxyResponse & { body: string; headers: Record<strin
     statusCode: 0,
     headers: {} as Record<string, string>,
     body: '',
-    setHeader(name: string, value: string) {
-      this.headers[name] = value;
+    setHeader(name: string, value: string | string[]) {
+      this.headers[name] = Array.isArray(value) ? value.join('\n') : value;
     },
     write(chunk: Uint8Array) {
       this.body += new TextDecoder().decode(chunk);

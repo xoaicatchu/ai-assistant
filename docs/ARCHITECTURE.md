@@ -70,6 +70,8 @@ flowchart LR
 `src/ProxyAgent.Api/Api` chứa route và DTO bên ngoài:
 
 - `ChatEndpoints.cs`: định nghĩa `/api/chat` và `/v1/chat/completions`.
+- `ConversationEndpoints.cs`: tạo, đọc và cập nhật conversation server-backed cho link `/conversation/<id>`.
+- `AdminEndpoints.cs`: login/logout/session và các endpoint cấu hình provider được bảo vệ bằng cookie policy.
 - `GatewayContracts.cs`: schema normalized của gateway.
 - `OpenAiContracts.cs`: schema tương thích OpenAI, bao gồm tên field snake_case.
 - `ErrorHandling.cs`: đổi exception nội bộ thành HTTP status và error envelope ổn định.
@@ -96,7 +98,7 @@ Layer này không biết payload wire format của OpenAI hoặc Anthropic.
 - `WebSearchAgent.cs`: lấy tool call từ model hoặc nhận diện câu hỏi cần dữ liệu mới, gọi search, rồi nối `role=tool` hoặc search context vào lượt model kế tiếp.
 - `WebSearchContracts.cs`: options, search result và lỗi web search.
 
-Tavily key chỉ đọc ở backend qua User Secrets/environment. Search result được coi là dữ liệu tham khảo không đáng tin, không phải instruction.
+Tavily key mặc định đọc ở backend qua User Secrets/environment; trang admin có thể lưu override server-side vào storage. Search result được coi là dữ liệu tham khảo không đáng tin, không phải instruction.
 
 ### Provider/infrastructure layer
 
@@ -122,9 +124,13 @@ Cancellation từ `HttpContext.RequestAborted` được truyền xuống stream 
 
 ### Frontend layer
 
-`web/src/app/app.ts` giữ state của cuộc hội thoại và render màn hình chat. `chat.service.ts` gửi request OpenAI-compatible bằng `fetch`, đọc JSON khi tắt streaming và parse SSE khi bật streaming. `chat-content.ts` chuyển text + ảnh thành `image_url` content parts; clipboard paste và file picker đều giới hạn ảnh ở 5 MB. `composer.ts` giữ quy tắc Enter gửi, Shift+Enter xuống dòng và không submit khi IME đang composition. `runtime-config.ts` lấy URL backend từ `public/app-config.js`, file này được sinh lúc `npm start`/`npm run build`; build Vercel luôn chọn `/api`, còn deployment trực tiếp ngoài Vercel mới dùng `NG_APP_API_BASE_URL`. `setup-storage.ts` lưu Gateway Base URL, model route custom và model đang chọn ở local storage.
+`web/src/app/app.ts` giữ state của cuộc hội thoại và render màn hình chat. `chat.service.ts` gửi request OpenAI-compatible bằng `fetch`, đọc JSON khi tắt streaming và parse SSE khi bật streaming. `chat-content.ts` chuyển text + ảnh thành `image_url` content parts; clipboard paste và file picker đều giới hạn ảnh ở 5 MB. `composer.ts` giữ quy tắc Enter gửi, Shift+Enter xuống dòng và không submit khi IME đang composition. `conversation-link.ts` chỉ tạo URL chứa opaque conversation ID; nội dung chia sẻ được lưu/đọc qua API thay vì nhúng snapshot vào hash. `admin-page.ts` gọi API admin bằng cookie HttpOnly, không đưa provider key vào local storage. `runtime-config.ts` lấy URL backend từ `public/app-config.js`, file này được sinh lúc `npm start`/`npm run build`; build Vercel luôn chọn `/api`, còn deployment trực tiếp ngoài Vercel mới dùng `NG_APP_API_BASE_URL`. `setup-storage.ts` lưu Gateway Base URL, model route custom và model đang chọn ở local storage.
 
-Frontend không giữ provider API key. Local dev dùng `proxy.conf.json` để chuyển `/health`, `/api` và `/v1` sang backend local; production gọi backend qua HTTPS và backend kiểm soát origin bằng `Cors:AllowedOrigins`.
+Frontend không giữ provider key của backend; custom backend key trong phần Customize hiện vẫn là tuỳ chọn local của trình duyệt. Local dev dùng `proxy.conf.json` để chuyển `/health`, `/api` và `/v1` sang backend local; production gọi backend qua HTTPS và backend kiểm soát origin bằng `Cors:AllowedOrigins`.
+
+### Storage và admin
+
+`Storage/` định nghĩa các port `IConversationStore`, `IAdminAccountStore` và `IBackendSettingsStore`; implementation hiện tại dùng `Microsoft.Data.Sqlite`. `SqliteDatabase` tự tạo schema gồm conversation, admin account và backend settings. `AdminAuthService` chỉ seed tài khoản nếu chưa có account và đã nhận đủ `Admin:InitialUsername`/`Admin:InitialPassword`; mật khẩu lưu dưới dạng PBKDF2 hash. `BackendSettingsService` overlay override SQLite lên cấu hình environment/appsettings, vì vậy có thể thay storage implementation bằng PostgreSQL mà không đổi endpoint hoặc provider.
 
 ## Luồng request không streaming
 
@@ -225,7 +231,7 @@ Không test nào cần API key thật.
 
 ## Giới hạn MVP và hướng mở rộng
 
-Chưa có database, conversation persistence, client authentication, rate limiting, retry/circuit breaker hoặc browser-style page crawling. Web search hiện dùng kết quả và raw Markdown content do Tavily trả về.
+SQLite persistence hiện đã có cho conversation/admin/settings, nhưng chưa có client authentication, rate limiting, retry/circuit breaker hoặc browser-style page crawling. SQLite trên filesystem ngắn hạn của Vercel không phải storage production bền vững; PostgreSQL hoặc volume persistent là bước tiếp theo nếu cần giữ dữ liệu sau redeploy. Web search hiện dùng kết quả và raw Markdown content do Tavily trả về.
 
 Các extension point đã có sẵn:
 

@@ -3,7 +3,6 @@ import '@angular/compiler';
 import { App } from './app';
 import { ChatMessage, ChatService } from './chat.service';
 import { CONVERSATIONS_STORAGE_KEY } from './conversation-storage';
-import { createConversationShareUrl } from './conversation-sharing';
 
 describe('App message submission', () => {
   afterEach(() => {
@@ -53,6 +52,18 @@ describe('App message submission', () => {
     const app = new App(chatService);
 
     expect((app as any).brandLabel).toBe('MEDICAL HARNESS FRAMEWORK');
+  });
+
+  it('renders the protected admin route without starting chat health checks', () => {
+    vi.stubGlobal('location', { pathname: '/admin', href: 'https://example.com/admin' });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+    const health = vi.fn().mockResolvedValue(undefined);
+    const chatService = { health } as unknown as ChatService;
+
+    const app = new App(chatService);
+
+    expect((app as any).isAdminRoute).toBe(true);
+    expect(health).not.toHaveBeenCalled();
   });
 
   it('restores the active conversation from device storage', () => {
@@ -116,7 +127,10 @@ describe('App message submission', () => {
     vi.stubGlobal('history', { replaceState });
     vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
 
-    const chatService = { health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService;
+    const chatService = {
+      health: vi.fn().mockResolvedValue(undefined),
+      createConversation: vi.fn().mockResolvedValue('abcdefghijklmnopqrstuv'),
+    } as unknown as ChatService;
     const app = new App(chatService);
     (app as any).messages.set([
       { id: 1, requestId: 1, role: 'user', text: 'Câu hỏi chia sẻ', status: 'complete' },
@@ -126,30 +140,31 @@ describe('App message submission', () => {
     await (app as any).shareActiveConversation();
 
     expect(writeText).toHaveBeenCalledOnce();
-    expect(writeText.mock.calls[0][0]).toMatch(/^https:\/\/example\.com\/#share=/u);
+    expect(writeText.mock.calls[0][0]).toBe('https://example.com/conversation/abcdefghijklmnopqrstuv');
+    expect(chatService.createConversation).toHaveBeenCalledOnce();
     expect(replaceState).toHaveBeenCalledOnce();
     expect((app as any).shareMessage()).toContain('Đã sao chép');
   });
 
-  it('opens a shared conversation from the URL and removes the one-time hash', () => {
-    const shareUrl = createConversationShareUrl(
-      {
-        id: 9,
+  it('loads a shared conversation from its server ID without removing the URL', async () => {
+    const replaceState = vi.fn();
+    vi.stubGlobal('location', { href: 'https://example.com/conversation/abcdefghijklmnopqrstuv' });
+    vi.stubGlobal('history', { replaceState });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+
+    const chatService = {
+      health: vi.fn().mockResolvedValue(undefined),
+      getConversation: vi.fn().mockResolvedValue({
+        id: 'abcdefghijklmnopqrstuv',
         title: 'Cuộc trò chuyện được gửi',
         messages: [
           { id: 20, requestId: 8, role: 'user', text: 'Nội dung gửi cho người khác', status: 'complete' },
           { id: 21, requestId: 8, role: 'assistant', text: 'Nội dung đã chia sẻ', status: 'complete' },
         ],
-      },
-      'https://example.com/',
-    );
-    const replaceState = vi.fn();
-    vi.stubGlobal('location', { href: shareUrl });
-    vi.stubGlobal('history', { replaceState });
-    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
-
-    const chatService = { health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService;
+      }),
+    } as unknown as ChatService;
     const app = new App(chatService);
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect((app as any).messages().map((message: { text: string }) => message.text)).toEqual([
       'Nội dung gửi cho người khác',
@@ -157,6 +172,7 @@ describe('App message submission', () => {
     ]);
     expect((app as any).conversations()).toHaveLength(1);
     expect((app as any).shareMessage()).toContain('Đã mở cuộc trò chuyện');
-    expect(replaceState).toHaveBeenCalledWith(null, '', 'https://example.com/');
+    expect(chatService.getConversation).toHaveBeenCalledWith('abcdefghijklmnopqrstuv');
+    expect(replaceState).not.toHaveBeenCalled();
   });
 });

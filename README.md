@@ -10,6 +10,8 @@ Gateway HTTP trên .NET 10 để gọi OpenAI và Anthropic qua một contract t
 - Vision input từ Angular: dán/chọn ảnh JPG, PNG, WEBP hoặc GIF tối đa 5 MB; gateway map sang format của provider.
 - Client-side tool/function calling vẫn được hỗ trợ cho tool riêng của client.
 - `GET /health`: kiểm tra process mà không gọi provider.
+- `POST/GET/PUT /api/conversations`: lưu và mở conversation bằng ID ổn định để chia sẻ.
+- `/admin`: trang quản trị có đăng nhập, cấu hình provider và Tavily server-side.
 - Angular chat UI trong `web/`, chạy local ở `http://localhost:4200` và deploy static lên Vercel.
 
 Tài liệu chi tiết:
@@ -26,7 +28,7 @@ Tài liệu chi tiết:
 
 ## Cấu hình
 
-`src/ProxyAgent.Api/appsettings.json` chứa base URL, model mặc định và giá trị API key rỗng. Để chạy local, điền key vào `appsettings.Development.json` (file này đã được gitignore):
+`src/ProxyAgent.Api/appsettings.json` chứa base URL, model mặc định và giá trị API key rỗng. Để chạy local, có thể điền key vào `appsettings.Development.json` (file này đã được gitignore) hoặc đăng nhập `/admin` sau khi bootstrap tài khoản admin:
 
 ```json
 {
@@ -78,6 +80,8 @@ Nếu Project đã đặt Root Directory là `web`, giữ thiết lập đó cũ
 
 Với Vercel, để trống `NG_APP_API_BASE_URL`; frontend dùng same-origin `/api`. Tab Customize dùng để đổi backend, API key và custom model routes khi cần; backend mặc định đã quản lý cấu hình provider server-side.
 
+Website production hiện tại là `https://ai-assistant-01.vercel.app`. Nếu GitHub đang hiển thị một preview alias trong trường **Website**, sửa trường đó trong phần About của repository thành URL production này; đây chỉ là metadata của GitHub, không ảnh hưởng deployment.
+
 Backend production cần allowlist domain Vercel bằng biến môi trường:
 
 ```text
@@ -86,13 +90,27 @@ Cors__AllowedOrigins__0=https://<your-project>.vercel.app
 
 Nếu dùng custom domain, thêm origin đó ở index tiếp theo (`Cors__AllowedOrigins__1`). Không dùng `*` khi frontend gọi API production.
 
+### Admin và link conversation
+
+Tài khoản admin được tạo một lần khi database chưa có tài khoản. Cấu hình bootstrap bằng biến môi trường của backend, không commit mật khẩu:
+
+```text
+Admin__InitialUsername=admin
+Admin__InitialPassword=<mat-khau-it-nhat-12-ky-tu>
+Storage__SqlitePath=App_Data/proxy-agent.db
+```
+
+Sau khi backend khởi động, mở `https://<frontend>/admin`, đăng nhập rồi nhập Base URL, API key, model mặc định và cấu hình Tavily. API key chỉ được lưu ở backend và trang admin chỉ trả về trạng thái đã có key cùng phần che; có thể đổi mật khẩu ngay trong trang này. Các thay đổi có hiệu lực cho request mới.
+
+Nút chia sẻ trong Chat lưu conversation vào `POST /api/conversations` lần đầu, các lần sau cập nhật bằng `PUT`; link có dạng `/conversation/<id>` nên người nhận mở đúng dữ liệu từ server, không phải snapshot nằm trong URL. SQLite là storage thay thế được qua các interface trong `Storage/`, nhưng filesystem của instance Vercel/container ngắn hạn có thể bị mất khi redeploy hoặc instance thay đổi. Khi cần dữ liệu bền vững, thay implementation bằng PostgreSQL mà không phải sửa API/UI.
+
 ## Web search agent qua Tavily
 
 Backend có built-in tool `web_search`. Khi `WebSearch:Enabled=true` và có Tavily API key, agent sẽ tìm kiếm các câu hỏi có tín hiệu như “mới nhất”, “tìm trên Internet”, “nguồn”, “kèm link”, “latest” hoặc “current”, sau đó gửi kết quả nguồn vào model để tổng hợp bằng Markdown link.
 
 Backend cũng hỗ trợ system prompt dùng chung qua `Chat:SystemPrompt`. Prompt được thêm ở gateway trước lịch sử hội thoại để định hướng ngôn ngữ, độ chi tiết và cách xử lý khi thiếu dữ kiện; nó không vượt qua các giới hạn an toàn của model/provider.
 
-Để cấu hình local mà không ghi key vào source:
+Để cấu hình local mà không ghi key vào source (hoặc dùng trang `/admin` để lưu override server-side):
 
 ```powershell
 dotnet user-secrets set "WebSearch:ApiKey" "<tavily-api-key>" --project src/ProxyAgent.Api/ProxyAgent.Api.csproj

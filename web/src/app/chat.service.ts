@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import { apiUrl } from './runtime-config';
+import { apiUrl, serverApiUrl } from './runtime-config';
+import type { ConversationApiDocument, ConversationApiMessage } from './conversation-link';
 import { loadSetupSettings } from './setup-storage';
 
 export type ChatRole = 'user' | 'assistant';
@@ -91,6 +92,33 @@ export class ChatService {
     }
   }
 
+  async createConversation(title: string, messages: readonly ConversationApiMessage[]): Promise<string> {
+    const response = await this.requestConversation('/conversations', 'POST', { title, messages });
+    const payload = (await response.json()) as { id?: string };
+    if (!payload.id) {
+      throw new Error('The server did not return a conversation ID.');
+    }
+    return payload.id;
+  }
+
+  async getConversation(id: string): Promise<ConversationApiDocument> {
+    const response = await this.requestConversation(`/conversations/${encodeURIComponent(id)}`, 'GET');
+    return (await response.json()) as ConversationApiDocument;
+  }
+
+  async updateConversation(
+    id: string,
+    title: string,
+    messages: readonly ConversationApiMessage[],
+  ): Promise<ConversationApiDocument> {
+    const response = await this.requestConversation(
+      `/conversations/${encodeURIComponent(id)}`,
+      'PUT',
+      { title, messages },
+    );
+    return (await response.json()) as ConversationApiDocument;
+  }
+
   private async request(
     model: string,
     messages: ChatMessage[],
@@ -108,6 +136,24 @@ export class ChatService {
       throw new Error(await this.readError(response));
     }
 
+    return response;
+  }
+
+  private async requestConversation(
+    path: string,
+    method: 'GET' | 'POST' | 'PUT',
+    body?: unknown,
+  ): Promise<Response> {
+    const response = await fetch(serverApiUrl(path), {
+      method,
+      headers: body === undefined
+        ? this.authHeaders()
+        : this.authHeaders({ 'Content-Type': 'application/json' }),
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    if (!response.ok) {
+      throw new Error(await this.readError(response));
+    }
     return response;
   }
 

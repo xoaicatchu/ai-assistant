@@ -1,3 +1,6 @@
+@if (isAdminRoute) {
+  <app-admin-page></app-admin-page>
+} @else {
 <main class="app-shell bg-slate-50">
   <section class="chat-card mx-auto w-full max-w-[920px]" aria-label="Medical Harness Framework">
     <header class="topbar flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-7">
@@ -417,3 +420,4 @@
     }
   </section>
 </main>
+}

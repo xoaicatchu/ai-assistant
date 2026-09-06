@@ -31,9 +31,9 @@ public sealed class TavilySearchProvider : IWebSearchProvider
         {
             var settings = getSettings();
             return
-        !string.IsNullOrWhiteSpace(settings.ApiKey) &&
-        Uri.TryCreate(settings.BaseUrl, UriKind.Absolute, out var baseUri) &&
-        baseUri.Scheme is "http" or "https";
+                !string.IsNullOrWhiteSpace(settings.ApiKey) &&
+                Uri.TryCreate(settings.BaseUrl, UriKind.Absolute, out var baseUri) &&
+                baseUri.Scheme is "http" or "https";
         }
     }
 
