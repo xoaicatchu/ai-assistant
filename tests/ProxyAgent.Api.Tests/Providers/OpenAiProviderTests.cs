@@ -46,6 +46,21 @@ public sealed class OpenAiProviderTests
         Assert.Equal("provider_authentication_failed", error.Code);
     }
 
+    [Fact]
+    public async Task CompleteAsync_maps_quota_failure_to_actionable_error()
+    {
+        var handler = new RecordingHandler(
+            "{\"error\":{\"message\":\"You exceeded your current quota\",\"code\":\"insufficient_quota\"}}",
+            HttpStatusCode.PaymentRequired);
+        var provider = CreateProvider(handler);
+
+        var error = await Assert.ThrowsAsync<ProviderQuotaException>(() =>
+            provider.CompleteAsync(RequestWithTool(), Selection("gpt-test"), CancellationToken.None));
+
+        Assert.Equal("provider_quota_exceeded", error.Code);
+        Assert.Equal("The upstream provider quota has been exceeded.", error.Message);
+    }
+
     private static OpenAiProvider CreateProvider(RecordingHandler handler)
     {
         var client = new HttpClient(handler);

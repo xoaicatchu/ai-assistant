@@ -156,10 +156,12 @@ public sealed class OpenAiProvider(HttpClient httpClient, IOptions<ProviderOptio
                 return response;
             }
 
+            var statusCode = response.StatusCode;
             response.Dispose();
-            throw response.StatusCode switch
+            throw statusCode switch
             {
                 HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => new ProviderAuthenticationException(Name),
+                HttpStatusCode.PaymentRequired => new ProviderQuotaException(Name),
                 >= HttpStatusCode.BadRequest and < HttpStatusCode.InternalServerError => new ProviderRequestException(Name),
                 _ => new ProviderUnavailableException(Name)
             };

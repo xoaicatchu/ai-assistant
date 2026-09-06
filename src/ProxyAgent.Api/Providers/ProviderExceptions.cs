@@ -23,6 +23,11 @@ public sealed class ProviderAuthenticationException(string provider)
 {
 }
 
+public sealed class ProviderQuotaException(string provider)
+    : ProviderException(provider, "provider_quota_exceeded", "The upstream provider quota has been exceeded.")
+{
+}
+
 public sealed class ProviderRequestException(string provider, Exception? innerException = null)
     : ProviderException(provider, "provider_request_failed", "The upstream provider rejected the request.", innerException)
 {

@@ -48,6 +48,7 @@ public static class ErrorHandling
         ApiValidationException validation => new(400, "invalid_request", validation.Message, null),
         ProviderNotConfiguredException notConfigured => new(503, notConfigured.Code, notConfigured.Message, notConfigured.Provider),
         ProviderAuthenticationException authentication => new(502, authentication.Code, authentication.Message, authentication.Provider),
+        ProviderQuotaException quota => new(502, quota.Code, quota.Message, quota.Provider),
         ProviderRequestException request => new(502, request.Code, request.Message, request.Provider),
         ProviderUnavailableException unavailable => new(502, unavailable.Code, unavailable.Message, unavailable.Provider),
         WebSearchException search => new(502, search.Code, search.Message, "tavily"),
