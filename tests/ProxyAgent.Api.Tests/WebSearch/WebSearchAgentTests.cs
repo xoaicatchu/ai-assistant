@@ -100,6 +100,27 @@ public sealed class WebSearchAgentTests
     }
 
     [Fact]
+    public async Task CompleteAsync_executes_textual_tool_calls_without_returning_markup()
+    {
+        var provider = new FakeChatProvider(emitTextToolCall: true);
+        var webSearch = new FakeWebSearchProvider();
+        var agent = CreateAgent(provider, webSearch);
+
+        var response = await agent.CompleteAsync(
+            new NormalizedChatRequest
+            {
+                Model = "openai:test-model",
+                Messages = [new ChatMessage { Role = "user", Content = "Thời tiết Hà Nội hôm nay thế nào?" }]
+            },
+            CancellationToken.None);
+
+        Assert.Equal("Tổng hợp từ nguồn web.", response.Message.Content);
+        Assert.Equal(2, provider.Requests.Count);
+        Assert.Equal(2, webSearch.SearchCount);
+        Assert.DoesNotContain("<tool_call>", response.Message.Content, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task StreamAsync_forces_final_answer_when_tool_call_budget_is_exhausted()
     {
         var provider = new RepeatingToolCallProvider();
@@ -127,6 +148,34 @@ public sealed class WebSearchAgentTests
         Assert.Equal(2, webSearch.SearchCount);
     }
 
+    [Fact]
+    public async Task StreamAsync_executes_textual_tool_calls_without_streaming_markup()
+    {
+        var provider = new FakeChatProvider(emitTextToolCall: true);
+        var webSearch = new FakeWebSearchProvider();
+        var agent = CreateAgent(provider, webSearch);
+        var events = new List<ChatStreamEvent>();
+
+        await foreach (var item in agent.StreamAsync(
+                           new NormalizedChatRequest
+                           {
+                               Model = "openai:test-model",
+                               Stream = true,
+                               Messages = [new ChatMessage { Role = "user", Content = "Thời tiết Hà Nội hôm nay thế nào?" }]
+                           },
+                           CancellationToken.None))
+        {
+            events.Add(item);
+        }
+
+        Assert.Equal("Tổng hợp.", string.Concat(events.Select(item => item.TextDelta)));
+        Assert.DoesNotContain(events, item => item.TextDelta?.Contains("<tool_call>", StringComparison.OrdinalIgnoreCase) == true);
+        Assert.DoesNotContain(events, item => item.TextDelta?.Contains("web_search", StringComparison.OrdinalIgnoreCase) == true);
+        Assert.True(events[^1].IsDone);
+        Assert.Equal(2, provider.Requests.Count);
+        Assert.Equal(2, webSearch.SearchCount);
+    }
+
     private static WebSearchAgent CreateAgent(
         IChatProvider provider,
         IWebSearchProvider webSearchProvider,
@@ -151,7 +200,7 @@ public sealed class WebSearchAgentTests
             }));
     }
 
-    private sealed class FakeChatProvider : IChatProvider
+    private sealed class FakeChatProvider(bool emitTextToolCall = false) : IChatProvider
     {
         public string Name => "openai";
         public List<NormalizedChatRequest> Requests { get; } = [];
@@ -172,19 +221,30 @@ public sealed class WebSearchAgentTests
                 Model = selection.Model,
                 Message = hasToolResult
                     ? new ChatMessage { Role = "assistant", Content = "Tổng hợp từ nguồn web." }
-                    : new ChatMessage
-                    {
-                        Role = "assistant",
-                        ToolCalls =
-                        [
-                            new ChatToolCall
-                            {
-                                Id = "call-search",
-                                Name = "web_search",
-                                ArgumentsJson = "{\"query\":\"thông tin mới\"}"
-                            }
-                        ]
-                    },
+                    : emitTextToolCall
+                        ? new ChatMessage
+                        {
+                            Role = "assistant",
+                            Content = """
+                                <tool_call>
+                                web_search[{"query":"thông tin mới"}]
+                                web_search with snippets[{"query":"nguồn mới"}]
+                                </tool_call>
+                                """
+                        }
+                        : new ChatMessage
+                        {
+                            Role = "assistant",
+                            ToolCalls =
+                            [
+                                new ChatToolCall
+                                {
+                                    Id = "call-search",
+                                    Name = "web_search",
+                                    ArgumentsJson = "{\"query\":\"thông tin mới\"}"
+                                }
+                            ]
+                        },
                 FinishReason = hasToolResult ? "stop" : "tool_calls"
             });
         }
@@ -198,25 +258,38 @@ public sealed class WebSearchAgentTests
             var hasToolResult = request.Messages.Any(message => message.Role == "tool");
             if (!hasToolResult)
             {
-                yield return new ChatStreamEvent
+                if (emitTextToolCall)
                 {
-                    Id = "stream-1",
-                    Provider = Name,
-                    Model = selection.Model,
-                    ToolCallDelta = new ChatToolCall
+                    yield return new ChatStreamEvent
                     {
-                        Id = "call-search",
-                        Name = "web_search",
-                        ArgumentsJson = "{\"query\":\"thông tin mới\"}"
-                    }
-                };
-                yield return new ChatStreamEvent
+                        Id = "stream-1",
+                        Provider = Name,
+                        Model = selection.Model,
+                        TextDelta = "<tool_call>\nweb_search[{\"query\":\"thông tin mới\"}]\nweb_search with snippets[{\"query\":\"nguồn mới\"}]\n</tool_call>"
+                    };
+                }
+                else
                 {
-                    Id = "stream-1",
-                    Provider = Name,
-                    Model = selection.Model,
-                    FinishReason = "tool_calls"
-                };
+                    yield return new ChatStreamEvent
+                    {
+                        Id = "stream-1",
+                        Provider = Name,
+                        Model = selection.Model,
+                        ToolCallDelta = new ChatToolCall
+                        {
+                            Id = "call-search",
+                            Name = "web_search",
+                            ArgumentsJson = "{\"query\":\"thông tin mới\"}"
+                        }
+                    };
+                    yield return new ChatStreamEvent
+                    {
+                        Id = "stream-1",
+                        Provider = Name,
+                        Model = selection.Model,
+                        FinishReason = "tool_calls"
+                    };
+                }
             }
             else
             {

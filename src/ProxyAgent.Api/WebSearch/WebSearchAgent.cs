@@ -113,6 +113,18 @@ public sealed class WebSearchAgent(
                 }
             }
 
+            var assistantContent = string.Concat(textEvents.Select(item => item.TextDelta));
+            var parsedTextToolCalls = TextToolCallParser.Parse(assistantContent);
+            if (toolCalls.Count == 0 && parsedTextToolCalls.ToolCalls.Count > 0)
+            {
+                toolCalls.AddRange(parsedTextToolCalls.ToolCalls);
+            }
+
+            if (parsedTextToolCalls.ToolCalls.Count > 0)
+            {
+                assistantContent = parsedTextToolCalls.AssistantText;
+            }
+
             if (toolCalls.Count == 0)
             {
                 foreach (var item in textEvents)
@@ -148,7 +160,7 @@ public sealed class WebSearchAgent(
             var assistantMessage = new ChatMessage
             {
                 Role = "assistant",
-                Content = string.Concat(textEvents.Select(item => item.TextDelta)),
+                Content = assistantContent,
                 ToolCalls = executableToolCalls
             };
             var toolMessages = await ExecuteToolCallsAsync(executableToolCalls, cancellationToken);
@@ -179,7 +191,10 @@ public sealed class WebSearchAgent(
         while (true)
         {
             var response = await chatOrchestrator.CompleteAsync(current, cancellationToken);
-            var toolCalls = response.Message.ToolCalls;
+            var parsedTextToolCalls = TextToolCallParser.Parse(response.Message.Content);
+            var toolCalls = response.Message.ToolCalls.Count > 0
+                ? response.Message.ToolCalls
+                : parsedTextToolCalls.ToolCalls;
             if (toolCalls.Count == 0)
             {
                 return response;
@@ -196,7 +211,13 @@ public sealed class WebSearchAgent(
             usedToolCalls += executableToolCalls.Length;
 
             var toolMessages = await ExecuteToolCallsAsync(executableToolCalls, cancellationToken);
-            var assistantMessage = response.Message with { ToolCalls = executableToolCalls };
+            var assistantMessage = response.Message with
+            {
+                Content = parsedTextToolCalls.ToolCalls.Count > 0
+                    ? parsedTextToolCalls.AssistantText
+                    : response.Message.Content,
+                ToolCalls = executableToolCalls
+            };
             current = current with
             {
                 Messages = current.Messages.Concat([assistantMessage]).Concat(toolMessages).ToArray(),
