@@ -1,7 +1,7 @@
 @if (isAdminRoute) {
   <app-admin-page></app-admin-page>
 } @else {
-<main class="app-shell bg-slate-50">
+<main class="app-shell bg-slate-50" (click)="closeServerMenu()">
   <section class="chat-card mx-auto w-full max-w-[920px]" aria-label="Medical Harness Framework">
     <header class="topbar flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-7">
       <div class="brand flex min-w-0 items-center gap-3">
@@ -41,6 +41,61 @@
       </div>
 
       <div class="topbar-actions flex items-center gap-2">
+        <div class="server-switcher" (click)="$event.stopPropagation()">
+          <button
+            class="settings-button"
+            type="button"
+            [class.active-settings]="serverMenuOpen()"
+            [attr.aria-expanded]="serverMenuOpen()"
+            aria-haspopup="menu"
+            aria-label="Đổi server"
+            title="Đổi server"
+            (click)="toggleServerMenu()"
+          >
+            <svg lucideServer class="h-4 w-4" aria-hidden="true"></svg>
+          </button>
+          @if (serverMenuOpen()) {
+            <div class="server-menu" role="menu" aria-label="Chọn server">
+              <div class="server-menu-heading">Server model</div>
+              <button
+                class="server-menu-option"
+                type="button"
+                role="menuitemradio"
+                [attr.aria-checked]="isUsingDefaultServer()"
+                [class.is-selected]="isUsingDefaultServer()"
+                (click)="switchServer('default')"
+              >
+                <span>
+                  <strong>Server gốc</strong>
+                  <small>/api của ứng dụng</small>
+                </span>
+                @if (isUsingDefaultServer()) {
+                  <span class="server-menu-check" aria-hidden="true">✓</span>
+                }
+              </button>
+              <button
+                class="server-menu-option"
+                type="button"
+                role="menuitemradio"
+                [disabled]="!hasCustomServer()"
+                [attr.aria-checked]="!isUsingDefaultServer()"
+                [class.is-selected]="!isUsingDefaultServer()"
+                (click)="switchServer('custom')"
+              >
+                <span>
+                  <strong>Server tùy chỉnh</strong>
+                  <small>{{ customServerLabel() }}</small>
+                </span>
+                @if (!isUsingDefaultServer() && hasCustomServer()) {
+                  <span class="server-menu-check" aria-hidden="true">✓</span>
+                }
+              </button>
+              <button class="server-menu-customize" type="button" (click)="openCustomizeFromServerMenu()">
+                Mở Customize để sửa server
+              </button>
+            </div>
+          }
+        </div>
         <button
           id="customize-button"
           class="settings-button"
@@ -149,26 +204,41 @@
                 } @else if (message.role === 'assistant' && message.status === 'pending') {
                   <div class="typing" aria-label="Assistant đang trả lời"><span></span><span></span><span></span></div>
                 }
-                @if (message.role === 'assistant' && message.text && message.status !== 'pending') {
+                @if (message.role === 'assistant' && message.status !== 'pending' && (message.text || canReplayAssistant(message.id))) {
                   <div class="message-actions">
-                    <button
-                      class="message-action-button"
-                      type="button"
-                      (click)="copyAssistantMessage(message.id)"
-                      aria-label="Sao chép câu trả lời"
-                      title="Sao chép câu trả lời"
-                    >
-                      <svg lucideCopy class="h-3.5 w-3.5" aria-hidden="true"></svg>
-                    </button>
-                    <button
-                      class="message-action-button"
-                      type="button"
-                      (click)="shareActiveConversation(message.id)"
-                      aria-label="Chia sẻ cuộc trò chuyện"
-                      title="Chia sẻ cuộc trò chuyện"
-                    >
-                      <svg lucideShare2 class="h-3.5 w-3.5" aria-hidden="true"></svg>
-                    </button>
+                    @if (message.text) {
+                      <button
+                        class="message-action-button"
+                        type="button"
+                        (click)="copyAssistantMessage(message.id)"
+                        aria-label="Sao chép câu trả lời"
+                        title="Sao chép câu trả lời"
+                      >
+                        <svg lucideCopy class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                      </button>
+                    }
+                    @if (canReplayAssistant(message.id)) {
+                      <button
+                        class="message-action-button"
+                        type="button"
+                        (click)="replayAssistantMessage(message.id)"
+                        aria-label="Tạo lại câu trả lời"
+                        title="Tạo lại câu trả lời"
+                      >
+                        <svg lucideRefreshCw class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                      </button>
+                    }
+                    @if (message.text) {
+                      <button
+                        class="message-action-button"
+                        type="button"
+                        (click)="shareActiveConversation(message.id)"
+                        aria-label="Chia sẻ cuộc trò chuyện"
+                        title="Chia sẻ cuộc trò chuyện"
+                      >
+                        <svg lucideShare2 class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                      </button>
+                    }
                     @if (messageActionFeedback()[message.id]; as feedback) {
                       <span
                         class="message-action-feedback"
@@ -179,17 +249,6 @@
                   </div>
                 }
               </div>
-              @if (message.role === 'user' && canRetry(message.id)) {
-                <button
-                  class="retry-button"
-                  type="button"
-                  (click)="retryMessage(message.id)"
-                  aria-label="Gửi lại tin nhắn"
-                  title="Gửi lại tin nhắn"
-                >
-                  <svg lucideRefreshCw class="h-3.5 w-3.5" aria-hidden="true"></svg>
-                </button>
-              }
             </article>
           }
 
@@ -257,7 +316,7 @@
                   class="model-select"
                   [ngModel]="model()"
                   (ngModelChange)="onModelChange($event)"
-                  [disabled]="busy() || isSharedRouteBlocked()"
+                  [disabled]="isSharedRouteBlocked()"
                   name="composer-model"
                   aria-label="Model"
                   [attr.title]="selectedModelCapabilitySummary()"

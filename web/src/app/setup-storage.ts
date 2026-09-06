@@ -5,6 +5,7 @@ const LEGACY_DEFAULT_MODEL = 'x-ai/grok-4.6';
 
 export interface SetupSettings {
   gatewayBaseUrl: string;
+  customGatewayBaseUrl: string;
   apiKey: string;
   customModels: string[];
   selectedModel: string;
@@ -12,6 +13,7 @@ export interface SetupSettings {
 
 export interface SetupSettingsInput {
   gatewayBaseUrl?: string | null;
+  customGatewayBaseUrl?: string | null;
   apiKey?: string | null;
   customModels?: string | string[] | null;
   selectedModel?: string | null;
@@ -19,6 +21,7 @@ export interface SetupSettingsInput {
 
 export const DEFAULT_SETUP_SETTINGS: SetupSettings = {
   gatewayBaseUrl: '',
+  customGatewayBaseUrl: '',
   apiKey: '',
   customModels: [],
   selectedModel: 'deepseek/deepseek-v4-flash',
@@ -96,6 +99,7 @@ export function saveSetupSettings(settings: SetupSettingsInput): SetupSettings {
 function normalizeSetup(settings: SetupSettingsInput): SetupSettings {
   const customModels = normalizeModelRoutes(settings.customModels);
   const gatewayBaseUrl = normalizeGatewayBaseUrl(settings.gatewayBaseUrl);
+  const customGatewayBaseUrl = normalizeGatewayBaseUrl(settings.customGatewayBaseUrl) || gatewayBaseUrl;
   const apiKey = settings.apiKey?.trim() ?? '';
   const selectedModel = settings.selectedModel?.trim() ?? '';
   const availableRoutes = new Set([
@@ -105,6 +109,7 @@ function normalizeSetup(settings: SetupSettingsInput): SetupSettings {
 
   return {
     gatewayBaseUrl,
+    customGatewayBaseUrl,
     apiKey,
     customModels,
     selectedModel: availableRoutes.has(selectedModel)
@@ -124,6 +129,7 @@ function readStorage(): string | null {
 function cloneDefaults(): SetupSettings {
   return {
     gatewayBaseUrl: DEFAULT_SETUP_SETTINGS.gatewayBaseUrl,
+    customGatewayBaseUrl: DEFAULT_SETUP_SETTINGS.customGatewayBaseUrl,
     apiKey: DEFAULT_SETUP_SETTINGS.apiKey,
     customModels: [...DEFAULT_SETUP_SETTINGS.customModels],
     selectedModel: DEFAULT_SETUP_SETTINGS.selectedModel,

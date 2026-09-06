@@ -3,6 +3,7 @@ import '@angular/compiler';
 import { App } from './app';
 import { ChatMessage, ChatService, ConversationRequestError } from './chat.service';
 import { CONVERSATIONS_STORAGE_KEY } from './conversation-storage';
+import { setRuntimeApiBaseUrl } from './runtime-config';
 
 describe('App message submission', () => {
   afterEach(() => {
@@ -538,5 +539,91 @@ describe('App message submission', () => {
     expect((app as any).activeConversationId()).toBe(2);
     expect((app as any).messages()[0].text).toBe('Tab đang chọn');
     expect((app as any).sharedRouteState()).toBe('none');
+  });
+
+  it('replays an assistant answer from the selected question context', async () => {
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
+      callback();
+      return 0;
+    });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+    const stream = vi.fn(async (
+      _model: string,
+      requestMessages: ChatMessage[],
+      _signal: AbortSignal,
+      onDelta: (text: string) => void,
+    ) => {
+      expect(requestMessages.map((message) => `${message.role}:${message.content}`)).toEqual([
+        'user:Câu hỏi trước',
+        'assistant:Câu trả lời trước',
+        'user:Câu hỏi cần chạy lại',
+      ]);
+      onDelta('Câu trả lời mới');
+    });
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined), stream } as unknown as ChatService);
+    const messages = [
+      { id: 1, requestId: 1, role: 'user', text: 'Câu hỏi trước', status: 'complete' },
+      { id: 2, requestId: 1, role: 'assistant', text: 'Câu trả lời trước', status: 'complete' },
+      { id: 3, requestId: 2, role: 'user', text: 'Câu hỏi cần chạy lại', status: 'complete' },
+      { id: 4, requestId: 2, role: 'assistant', text: 'Câu trả lời chưa ưng ý', status: 'complete' },
+      { id: 5, requestId: 3, role: 'user', text: 'Nhánh phía sau bị bỏ', status: 'complete' },
+      { id: 6, requestId: 3, role: 'assistant', text: 'Câu trả lời phía sau', status: 'complete' },
+    ];
+    (app as any).messages.set(messages);
+    (app as any).conversations.set([{ id: 1, title: 'Chat', serverId: 'abcdefghijklmnopqrstuv', messages }]);
+
+    await (app as any).replayAssistantMessage(4);
+
+    expect(stream).toHaveBeenCalledOnce();
+    expect((app as any).messages().map((message: { text: string }) => message.text)).toEqual([
+      'Câu hỏi trước',
+      'Câu trả lời trước',
+      'Câu hỏi cần chạy lại',
+      'Câu trả lời mới',
+    ]);
+    expect((app as any).messages()[3].status).toBe('complete');
+  });
+
+  it('keeps replay available when an assistant request failed without response text', () => {
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
+    (app as any).messages.set([
+      { id: 1, requestId: 1, role: 'user', text: 'Câu hỏi lỗi', status: 'complete' },
+      { id: 2, requestId: 1, role: 'assistant', text: '', status: 'error' },
+    ]);
+
+    expect((app as any).canReplayAssistant(2)).toBe(true);
+  });
+
+  it('allows changing the selected model while a response is active', () => {
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
+    (app as any).busy.set(true);
+
+    (app as any).onModelChange('x-ai/grok-4.6');
+
+    expect((app as any).model()).toBe('x-ai/grok-4.6');
+  });
+
+  it('switches between the default and remembered custom model servers', () => {
+    const storage = {
+      getItem: vi.fn(() => JSON.stringify({
+        gatewayBaseUrl: 'http://127.0.0.1:8045/v1',
+        customGatewayBaseUrl: 'http://127.0.0.1:8045/v1',
+      })),
+      setItem: vi.fn(),
+    };
+    vi.stubGlobal('localStorage', storage);
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
+
+    (app as any).switchServer('default');
+    expect((app as any).gatewayBaseUrl()).toBe('');
+    expect((app as any).customGatewayBaseUrl()).toBe('http://127.0.0.1:8045/v1');
+    expect((app as any).isUsingDefaultServer()).toBe(true);
+
+    (app as any).switchServer('custom');
+    expect((app as any).gatewayBaseUrl()).toBe('http://127.0.0.1:8045/v1');
+    expect((app as any).isUsingDefaultServer()).toBe(false);
+    setRuntimeApiBaseUrl('');
   });
 });

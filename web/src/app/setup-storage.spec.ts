@@ -37,6 +37,7 @@ describe('setup storage', () => {
 
     expect(loadSetupSettings()).toEqual({
       gatewayBaseUrl: 'https://api.example.com',
+      customGatewayBaseUrl: 'https://api.example.com',
       apiKey: 'sk-test',
       customModels: ['custom/model', 'another:model'],
       selectedModel: 'custom/model',
@@ -84,9 +85,23 @@ describe('setup storage', () => {
     });
 
     expect(saved.gatewayBaseUrl).toBe('http://localhost:5030');
+    expect(saved.customGatewayBaseUrl).toBe('http://localhost:5030');
     expect(saved.apiKey).toBe('sk-test');
     expect(saved.customModels).toEqual(['foo/bar']);
     expect(storage.setItem).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the last custom server available after switching back to the default server', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => JSON.stringify({
+        gatewayBaseUrl: '',
+        customGatewayBaseUrl: 'http://127.0.0.1:8045/v1',
+      })),
+      setItem: vi.fn(),
+    });
+
+    expect(loadSetupSettings().gatewayBaseUrl).toBe('');
+    expect(loadSetupSettings().customGatewayBaseUrl).toBe('http://127.0.0.1:8045/v1');
   });
 
   it('normalizes multiline model routes', () => {

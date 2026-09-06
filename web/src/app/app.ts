@@ -33,7 +33,6 @@ import { ChatMessage, ChatService, ConversationCreated, ConversationRequestError
 import { ImageAttachment, toChatMessage } from './chat-content';
 import {
   buildRequestMessages,
-  findAssistantForUser,
   formatAssistantError,
   MessageStatus,
   ViewMessage,
@@ -64,7 +63,9 @@ import { scrollToBottom, shouldAutoScroll, type ConversationScrollReason } from 
 import {
   DEFAULT_SETUP_SETTINGS,
   loadSetupSettings,
+  normalizeGatewayBaseUrl,
   saveSetupSettings,
+  type SetupSettings,
 } from './setup-storage';
 import { VoiceInputController } from './voice-input';
 import { AdminPage } from './admin-page';
@@ -73,6 +74,7 @@ type HealthState = 'checking' | 'online' | 'offline' | 'unconfigured';
 type ActiveTab = 'chat' | 'setup';
 type MessageActionTone = 'success' | 'error';
 type SharedRouteState = 'none' | 'loading' | 'loaded' | 'missing' | 'error';
+type ServerChoice = 'default' | 'custom';
 
 interface MessageActionFeedback {
   text: string;
@@ -149,6 +151,7 @@ export class App implements OnDestroy {
   protected readonly runtime = runtimeConfig;
   protected readonly brandLabel = 'MEDICAL HARNESS FRAMEWORK';
   protected readonly activeTab = signal<ActiveTab>('chat');
+  protected readonly serverMenuOpen = signal(false);
   protected readonly sharedRouteState = signal<SharedRouteState>(
     this.initialSharedConversationId ? 'loading' : 'none',
   );
@@ -160,6 +163,7 @@ export class App implements OnDestroy {
   protected readonly model = signal(this.initialSetup.selectedModel);
   protected readonly modelOptions = signal(allModelOptions(this.initialSetup.customModels));
   protected readonly gatewayBaseUrl = signal(this.initialSetup.gatewayBaseUrl);
+  protected readonly customGatewayBaseUrl = signal(this.initialSetup.customGatewayBaseUrl);
   protected readonly apiKey = signal(this.initialSetup.apiKey);
   protected readonly customModelsText = signal(this.initialSetup.customModels.join('\n'));
   protected readonly setupMessage = signal('');
@@ -269,34 +273,67 @@ export class App implements OnDestroy {
     );
   }
 
-  protected async retryMessage(userMessageId: number): Promise<void> {
-    const originalUser = this.messages().find(
-      (message) => message.id === userMessageId && message.role === 'user',
-    );
-    const originalAssistant = originalUser ? findAssistantForUser(this.messages(), userMessageId) : null;
-    if (
-      !originalUser ||
-      !originalAssistant ||
-      !['error', 'stopped'].includes(originalAssistant.status)
-    ) {
+  protected async replayAssistantMessage(assistantMessageId: number): Promise<void> {
+    const context = this.replayContext(assistantMessageId);
+    if (!context) {
       return;
     }
 
+    await this.replayRequest(context.user, context.assistant);
+  }
+
+  protected canReplayAssistant(assistantMessageId: number): boolean {
+    return this.replayContext(assistantMessageId) !== null;
+  }
+
+  private replayContext(assistantMessageId: number): {
+    user: ViewMessage;
+    assistant: ViewMessage;
+  } | null {
+    const messages = this.messages();
+    const assistantIndex = messages.findIndex(
+      (message) => message.id === assistantMessageId && message.role === 'assistant',
+    );
+    if (assistantIndex < 0) {
+      return null;
+    }
+
+    const assistant = messages[assistantIndex];
+    if (assistant.status === 'pending' || !['complete', 'error', 'stopped'].includes(assistant.status)) {
+      return null;
+    }
+
+    const user = messages
+      .slice(0, assistantIndex)
+      .find((message) => message.role === 'user' && message.requestId === assistant.requestId);
+    return user ? { user, assistant } : null;
+  }
+
+  private async replayRequest(originalUser: ViewMessage, originalAssistant: ViewMessage): Promise<void> {
+    if (this.isSharedRouteBlocked()) {
+      return;
+    }
     if (this.busy()) {
-      this.stopActiveRequest('Đã dừng để gửi lại tin nhắn.');
+      this.stopActiveRequest('Đã dừng để tạo lại câu trả lời.');
     }
 
     const selectedModel = this.model().trim();
     if (!selectedModel) {
-      this.error.set('Hãy nhập model trước khi gửi lại.');
+      this.error.set('Hãy nhập model trước khi tạo lại câu trả lời.');
       return;
     }
     if (!this.canSendImage(selectedModel, originalUser.image ?? null)) {
       return;
     }
 
+    const currentMessages = this.messages();
+    const userIndex = currentMessages.findIndex((message) => message.id === originalUser.id);
+    if (userIndex < 0) {
+      return;
+    }
+
     const requestId = ++this.requestGeneration;
-    const remainingMessages = this.messages().filter((message) => message.requestId !== originalUser.requestId);
+    const remainingMessages = currentMessages.slice(0, userIndex);
     const requestMessages = buildRequestMessages(remainingMessages);
     requestMessages.push(toChatMessage('user', originalUser.text, originalUser.image?.dataUrl));
 
@@ -308,8 +345,14 @@ export class App implements OnDestroy {
       status: 'pending',
     };
     this.messages.set([...remainingMessages, retriedUser, retriedAssistant]);
+    this.messageActionFeedback.update((feedback) => {
+      const next = { ...feedback };
+      delete next[originalAssistant.id];
+      return next;
+    });
     this.updateActiveConversation();
     this.error.set('');
+    this.shareMessage.set('');
     this.scrollConversationToBottom();
 
     await this.runRequest(
@@ -320,11 +363,6 @@ export class App implements OnDestroy {
       retriedUser.id,
       retriedAssistant.id,
     );
-  }
-
-  protected canRetry(userMessageId: number): boolean {
-    const assistant = findAssistantForUser(this.messages(), userMessageId);
-    return assistant?.status === 'error' || assistant?.status === 'stopped';
   }
 
   private async runRequest(
@@ -406,6 +444,7 @@ export class App implements OnDestroy {
   }
 
   protected selectTab(tab: ActiveTab): void {
+    this.serverMenuOpen.set(false);
     this.activeTab.set(tab);
     if (tab === 'chat') {
       this.focusComposer();
@@ -415,12 +454,77 @@ export class App implements OnDestroy {
   }
 
   protected toggleCustomize(): void {
+    this.serverMenuOpen.set(false);
     this.activeTab.set(this.activeTab() === 'setup' ? 'chat' : 'setup');
     if (this.activeTab() === 'chat') {
       this.focusComposer();
     } else {
       this.voiceInput.stop();
     }
+  }
+
+  protected toggleServerMenu(): void {
+    this.serverMenuOpen.update((open) => !open);
+  }
+
+  protected closeServerMenu(): void {
+    this.serverMenuOpen.set(false);
+  }
+
+  protected isUsingDefaultServer(): boolean {
+    return this.isDefaultGatewayUrl(this.gatewayBaseUrl());
+  }
+
+  protected hasCustomServer(): boolean {
+    return !this.isDefaultGatewayUrl(this.customGatewayBaseUrl());
+  }
+
+  protected customServerLabel(): string {
+    const activeGateway = this.gatewayBaseUrl().trim();
+    const value = (this.isDefaultGatewayUrl(activeGateway) ? this.customGatewayBaseUrl() : activeGateway).trim();
+    if (!value || this.isDefaultGatewayUrl(value)) {
+      return 'Chưa cấu hình';
+    }
+
+    try {
+      const url = new URL(value, globalThis.location?.origin ?? 'http://localhost');
+      return `${url.host}${url.pathname === '/' ? '' : url.pathname}`;
+    } catch {
+      return value;
+    }
+  }
+
+  protected switchServer(choice: ServerChoice): void {
+    const currentGateway = this.gatewayBaseUrl().trim();
+    const rememberedCustom = this.customGatewayBaseUrl().trim();
+    const customGateway = this.isDefaultGatewayUrl(currentGateway)
+      ? rememberedCustom
+      : currentGateway;
+    const normalizedCustomGateway = normalizeGatewayBaseUrl(customGateway);
+
+    if (choice === 'custom' && this.isDefaultGatewayUrl(normalizedCustomGateway)) {
+      this.openCustomizeFromServerMenu();
+      this.setupMessage.set('Base URL tùy chỉnh chưa hợp lệ. Kiểm tra lại trong Customize.');
+      return;
+    }
+
+    this.applySetupSettings(
+      saveSetupSettings({
+        gatewayBaseUrl: choice === 'default' ? '' : normalizedCustomGateway,
+        customGatewayBaseUrl: normalizedCustomGateway,
+        apiKey: this.apiKey(),
+        customModels: this.customModelsText(),
+        selectedModel: this.model(),
+      }),
+      choice === 'default' ? 'Đã chuyển sang server gốc.' : 'Đã chuyển sang server tùy chỉnh.',
+    );
+    this.serverMenuOpen.set(false);
+  }
+
+  protected openCustomizeFromServerMenu(): void {
+    this.serverMenuOpen.set(false);
+    this.activeTab.set('setup');
+    this.voiceInput.stop();
   }
 
   protected async copyAssistantMessage(messageId: number): Promise<void> {
@@ -712,33 +816,23 @@ export class App implements OnDestroy {
   }
 
   protected saveSetup(): void {
+    const currentGateway = this.gatewayBaseUrl().trim();
     const saved = saveSetupSettings({
-      gatewayBaseUrl: this.gatewayBaseUrl(),
+      gatewayBaseUrl: currentGateway,
+      customGatewayBaseUrl: this.isDefaultGatewayUrl(currentGateway)
+        ? this.customGatewayBaseUrl()
+        : currentGateway,
       apiKey: this.apiKey(),
       customModels: this.customModelsText(),
       selectedModel: this.model(),
     });
 
-    setRuntimeApiBaseUrl(saved.gatewayBaseUrl);
-    this.gatewayBaseUrl.set(saved.gatewayBaseUrl);
-    this.apiKey.set(saved.apiKey);
-    this.customModelsText.set(saved.customModels.join('\n'));
-    this.modelOptions.set(allModelOptions(saved.customModels));
-    this.model.set(saved.selectedModel);
-    this.setupMessage.set('Đã lưu tùy chỉnh trên thiết bị này.');
-    void this.checkHealth();
+    this.applySetupSettings(saved, 'Đã lưu tùy chỉnh trên thiết bị này.');
   }
 
   protected resetSetup(): void {
     const defaults = saveSetupSettings(DEFAULT_SETUP_SETTINGS);
-    setRuntimeApiBaseUrl(defaults.gatewayBaseUrl);
-    this.gatewayBaseUrl.set(defaults.gatewayBaseUrl);
-    this.apiKey.set(defaults.apiKey);
-    this.customModelsText.set(defaults.customModels.join('\n'));
-    this.modelOptions.set(allModelOptions(defaults.customModels));
-    this.model.set(defaults.selectedModel);
-    this.setupMessage.set('Đã khôi phục tùy chỉnh mặc định.');
-    void this.checkHealth();
+    this.applySetupSettings(defaults, 'Đã khôi phục tùy chỉnh mặc định.');
   }
 
   protected saveSetupAndOpenChat(): void {
@@ -1441,6 +1535,23 @@ export class App implements OnDestroy {
 
   private isMissingConversationError(error: unknown): boolean {
     return error instanceof ConversationRequestError && error.status === 404;
+  }
+
+  private applySetupSettings(settings: SetupSettings, message: string): void {
+    setRuntimeApiBaseUrl(settings.gatewayBaseUrl);
+    this.gatewayBaseUrl.set(settings.gatewayBaseUrl);
+    this.customGatewayBaseUrl.set(settings.customGatewayBaseUrl);
+    this.apiKey.set(settings.apiKey);
+    this.customModelsText.set(settings.customModels.join('\n'));
+    this.modelOptions.set(allModelOptions(settings.customModels));
+    this.model.set(settings.selectedModel);
+    this.setupMessage.set(message);
+    void this.checkHealth();
+  }
+
+  private isDefaultGatewayUrl(value: string): boolean {
+    const normalized = value.trim().replace(/\/+$/u, '');
+    return normalized === '' || normalized === '/api';
   }
 
   protected isSharedRouteBlocked(): boolean {
