@@ -3,7 +3,8 @@
 } @else {
 <main class="app-shell bg-slate-50" [class.dark-mode]="darkMode()" (click)="closeServerMenu()">
   <section class="chat-card mx-auto w-full max-w-[920px]" aria-label="Medical Harness Framework">
-    <header class="topbar flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-7">
+    <header class="app-header">
+      <div class="topbar flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-7">
       <div class="brand flex min-w-0 items-center gap-3">
         <div class="brand-mark grid shrink-0 place-items-center" aria-hidden="true">
           <svg lucideHeartPulse class="h-5 w-5" aria-hidden="true"></svg>
@@ -136,9 +137,9 @@
           <svg lucideSettings2 class="h-4 w-4" aria-hidden="true"></svg>
         </button>
       </div>
-    </header>
+      </div>
 
-    <nav class="tab-bar flex items-center gap-1 px-5 sm:px-7" role="tablist" aria-label="Workspace">
+      <nav class="tab-bar flex items-center gap-1 px-5 sm:px-7" role="tablist" aria-label="Workspace">
       <button
         id="chat-tab"
         class="tab-button"
@@ -193,7 +194,8 @@
           </button>
         }
       </div>
-    </nav>
+      </nav>
+    </header>
 
     @if (activeTab() === 'chat') {
       <section id="chat-panel" class="chat-panel" role="tabpanel" aria-labelledby="chat-tab">
@@ -331,6 +333,9 @@
 
         </section>
 
+      </section>
+
+      <footer class="chat-footer">
         @if (error()) {
           <div class="error-banner" role="alert">
             <svg lucideCircleAlert class="h-4 w-4 shrink-0" aria-hidden="true"></svg>
@@ -441,7 +446,7 @@
             </div>
           </div>
         </form>
-      </section>
+      </footer>
     } @else {
       <section id="setup-panel" class="setup-panel" role="tabpanel" aria-labelledby="customize-button">
         <div class="setup-heading">
