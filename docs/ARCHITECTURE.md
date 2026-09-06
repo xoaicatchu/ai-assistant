@@ -67,7 +67,7 @@ flowchart LR
 
 ### API layer
 
-`src/ProxyAgent.Api/Api` chứa route và DTO bên ngoài:
+`src/ProxyAgent.Presentation/Api` chứa route và DTO bên ngoài:
 
 - `ChatEndpoints.cs`: định nghĩa `/api/chat` và `/v1/chat/completions`.
 - `ConversationEndpoints.cs`: tạo, đọc và cập nhật conversation server-backed cho link `/conversation/<id>`.
@@ -80,7 +80,7 @@ Endpoint không gọi `HttpClient` trực tiếp. Nó chỉ map request, gọi o
 
 ### Application/orchestration layer
 
-`src/ProxyAgent.Api/Chat` chứa model chung và routing:
+`src/ProxyAgent.Application/Chat` chứa model chung và routing:
 
 - `ChatModels.cs`: `NormalizedChatRequest`, `ChatMessage`, `ChatTool`, `ChatToolCall`, response và stream event.
 - `ModelSelector.cs`: xử lý `openai:...`, `anthropic:...`, provider mặc định và model mặc định.
@@ -92,7 +92,7 @@ Layer này không biết payload wire format của OpenAI hoặc Anthropic.
 
 ### Web search layer
 
-`src/ProxyAgent.Api/WebSearch` tách phần truy cập Internet khỏi provider model:
+`src/ProxyAgent.Application/WebSearch` tách phần truy cập Internet khỏi provider model:
 
 - `TavilySearchProvider.cs`: gọi `POST https://api.tavily.com/search`, giới hạn số kết quả/nội dung và chỉ nhận URL `http`/`https`.
 - `WebSearchAgent.cs`: lấy tool call từ model hoặc nhận diện câu hỏi cần dữ liệu mới, gọi search, rồi nối `role=tool` hoặc search context vào lượt model kế tiếp.
@@ -102,7 +102,7 @@ Tavily key mặc định đọc ở backend qua User Secrets/environment; trang 
 
 ### Provider/infrastructure layer
 
-`src/ProxyAgent.Api/Providers` triển khai port `IChatProvider`:
+`src/ProxyAgent.Infrastructure/Providers` triển khai port `IChatProvider`:
 
 - `OpenAiProvider.cs`: gọi `{BaseUrl}/chat/completions`, Bearer authentication, map Chat Completions response và stream chunk.
 - `AnthropicProvider.cs`: gọi `{BaseUrl}/messages`, dùng `x-api-key`/`anthropic-version`, tách system message và map content blocks.
@@ -124,13 +124,13 @@ Cancellation từ `HttpContext.RequestAborted` được truyền xuống stream 
 
 ### Frontend layer
 
-`web/src/app/app.ts` giữ state của cuộc hội thoại và render màn hình chat. `chat.service.ts` gửi request OpenAI-compatible bằng `fetch`, đọc JSON khi tắt streaming và parse SSE khi bật streaming; nếu transport SSE bị ngắt sau khi bắt đầu, app thử một completion không stream để khôi phục câu trả lời đầy đủ. `chat-content.ts` chuyển text + ảnh thành `image_url` content parts; clipboard paste và file picker đều giới hạn ảnh ở 5 MB. `composer.ts` giữ quy tắc Enter gửi, Shift+Enter xuống dòng và không submit khi IME đang composition. `conversation-link.ts` chỉ tạo URL chứa opaque conversation ID; lịch sử chat bình thường chỉ nằm trên thiết bị. Khi người dùng bấm Share, app mới lưu/cập nhật conversation qua API rồi public đúng bản ghi đó, không nhúng snapshot vào hash. ID được tạo trước lượt chat đầu tiên để URL ổn định và có thể gửi sau khi publish. `admin-page.ts` gọi API admin bằng cookie HttpOnly, không đưa provider key vào local storage. `runtime-config.ts` lấy URL backend từ `public/app-config.js`, file này được sinh lúc `npm start`/`npm run build`; build Vercel luôn chọn `/api`, còn deployment trực tiếp ngoài Vercel mới dùng `NG_APP_API_BASE_URL`. `setup-storage.ts` lưu Gateway Base URL, model route custom và model đang chọn ở local storage.
+`web/src/app/presentation/shell/app.ts` giữ state của cuộc hội thoại và render màn hình chat. Các adapter HTTP, browser, storage và UI được tách trong `web/src/app/infrastructure`; luật dữ liệu chat/conversation/model nằm trong `web/src/app/domain`.
 
 Frontend không giữ provider key của backend; custom model key trong phần Customize là tuỳ chọn local của trình duyệt và chỉ gửi tới model Base URL do người dùng nhập. Local dev dùng `proxy.conf.json` để chuyển `/health`, `/api` và `/v1` sang backend local; production gọi backend qua HTTPS. Nếu nhập Base URL `http://127.0.0.1:<port>` hoặc có hậu tố `/v1`, chat gọi thẳng 9Router từ trình duyệt; 9Router phải bật CORS cho origin của giao diện và cho phép `Authorization`/`Content-Type`. API conversation/share/admin vẫn dùng server API được sinh từ deployment, không bị chuyển sang localhost của model.
 
 ### Storage và admin
 
-`Storage/` định nghĩa các port `IConversationStore`, `IAdminAccountStore` và `IBackendSettingsStore`; backend có adapter SQLite cho local/test, Redis cho production tạm thời và adapter `Npgsql` để chuyển lại sau này. `REDIS_URL` hoặc `Storage:Provider=redis` chọn Redis; `Storage:Provider=postgres` hoặc `ConnectionStrings:Postgres` chọn PostgreSQL. Các adapter nằm sau cùng một port nên đổi vendor database không lan sang endpoint/provider. Conversation lưu hash của owner token và cờ public, còn GET không có token chỉ trả bản ghi đã public. `AdminAuthService` chỉ seed tài khoản nếu chưa có account và đã nhận đủ `Admin:InitialUsername`/`Admin:InitialPassword`; mật khẩu lưu dưới dạng PBKDF2 hash. `BackendSettingsService` overlay override từ database đang chọn lên cấu hình environment/appsettings. Lỗi storage được trả về dưới dạng JSON `503 storage_unavailable` thay vì lỗi invocation không có nội dung.`
+`ProxyAgent.Application` định nghĩa các port `IConversationStore`, `IAdminAccountStore` và `IBackendSettingsStore`; `ProxyAgent.Infrastructure/Storage` chứa các adapter; backend có adapter SQLite cho local/test, Redis cho production tạm thời và adapter `Npgsql` để chuyển lại sau này. `REDIS_URL` hoặc `Storage:Provider=redis` chọn Redis; `Storage:Provider=postgres` hoặc `ConnectionStrings:Postgres` chọn PostgreSQL. Các adapter nằm sau cùng một port nên đổi vendor database không lan sang endpoint/provider. Conversation lưu hash của owner token và cờ public, còn GET không có token chỉ trả bản ghi đã public. `AdminAuthService` chỉ seed tài khoản nếu chưa có account và đã nhận đủ `Admin:InitialUsername`/`Admin:InitialPassword`; mật khẩu lưu dưới dạng PBKDF2 hash. `BackendSettingsService` overlay override từ database đang chọn lên cấu hình environment/appsettings. Lỗi storage được trả về dưới dạng JSON `503 storage_unavailable` thay vì lỗi invocation không có nội dung.`
 
 ## Luồng request không streaming
 

@@ -29,7 +29,7 @@ Tài liệu chi tiết:
 
 ## Cấu hình
 
-`src/ProxyAgent.Api/appsettings.json` chứa base URL, model mặc định và giá trị API key rỗng. Để chạy local, có thể điền key vào `appsettings.Development.json` (file này đã được gitignore) hoặc đăng nhập `/admin` sau khi bootstrap tài khoản admin:
+`src/ProxyAgent.Presentation/appsettings.json` chứa base URL, model mặc định và giá trị API key rỗng. Để chạy local, có thể điền key vào `appsettings.Development.json` (file này đã được gitignore) hoặc đăng nhập `/admin` sau khi bootstrap tài khoản admin:
 
 ```json
 {
@@ -51,7 +51,7 @@ Không commit API key thật. Có thể chỉ cấu hình một provider; provid
 Từ thư mục repo:
 
 ```powershell
-dotnet run --project src/ProxyAgent.Api --launch-profile http
+dotnet run --project src/ProxyAgent.Presentation --launch-profile http
 ```
 
 Mặc định profile HTTP chạy tại `http://localhost:5030`.
@@ -121,7 +121,7 @@ Backend cũng hỗ trợ system prompt dùng chung qua `Chat:SystemPrompt`. Prom
 Để cấu hình local mà không ghi key vào source (hoặc dùng trang `/admin` để lưu override server-side):
 
 ```powershell
-dotnet user-secrets set "WebSearch:ApiKey" "<tavily-api-key>" --project src/ProxyAgent.Api/ProxyAgent.Api.csproj
+dotnet user-secrets set "WebSearch:ApiKey" "<tavily-api-key>" --project src/ProxyAgent.Presentation/ProxyAgent.Presentation.csproj
 ```
 
 Các biến production cần có:

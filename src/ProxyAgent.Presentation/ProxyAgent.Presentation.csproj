@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>ProxyAgent.Api-Local</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ProxyAgent.Domain\ProxyAgent.Domain.csproj" />
+    <ProjectReference Include="..\ProxyAgent.Application\ProxyAgent.Application.csproj" />
+    <ProjectReference Include="..\ProxyAgent.Infrastructure\ProxyAgent.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

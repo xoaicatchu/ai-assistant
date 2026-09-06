@@ -14,9 +14,9 @@ dotnet --version
 
 ## 2. Cấu hình provider
 
-File mẫu là [src/ProxyAgent.Api/appsettings.json](../src/ProxyAgent.Api/appsettings.json). Không điền secret thật vào file này nếu file được commit.
+File mẫu là [src/ProxyAgent.Presentation/appsettings.json](../src/ProxyAgent.Presentation/appsettings.json). Không điền secret thật vào file này nếu file được commit.
 
-Tạo file `src/ProxyAgent.Api/appsettings.Development.json`:
+Tạo file `src/ProxyAgent.Presentation/appsettings.Development.json`:
 
 ```json
 {
@@ -68,7 +68,7 @@ Các giá trị cấu hình:
 Từ thư mục root project:
 
 ```powershell
-dotnet run --project src/ProxyAgent.Api --launch-profile http
+dotnet run --project src/ProxyAgent.Presentation --launch-profile http
 ```
 
 Profile HTTP hiện chạy tại `http://localhost:5030`.
@@ -94,8 +94,8 @@ API key provider không được đưa vào frontend. Backend đọc key từ `a
 Đặt tài khoản bootstrap bằng User Secrets hoặc environment trước lần chạy đầu tiên:
 
 ```powershell
-dotnet user-secrets set "Admin:InitialUsername" "admin" --project src/ProxyAgent.Api/ProxyAgent.Api.csproj
-dotnet user-secrets set "Admin:InitialPassword" "<mat-khau-it-nhat-8-ky-tu>" --project src/ProxyAgent.Api/ProxyAgent.Api.csproj
+dotnet user-secrets set "Admin:InitialUsername" "admin" --project src/ProxyAgent.Presentation/ProxyAgent.Presentation.csproj
+dotnet user-secrets set "Admin:InitialPassword" "<mat-khau-it-nhat-8-ky-tu>" --project src/ProxyAgent.Presentation/ProxyAgent.Presentation.csproj
 ```
 
 Mở `http://localhost:4200/admin`, đăng nhập, sau đó có thể lưu Base URL, API key, model mặc định của OpenAI-compatible/Anthropic và cấu hình Tavily. Mật khẩu được băm PBKDF2 và lưu cùng database đang chọn; API key không được trả lại đầy đủ trong response admin.
@@ -117,7 +117,7 @@ Prompt này định hướng cách trả lời nhưng không thể vô hiệu h�
 Project đã bật web search trong cấu hình mặc định nhưng không chứa secret. Lưu key vào .NET User Secrets:
 
 ```powershell
-dotnet user-secrets set "WebSearch:ApiKey" "<tavily-api-key>" --project src/ProxyAgent.Api/ProxyAgent.Api.csproj
+dotnet user-secrets set "WebSearch:ApiKey" "<tavily-api-key>" --project src/ProxyAgent.Presentation/ProxyAgent.Presentation.csproj
 ```
 
 Development local đang bật `WebSearch:UseToolCalling=true` để Grok có thể tự phát sinh `web_search` tool call; backend sẽ gọi Tavily, trả tool result vào lịch sử rồi gọi model lần nữa để tổng hợp. Nếu dùng model/upstream không hỗ trợ tools, đặt lại `false` để dùng pre-search fallback.
