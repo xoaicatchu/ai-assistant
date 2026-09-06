@@ -325,7 +325,6 @@ export class App implements OnDestroy {
 
     let requestCompleted = false;
     try {
-      await this.ensureServerConversation(conversationId);
       await this.chatService.stream(selectedModel, requestMessages, controller.signal, (delta) => {
         if (!this.isCurrentRequest(conversationId, requestId, controller)) {
           return;

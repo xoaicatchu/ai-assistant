@@ -106,7 +106,7 @@ Sau khi backend khởi động, mở `https://<frontend>/admin`, đăng nhập r
 
 Với Supabase trên Vercel, lấy chuỗi **Session pooler** hoặc **Transaction pooler** trong nút **Connect** của Supabase. Không dùng `db.<project-ref>.supabase.co:5432` nếu project chưa bật IPv4 add-on; đó là direct endpoint IPv6 và Vercel có thể không truy cập được. Backend nhận cả dạng `Host=...;Port=...` và URI `postgresql://...`.
 
-Mỗi tab conversation được cấp ID opaque ngay khi tạo và URL đổi ngay sang `/conversation/<id>`. Token sở hữu được lưu trên thiết bị để đồng bộ riêng tư; GET không có token chỉ đọc được conversation đã public. Nút chia sẻ chỉ cập nhật bản ghi hiện tại rồi gọi `publish`, không tạo snapshot và không nhúng nội dung vào URL. PostgreSQL lưu conversation, tài khoản admin và backend settings dùng chung giữa các instance Vercel; SQLite vẫn được giữ cho local/test khi không cấu hình PostgreSQL.
+Mỗi tab conversation được cấp một ID opaque ngay khi tạo và URL đổi ngay sang `/conversation/<id>`, nhưng lịch sử chưa được gửi lên server trong lúc chat bình thường. Nội dung chỉ được tạo/cập nhật trên PostgreSQL khi người dùng bấm Share; token sở hữu được lưu trên thiết bị để cập nhật conversation đã chia sẻ, còn GET không có token chỉ đọc được conversation đã public. Link trỏ tới đúng conversation server-backed, không phải snapshot và không nhúng nội dung vào URL. SQLite vẫn được giữ cho local/test khi không cấu hình PostgreSQL.
 
 ## Web search agent qua Tavily
 

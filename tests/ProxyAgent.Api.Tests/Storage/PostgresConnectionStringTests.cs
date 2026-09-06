@@ -18,15 +18,21 @@ public sealed class PostgresConnectionStringTests
         Assert.Equal("postgres", builder.Username);
         Assert.Equal("p@ss:word", builder.Password);
         Assert.Equal(SslMode.Require, builder.SslMode);
+        Assert.Equal(3, builder.Timeout);
     }
 
     [Fact]
-    public void Leaves_key_value_connection_strings_unchanged()
+    public void Adds_a_bounded_timeout_to_key_value_connection_strings()
     {
         const string connectionString =
             "Host=db.example.com;Port=5432;Database=app;Username=postgres;Password=secret";
 
-        Assert.Equal(connectionString, PostgresConnectionStringNormalizer.Normalize(connectionString));
+        var builder = new NpgsqlConnectionStringBuilder(
+            PostgresConnectionStringNormalizer.Normalize(connectionString));
+
+        Assert.Equal("db.example.com", builder.Host);
+        Assert.Equal(5432, builder.Port);
+        Assert.Equal(3, builder.Timeout);
     }
 
     [Fact]

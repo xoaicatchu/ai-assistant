@@ -99,7 +99,7 @@ dotnet user-secrets set "Admin:InitialPassword" "<mat-khau-it-nhat-8-ky-tu>" --p
 
 Mở `http://localhost:4200/admin`, đăng nhập, sau đó có thể lưu Base URL, API key, model mặc định của OpenAI-compatible/Anthropic và cấu hình Tavily. Mật khẩu được băm PBKDF2 và lưu cùng database đang chọn; API key không được trả lại đầy đủ trong response admin.
 
-Mỗi tab conversation được cấp ID opaque ngay khi tạo và URL đổi ngay sang `/conversation/<id>`. Token sở hữu được lưu trên thiết bị để đồng bộ riêng tư. Nút chia sẻ cập nhật bản ghi hiện tại rồi public chính conversation đó; người nhận mở đúng dữ liệu từ PostgreSQL, không phải snapshot nằm trong URL. Nếu backend tạm thời lỗi, bản trên thiết bị vẫn được giữ và app thử đồng bộ lại. SQLite vẫn có cho local/test, còn production dùng PostgreSQL để dữ liệu không phụ thuộc instance Vercel.
+Mỗi tab conversation được cấp một ID opaque ngay khi tạo và URL đổi ngay sang `/conversation/<id>`, nhưng lịch sử chỉ nằm trên thiết bị trong lúc chat bình thường. Khi bấm Share, app mới tạo/cập nhật bản ghi rồi public chính conversation đó; người nhận mở đúng dữ liệu từ PostgreSQL, không phải snapshot nằm trong URL. Nếu backend tạm thời lỗi, bản trên thiết bị vẫn được giữ và việc chia sẻ có thể thử lại sau. SQLite vẫn có cho local/test, còn production dùng PostgreSQL cho các conversation đã chia sẻ.
 
 ### System prompt
 

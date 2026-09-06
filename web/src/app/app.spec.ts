@@ -44,7 +44,7 @@ describe('App message submission', () => {
     expect((app as any).messages()[0].text).toBe('Câu hỏi cần gửi');
   });
 
-  it('creates a server ID before the first request and syncs the conversation after streaming', async () => {
+  it('keeps an unshared conversation on the device while sending a message', async () => {
     const createConversation = vi.fn().mockResolvedValue({
       id: 'abcdefghijklmnopqrstuv',
       ownerToken: 'owner-token-for-tests',
@@ -75,24 +75,15 @@ describe('App message submission', () => {
 
     await (app as any).send();
 
-    expect(createConversation).toHaveBeenCalledBefore(stream);
-    expect(createConversation).toHaveBeenCalledWith('Câu hỏi cần lưu', [
-      expect.objectContaining({ role: 'user', text: 'Câu hỏi cần lưu', status: 'complete' }),
-    ], expect.any(String));
-    expect(updateConversation).toHaveBeenCalledWith(
-      'abcdefghijklmnopqrstuv',
-      'Câu hỏi cần lưu',
-      expect.arrayContaining([
-        expect.objectContaining({ role: 'user', text: 'Câu hỏi cần lưu' }),
-        expect.objectContaining({ role: 'assistant', text: 'Câu trả lời', status: 'complete' }),
-      ]),
-      'owner-token-for-tests',
-    );
-    expect((app as any).conversations()[0].serverId).toBe('abcdefghijklmnopqrstuv');
+    expect(stream).toHaveBeenCalledOnce();
+    expect(createConversation).not.toHaveBeenCalled();
+    expect(updateConversation).not.toHaveBeenCalled();
+    expect((app as any).conversations()[0].serverId).toMatch(/^[A-Za-z0-9_-]{22}$/u);
+    expect((app as any).conversations()[0].serverToken).toBeUndefined();
   });
 
-  it('continues answering when conversation persistence is temporarily unavailable', async () => {
-    const createConversation = vi.fn().mockRejectedValue(new Error('Database unavailable'));
+  it('continues answering without attempting conversation persistence', async () => {
+    const createConversation = vi.fn();
     const stream = vi.fn(async (
       _model: string,
       _messages: ChatMessage[],
@@ -117,13 +108,13 @@ describe('App message submission', () => {
 
     await (app as any).send();
 
-    expect(createConversation).toHaveBeenCalledOnce();
+    expect(createConversation).not.toHaveBeenCalled();
     expect(stream).toHaveBeenCalledOnce();
     expect((app as any).messages().map((message: { text: string }) => message.text)).toEqual([
       'Câu hỏi không được mất',
       'Câu trả lời vẫn hiển thị',
     ]);
-    expect((app as any).shareMessage()).toContain('chưa đồng bộ');
+    expect((app as any).shareMessage()).toBe('');
   });
 
   it('keeps a transport error out of the assistant message markup', () => {

@@ -66,6 +66,8 @@ public sealed class PostgresDatabase : IStorageInitializer
 
 public static class PostgresConnectionStringNormalizer
 {
+    private const int DefaultConnectionTimeoutSeconds = 3;
+
     public static string Normalize(string connectionString)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
@@ -73,7 +75,13 @@ public static class PostgresConnectionStringNormalizer
         if (!value.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase) &&
             !value.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase))
         {
-            return value;
+            var keyValueBuilder = new NpgsqlConnectionStringBuilder(value);
+            if (keyValueBuilder.Timeout == 15)
+            {
+                keyValueBuilder.Timeout = DefaultConnectionTimeoutSeconds;
+            }
+
+            return keyValueBuilder.ConnectionString;
         }
 
         if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
@@ -116,7 +124,8 @@ public static class PostgresConnectionStringNormalizer
             Database = database,
             Username = username,
             Password = password,
-            SslMode = SslMode.Require
+            SslMode = SslMode.Require,
+            Timeout = DefaultConnectionTimeoutSeconds
         };
         ApplyQueryOptions(builder, uri.Query);
         return builder.ConnectionString;
@@ -144,6 +153,10 @@ public static class PostgresConnectionStringNormalizer
                 case "application_name":
                 case "applicationname":
                     builder.ApplicationName = value;
+                    break;
+                case "connect_timeout" or "timeout"
+                    when int.TryParse(value, out var timeout) && timeout > 0:
+                    builder.Timeout = timeout;
                     break;
             }
         }
