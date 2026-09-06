@@ -64,7 +64,7 @@ import {
   type ModelCapabilitySupport,
 } from './model-picker';
 import { apiUrl, runtimeConfig, setRuntimeApiBaseUrl } from './runtime-config';
-import { scrollPageToBottom, shouldAutoScroll, type ConversationScrollReason } from './scrolling';
+import { isPageNearBottom, scrollPageToBottom, shouldAutoScroll, type ConversationScrollReason } from './scrolling';
 import { loadAutoScrollPreference, saveAutoScrollPreference } from './scroll-preference';
 import {
   DEFAULT_SETUP_SETTINGS,
@@ -216,6 +216,7 @@ export class App implements OnDestroy {
   private readonly acceptedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
   private readonly voiceInput = new VoiceInputController();
   private readonly serverConversationCreates = new Map<number, Promise<string | null>>();
+  private autoScrollFramePending = false;
 
   constructor(private readonly chatService: ChatService) {
     if (this.isAdminRoute) {
@@ -1491,8 +1492,19 @@ export class App implements OnDestroy {
       return;
     }
 
+    if (reason === 'response-update' && !isPageNearBottom()) {
+      return;
+    }
+
+    if (this.autoScrollFramePending) {
+      return;
+    }
+
+    this.autoScrollFramePending = true;
+
     const scroll = () => {
-      scrollPageToBottom(true);
+      this.autoScrollFramePending = false;
+      scrollPageToBottom(reason === 'user-action');
     };
 
     requestAnimationFrame(() => {

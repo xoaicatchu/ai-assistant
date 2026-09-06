@@ -6,7 +6,18 @@ export interface ScrollContainer {
 }
 
 export function shouldAutoScroll(reason: ConversationScrollReason): boolean {
-  return reason === 'user-action';
+  return reason === 'user-action' || reason === 'response-update';
+}
+
+export function isPageNearBottom(tolerance = 96): boolean {
+  const documentElement = globalThis.document?.documentElement;
+  if (!documentElement) {
+    return true;
+  }
+
+  const viewportHeight = typeof globalThis.innerHeight === 'number' ? globalThis.innerHeight : 0;
+  const scrollY = typeof globalThis.scrollY === 'number' ? globalThis.scrollY : 0;
+  return documentElement.scrollHeight - (scrollY + viewportHeight) <= tolerance;
 }
 
 export function scrollToBottom(container: ScrollContainer): void {

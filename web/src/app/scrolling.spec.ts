@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { scrollPageToBottom, scrollToBottom, shouldAutoScroll } from './scrolling';
+import { isPageNearBottom, scrollPageToBottom, scrollToBottom, shouldAutoScroll } from './scrolling';
 
 describe('scrollToBottom', () => {
   it('scrolls the conversation container to its current bottom', () => {
@@ -12,12 +12,34 @@ describe('scrollToBottom', () => {
 });
 
 describe('shouldAutoScroll', () => {
-  it('keeps the current position while an assistant response updates', () => {
-    expect(shouldAutoScroll('response-update')).toBe(false);
+  it('follows an assistant response while auto-scroll is enabled', () => {
+    expect(shouldAutoScroll('response-update')).toBe(true);
   });
 
   it('scrolls once after a user action', () => {
     expect(shouldAutoScroll('user-action')).toBe(true);
+  });
+});
+
+describe('isPageNearBottom', () => {
+  it('returns true when the reader is still at the end of the browser page', () => {
+    vi.stubGlobal('innerHeight', 700);
+    vi.stubGlobal('scrollY', 500);
+    vi.stubGlobal('document', { documentElement: { scrollHeight: 1280 } });
+
+    expect(isPageNearBottom()).toBe(true);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('returns false after the reader scrolls away from the end', () => {
+    vi.stubGlobal('innerHeight', 700);
+    vi.stubGlobal('scrollY', 120);
+    vi.stubGlobal('document', { documentElement: { scrollHeight: 1280 } });
+
+    expect(isPageNearBottom()).toBe(false);
+
+    vi.unstubAllGlobals();
   });
 });
 
