@@ -1,4 +1,4 @@
-import { Component, ElementRef, signal, ViewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, signal, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   LucideArrowUp,
@@ -7,6 +7,7 @@ import {
   LucideChevronDown,
   LucideHeartPulse,
   LucideLoaderCircle,
+  LucideMic,
   LucideMessageCircle,
   LucidePlus,
   LucideRefreshCw,
@@ -45,6 +46,7 @@ import {
   loadSetupSettings,
   saveSetupSettings,
 } from './setup-storage';
+import { VoiceInputController } from './voice-input';
 
 type HealthState = 'checking' | 'online' | 'offline' | 'unconfigured';
 type ActiveTab = 'chat' | 'setup';
@@ -73,6 +75,7 @@ interface ChatConversation {
     LucideChevronDown,
     LucideHeartPulse,
     LucideLoaderCircle,
+    LucideMic,
     LucideMessageCircle,
     LucidePlus,
     LucideRefreshCw,
@@ -89,7 +92,7 @@ interface ChatConversation {
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
-export class App {
+export class App implements OnDestroy {
   @ViewChild('conversation') private conversation?: ElementRef<HTMLElement>;
   @ViewChild('composerInput') private composerInput?: ElementRef<HTMLTextAreaElement>;
 
@@ -110,6 +113,7 @@ export class App {
   protected readonly pendingImage = signal<ImageAttachment | null>(null);
   protected readonly messages = signal<ViewMessage[]>([]);
   protected readonly streamEnabled = signal(true);
+  protected readonly voiceListening = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly health = signal<HealthState>(
@@ -123,13 +127,19 @@ export class App {
   private nextConversationId = 2;
   private readonly maxImageBytes = 5 * 1024 * 1024;
   private readonly acceptedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+  private readonly voiceInput = new VoiceInputController();
 
   constructor(private readonly chatService: ChatService) {
     setRuntimeApiBaseUrl(this.initialSetup.gatewayBaseUrl);
     void this.checkHealth();
   }
 
+  ngOnDestroy(): void {
+    this.voiceInput.destroy();
+  }
+
   protected async send(): Promise<void> {
+    this.voiceInput.stop();
     const content = this.draft().trim();
     const image = this.pendingImage();
     const selectedModel = this.model().trim();
@@ -310,6 +320,8 @@ export class App {
     this.activeTab.set(tab);
     if (tab === 'chat') {
       this.focusComposer();
+    } else {
+      this.voiceInput.stop();
     }
   }
 
@@ -317,10 +329,13 @@ export class App {
     this.activeTab.set(this.activeTab() === 'setup' ? 'chat' : 'setup');
     if (this.activeTab() === 'chat') {
       this.focusComposer();
+    } else {
+      this.voiceInput.stop();
     }
   }
 
   protected createConversation(): void {
+    this.voiceInput.stop();
     this.persistActiveConversation();
     const id = this.nextConversationId++;
     this.conversations.update((conversations) => [
@@ -341,6 +356,7 @@ export class App {
       return;
     }
 
+    this.voiceInput.stop();
     this.persistActiveConversation();
     const conversation = this.conversations().find((item) => item.id === id);
     if (!conversation) {
@@ -359,6 +375,7 @@ export class App {
 
   protected deleteConversation(id: number, event: Event): void {
     event.stopPropagation();
+    this.voiceInput.stop();
     const request = this.activeRequests.get(id);
     if (request) {
       request.controller.abort();
@@ -433,6 +450,7 @@ export class App {
   }
 
   protected clear(): void {
+    this.voiceInput.stop();
     if (this.busy()) {
       this.stop();
     }
@@ -462,6 +480,23 @@ export class App {
       dismissComposerOnSubmit(this.composerInput?.nativeElement);
       void this.send();
     }
+  }
+
+  protected toggleVoiceInput(): void {
+    if (this.voiceListening()) {
+      this.voiceInput.stop();
+      return;
+    }
+
+    this.error.set('');
+    this.voiceInput.start(this.draft(), {
+      onListeningChange: (listening) => this.voiceListening.set(listening),
+      onTranscript: (draft) => this.draft.set(draft),
+      onError: (message) => {
+        this.voiceListening.set(false);
+        this.error.set(message);
+      },
+    });
   }
 
   protected onComposerCompositionStart(): void {

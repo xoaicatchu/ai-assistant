@@ -227,6 +227,17 @@
                 <span class="model-select-label" aria-hidden="true">{{ modelDisplayLabel() }}</span>
                 <svg lucideChevronDown class="model-select-chevron" aria-hidden="true"></svg>
               </div>
+              <button
+                class="icon-button voice-button"
+                [class.is-listening]="voiceListening()"
+                type="button"
+                (click)="toggleVoiceInput()"
+                [attr.aria-pressed]="voiceListening()"
+                [attr.aria-label]="voiceListening() ? 'Dừng nhập bằng giọng nói' : 'Nhập bằng giọng nói'"
+                [attr.title]="voiceListening() ? 'Dừng nhập bằng giọng nói' : 'Nhập bằng giọng nói'"
+              >
+                <svg lucideMic class="h-4 w-4" aria-hidden="true"></svg>
+              </button>
               @if (busy()) {
                 <button class="icon-button stop-button" type="button" (click)="stop()" aria-label="Dừng phản hồi" title="Dừng phản hồi">
                   <svg lucideSquare class="h-4 w-4" aria-hidden="true"></svg>
