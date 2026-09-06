@@ -72,6 +72,7 @@ import { AdminPage } from './admin-page';
 type HealthState = 'checking' | 'online' | 'offline' | 'unconfigured';
 type ActiveTab = 'chat' | 'setup';
 type MessageActionTone = 'success' | 'error';
+type SharedRouteState = 'none' | 'loading' | 'loaded' | 'missing' | 'error';
 
 interface MessageActionFeedback {
   text: string;
@@ -148,6 +149,12 @@ export class App implements OnDestroy {
   protected readonly runtime = runtimeConfig;
   protected readonly brandLabel = 'MEDICAL HARNESS FRAMEWORK';
   protected readonly activeTab = signal<ActiveTab>('chat');
+  protected readonly sharedRouteState = signal<SharedRouteState>(
+    this.initialSharedConversationId ? 'loading' : 'none',
+  );
+  protected readonly sharedRouteMessage = signal(
+    this.initialSharedConversationId ? 'Đang mở cuộc trò chuyện…' : '',
+  );
   protected readonly conversations = signal<ChatConversation[]>(this.initialConversationState.conversations);
   protected readonly activeConversationId = signal(this.initialConversationState.activeConversationId);
   protected readonly model = signal(this.initialSetup.selectedModel);
@@ -160,11 +167,11 @@ export class App implements OnDestroy {
   protected readonly messageActionFeedback = signal<Record<number, MessageActionFeedback>>({});
   protected readonly draft = signal('');
   protected readonly pendingImage = signal<ImageAttachment | null>(null);
-  protected readonly messages = signal<ViewMessage[]>([
-    ...(this.initialConversationState.conversations.find(
-      (conversation) => conversation.id === this.initialConversationState.activeConversationId,
-    )?.messages ?? []),
-  ]);
+  protected readonly messages = signal<ViewMessage[]>(this.initialSharedConversationId
+    ? []
+    : [...(this.initialConversationState.conversations.find(
+        (conversation) => conversation.id === this.initialConversationState.activeConversationId,
+      )?.messages ?? [])]);
   protected readonly voiceListening = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -203,6 +210,10 @@ export class App implements OnDestroy {
 
   protected async send(): Promise<void> {
     this.voiceInput.stop();
+    if (this.isSharedRouteBlocked()) {
+      return;
+    }
+
     const content = this.draft().trim();
     const image = this.pendingImage();
     const selectedModel = this.model().trim();
@@ -554,8 +565,45 @@ export class App implements OnDestroy {
     }
   }
 
+  protected canCreateConversation(): boolean {
+    if (this.isSharedRouteBlocked()) {
+      return false;
+    }
+
+    const activeConversation = this.conversations().find(
+      (conversation) => conversation.id === this.activeConversationId(),
+    );
+    return Boolean(activeConversation && activeConversation.messages.length > 0);
+  }
+
+  protected isConversationActive(id: number): boolean {
+    return this.sharedRouteState() !== 'loading' &&
+      this.sharedRouteState() !== 'missing' &&
+      this.sharedRouteState() !== 'error' &&
+      id === this.activeConversationId();
+  }
+
   protected createConversation(): void {
     this.voiceInput.stop();
+    if (this.isSharedRouteBlocked()) {
+      return;
+    }
+
+    const activeConversation = this.conversations().find(
+      (conversation) => conversation.id === this.activeConversationId(),
+    );
+    if (!activeConversation || activeConversation.messages.length === 0) {
+      return;
+    }
+
+    const emptyConversation = this.conversations().find(
+      (conversation) => conversation.messages.length === 0,
+    );
+    if (emptyConversation) {
+      this.selectConversation(emptyConversation.id);
+      return;
+    }
+
     this.persistActiveConversation();
     const id = this.nextConversationId++;
     const conversation = {
@@ -574,21 +622,28 @@ export class App implements OnDestroy {
     this.draft.set('');
     this.pendingImage.set(null);
     this.busy.set(false);
+    this.sharedRouteState.set('none');
+    this.sharedRouteMessage.set('');
     this.focusComposer();
     this.persistConversations();
     this.replaceConversationUrl(conversation.serverId);
   }
 
   protected selectConversation(id: number): void {
-    if (id === this.activeConversationId()) {
+    const conversation = this.conversations().find((item) => item.id === id);
+    if (!conversation) {
+      return;
+    }
+    if (
+      id === this.activeConversationId() &&
+      !['loading', 'missing', 'error'].includes(this.sharedRouteState())
+    ) {
       return;
     }
 
     this.voiceInput.stop();
-    this.persistActiveConversation();
-    const conversation = this.conversations().find((item) => item.id === id);
-    if (!conversation) {
-      return;
+    if (!this.isSharedRouteBlocked()) {
+      this.persistActiveConversation();
     }
 
     const selected = conversation.serverId
@@ -605,6 +660,8 @@ export class App implements OnDestroy {
     this.draft.set('');
     this.pendingImage.set(null);
     this.busy.set(this.activeRequests.has(id));
+    this.sharedRouteState.set('none');
+    this.sharedRouteMessage.set('');
     this.persistConversations();
     this.scrollConversationToBottom();
     this.focusComposer();
@@ -630,6 +687,8 @@ export class App implements OnDestroy {
         serverId: createOpaqueConversationId(),
       };
       this.conversations.set([replacement]);
+      this.sharedRouteState.set('none');
+      this.sharedRouteMessage.set('');
       this.persistConversations();
       this.replaceConversationUrl(replacement.serverId);
       return;
@@ -640,6 +699,8 @@ export class App implements OnDestroy {
       const next = remaining[remaining.length - 1];
       this.activeConversationId.set(next.id);
       this.messages.set([...next.messages]);
+      this.sharedRouteState.set('none');
+      this.sharedRouteMessage.set('');
       this.error.set('');
       this.draft.set('');
       this.pendingImage.set(null);
@@ -866,25 +927,36 @@ export class App implements OnDestroy {
     const localConversation = this.conversations().find(
       (conversation) => conversation.serverId === shareId,
     );
-    if (localConversation && !localConversation.isPublic) {
+    if (localConversation && !localConversation.isPublic && !localConversation.serverToken) {
       this.activeConversationId.set(localConversation.id);
       this.messages.set([...localConversation.messages]);
+      this.sharedRouteState.set('loaded');
+      this.sharedRouteMessage.set('');
       this.persistConversations();
       return;
     }
 
     try {
-      const shared = await this.chatService.getConversation(shareId);
-      if (localConversation?.serverToken && this.hasUnsyncedLocalChanges(localConversation)) {
-        this.activeConversationId.set(localConversation.id);
-        this.messages.set([...localConversation.messages]);
-        this.persistConversations();
-        this.shareMessage.set('Đã giữ lại nội dung mới trên thiết bị; chưa ghi đè bằng bản server.');
+      const shared = localConversation?.serverToken
+        ? await this.chatService.getConversation(shareId, localConversation.serverToken)
+        : await this.chatService.getConversation(shareId);
+      if (this.sharedRouteState() !== 'loading') {
         return;
       }
       this.openSharedConversation(shared);
-    } catch {
-      this.shareMessage.set('Không thể mở cuộc trò chuyện từ link này.');
+    } catch (caughtError) {
+      if (this.sharedRouteState() !== 'loading') {
+        return;
+      }
+      this.messages.set([]);
+      this.error.set('');
+      if (this.isMissingConversationError(caughtError)) {
+        this.sharedRouteState.set('missing');
+        this.sharedRouteMessage.set('Không tìm thấy cuộc trò chuyện từ liên kết này.');
+      } else {
+        this.sharedRouteState.set('error');
+        this.sharedRouteMessage.set('Không thể tải cuộc trò chuyện từ liên kết này.');
+      }
     }
   }
 
@@ -918,6 +990,8 @@ export class App implements OnDestroy {
     );
     this.activeConversationId.set(nextConversation.id);
     this.messages.set([...nextConversation.messages]);
+    this.sharedRouteState.set('loaded');
+    this.sharedRouteMessage.set('');
     this.persistConversations();
     this.shareMessage.set('Đã mở cuộc trò chuyện từ link chia sẻ.');
   }
@@ -1065,6 +1139,10 @@ export class App implements OnDestroy {
     conversationId: number,
     update: (messages: ViewMessage[]) => ViewMessage[],
   ): void {
+    if (this.isSharedRouteBlocked()) {
+      return;
+    }
+
     this.conversations.update((conversations) =>
       conversations.map((conversation) =>
         conversation.id === conversationId
@@ -1097,10 +1175,18 @@ export class App implements OnDestroy {
   }
 
   private persistActiveConversation(): void {
+    if (this.isSharedRouteBlocked()) {
+      return;
+    }
+
     this.updateActiveConversation();
   }
 
   private updateActiveConversation(title?: string): void {
+    if (this.isSharedRouteBlocked()) {
+      return;
+    }
+
     const activeId = this.activeConversationId();
     const currentMessages = [...this.messages()];
     this.conversations.update((conversations) =>
@@ -1355,6 +1441,11 @@ export class App implements OnDestroy {
 
   private isMissingConversationError(error: unknown): boolean {
     return error instanceof ConversationRequestError && error.status === 404;
+  }
+
+  protected isSharedRouteBlocked(): boolean {
+    const state = this.sharedRouteState();
+    return state === 'loading' || state === 'missing' || state === 'error';
   }
 
   private shareFailureMessage(error: unknown): string {

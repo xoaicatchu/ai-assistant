@@ -72,32 +72,37 @@
       </button>
       <div class="conversation-tabs" role="tablist" aria-label="Các cuộc trò chuyện">
         @for (conversation of conversations(); track conversation.id) {
-          <button
+          <div
             class="conversation-tab"
-            [class.active-conversation-tab]="conversation.id === activeConversationId()"
-            type="button"
-            role="tab"
-            [attr.aria-selected]="conversation.id === activeConversationId()"
-            (click)="selectConversation(conversation.id)"
+            [class.active-conversation-tab]="isConversationActive(conversation.id)"
           >
-            <span>{{ conversation.title }}</span>
-            <span
+            <button
+              class="conversation-tab-main"
+              type="button"
+              role="tab"
+              [attr.aria-selected]="isConversationActive(conversation.id)"
+              (click)="selectConversation(conversation.id)"
+              [attr.aria-label]="'Mở ' + conversation.title"
+            >
+              <span>{{ conversation.title }}</span>
+            </button>
+            <button
               class="conversation-tab-close"
-              role="button"
-              tabindex="0"
-              aria-label="Xóa cuộc trò chuyện"
-              title="Xóa cuộc trò chuyện"
+              type="button"
+              aria-label="Đóng cuộc trò chuyện"
+              title="Đóng cuộc trò chuyện"
               (click)="deleteConversation(conversation.id, $event)"
             >
               <svg lucideX class="h-3 w-3" aria-hidden="true"></svg>
-            </span>
-          </button>
+            </button>
+          </div>
         }
         <button
           class="new-conversation-button"
           type="button"
+          [disabled]="!canCreateConversation()"
           aria-label="Tạo cuộc trò chuyện mới"
-          title="Tạo cuộc trò chuyện mới"
+          [attr.title]="canCreateConversation() ? 'Tạo cuộc trò chuyện mới' : 'Hãy gửi tin nhắn trước khi tạo cuộc trò chuyện mới'"
           (click)="createConversation()"
         >
           <span aria-hidden="true">+</span>
@@ -109,7 +114,10 @@
     @if (activeTab() === 'chat') {
       <section id="chat-panel" class="chat-panel" role="tabpanel" aria-labelledby="chat-tab">
         <section #conversation class="conversation" tabindex="-1" aria-live="polite" aria-label="Conversation">
-          @if (messages().length === 0) {
+          @if (sharedRouteMessage()) {
+            <div class="conversation-notice" role="status">{{ sharedRouteMessage() }}</div>
+          }
+          @if (messages().length === 0 && !isSharedRouteBlocked()) {
             <div class="welcome-card">
               <div class="welcome-icon grid place-items-center" aria-hidden="true">
                 <svg lucideSparkles class="h-5 w-5" aria-hidden="true"></svg>
@@ -217,6 +225,7 @@
             (paste)="onComposerPaste($event)"
             name="message"
             rows="2"
+            [disabled]="isSharedRouteBlocked()"
             [placeholder]="modelSupportsVision() ? 'Nhắn tin hoặc dán ảnh vào đây…' : 'Nhắn tin…'"
             aria-label="Tin nhắn"
             enterkeyhint="send"
@@ -225,9 +234,9 @@
             <div class="composer-tools flex min-w-0 items-center gap-2">
               <label
                 class="icon-button attach-button"
-                [class.is-disabled]="!modelSupportsVision()"
-                [attr.aria-disabled]="!modelSupportsVision()"
-                [attr.title]="modelSupportsVision() ? 'Đính kèm ảnh' : 'Model này không hỗ trợ Vision'"
+                [class.is-disabled]="!modelSupportsVision() || isSharedRouteBlocked()"
+                [attr.aria-disabled]="!modelSupportsVision() || isSharedRouteBlocked()"
+                [attr.title]="isSharedRouteBlocked() ? 'Không thể nhập trong liên kết này' : modelSupportsVision() ? 'Đính kèm ảnh' : 'Model này không hỗ trợ Vision'"
                 for="image-upload"
               >
                 <svg lucidePlus class="h-4 w-4" aria-hidden="true"></svg>
@@ -238,7 +247,7 @@
                 class="sr-only"
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/gif"
-                [disabled]="!modelSupportsVision()"
+                [disabled]="!modelSupportsVision() || isSharedRouteBlocked()"
                 (change)="onImageSelected($event)"
               />
             </div>
@@ -248,7 +257,7 @@
                   class="model-select"
                   [ngModel]="model()"
                   (ngModelChange)="onModelChange($event)"
-                  [disabled]="busy()"
+                  [disabled]="busy() || isSharedRouteBlocked()"
                   name="composer-model"
                   aria-label="Model"
                   [attr.title]="selectedModelCapabilitySummary()"
@@ -265,6 +274,7 @@
                 [class.is-listening]="voiceListening()"
                 type="button"
                 (click)="toggleVoiceInput()"
+                [disabled]="isSharedRouteBlocked()"
                 [attr.aria-pressed]="voiceListening()"
                 [attr.aria-label]="voiceListening() ? 'Dừng nhập bằng giọng nói' : 'Nhập bằng giọng nói'"
                 [attr.title]="voiceListening() ? 'Dừng nhập bằng giọng nói' : 'Nhập bằng giọng nói'"
@@ -276,7 +286,7 @@
                   <svg lucideSquare class="h-4 w-4" aria-hidden="true"></svg>
                 </button>
               } @else {
-                <button class="icon-button send-button" type="submit" [disabled]="!draft().trim() && !pendingImage()" aria-label="Gửi tin nhắn" title="Gửi tin nhắn">
+                <button class="icon-button send-button" type="submit" [disabled]="isSharedRouteBlocked() || (!draft().trim() && !pendingImage())" aria-label="Gửi tin nhắn" title="Gửi tin nhắn">
                   <svg lucideArrowUp class="h-4 w-4" aria-hidden="true"></svg>
                 </button>
               }

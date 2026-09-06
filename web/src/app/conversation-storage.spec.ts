@@ -127,4 +127,28 @@ describe('conversation storage', () => {
       conversations: [{ id: 1, title: 'Cuộc trò chuyện mới', messages: [] }],
     });
   });
+
+  it('keeps only one empty conversation and prefers the active empty tab', () => {
+    const stored = {
+      activeConversationId: 3,
+      conversations: [
+        { id: 1, title: 'Cuộc trò chuyện mới', messages: [] },
+        {
+          id: 2,
+          title: 'Đã chat',
+          messages: [userMessage(1, 1, 'Câu hỏi cũ')],
+        },
+        { id: 3, title: 'Cuộc trò chuyện mới', messages: [] },
+      ],
+    };
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => JSON.stringify(stored)),
+      setItem: vi.fn(),
+    });
+
+    const state = loadConversationState();
+
+    expect(state.activeConversationId).toBe(3);
+    expect(state.conversations.map((conversation) => conversation.id)).toEqual([2, 3]);
+  });
 });

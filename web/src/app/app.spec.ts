@@ -413,4 +413,130 @@ describe('App message submission', () => {
     expect(chatService.getConversation).toHaveBeenCalledWith('abcdefghijklmnopqrstuv');
     expect(replaceState).not.toHaveBeenCalled();
   });
+
+  it('does not add another empty tab when the active conversation has no messages', () => {
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
+      callback();
+      return 0;
+    });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
+
+    (app as any).createConversation();
+
+    expect((app as any).conversations()).toHaveLength(1);
+    expect((app as any).canCreateConversation()).toBe(false);
+  });
+
+  it('reuses an existing empty tab instead of creating a duplicate', () => {
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
+      callback();
+      return 0;
+    });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
+    (app as any).conversations.set([
+      {
+        id: 1,
+        title: 'Đã chat',
+        serverId: 'abcdefghijklmnopqrstuv',
+        messages: [{ id: 1, requestId: 1, role: 'user', text: 'Câu hỏi', status: 'complete' }],
+      },
+      { id: 2, title: 'Cuộc trò chuyện mới', serverId: 'zyxwvutsrqponmlkjihgfe', messages: [] },
+    ]);
+    (app as any).activeConversationId.set(1);
+    (app as any).messages.set((app as any).conversations()[0].messages);
+
+    (app as any).createConversation();
+
+    expect((app as any).conversations()).toHaveLength(2);
+    expect((app as any).activeConversationId()).toBe(2);
+    expect((app as any).messages()).toEqual([]);
+  });
+
+  it('does not show the active local chat when a requested conversation link is missing', async () => {
+    const remoteId = 'abcdefghijklmnopqrstuv';
+    const localMessages = [
+      { id: 1, requestId: 1, role: 'user', text: 'Lịch sử local', status: 'complete' },
+      { id: 2, requestId: 1, role: 'assistant', text: 'Không được đổ sang link lỗi', status: 'complete' },
+    ];
+    vi.stubGlobal('location', { href: `https://example.com/conversation/${remoteId}` });
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => JSON.stringify({
+        activeConversationId: 1,
+        conversations: [{
+          id: 1,
+          title: 'Chat local',
+          serverId: 'zyxwvutsrqponmlkjihgfe',
+          messages: localMessages,
+        }],
+      })),
+      setItem: vi.fn(),
+    });
+    const getConversation = vi.fn().mockRejectedValue(
+      new ConversationRequestError('Không tìm thấy conversation.', 404),
+    );
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined), getConversation } as unknown as ChatService);
+
+    expect((app as any).messages()).toEqual([]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect((app as any).messages()).toEqual([]);
+    expect((app as any).conversations()[0].messages).toEqual(localMessages);
+    expect((app as any).sharedRouteState()).toBe('missing');
+    expect((app as any).sharedRouteMessage()).toContain('Không tìm thấy');
+    expect(getConversation).toHaveBeenCalledWith(remoteId);
+  });
+
+  it('does not let a pending link load overwrite a conversation selected by the user', async () => {
+    const remoteId = 'abcdefghijklmnopqrstuv';
+    let resolveRemote!: (value: unknown) => void;
+    const remoteLoad = new Promise((resolve) => {
+      resolveRemote = resolve;
+    });
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
+      callback();
+      return 0;
+    });
+    vi.stubGlobal('location', { href: `https://example.com/conversation/${remoteId}` });
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => JSON.stringify({
+        activeConversationId: 1,
+        conversations: [
+          {
+            id: 1,
+            title: 'Cuộc trò chuyện trên link',
+            serverId: remoteId,
+            serverToken: 'owner-token-that-is-long-enough',
+            isPublic: true,
+            messages: [{ id: 1, requestId: 1, role: 'user', text: 'Link cũ', status: 'complete' }],
+          },
+          {
+            id: 2,
+            title: 'Chat local',
+            serverId: 'zyxwvutsrqponmlkjihgfe',
+            messages: [{ id: 2, requestId: 2, role: 'user', text: 'Tab đang chọn', status: 'complete' }],
+          },
+        ],
+      })),
+      setItem: vi.fn(),
+    });
+    const getConversation = vi.fn().mockReturnValue(remoteLoad);
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined), getConversation } as unknown as ChatService);
+
+    (app as any).selectConversation(2);
+    resolveRemote({
+      id: remoteId,
+      title: 'Nội dung link đã tải',
+      messages: [{ id: 20, requestId: 8, role: 'user', text: 'Không được ghi đè', status: 'complete' }],
+    });
+    await remoteLoad;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect((app as any).activeConversationId()).toBe(2);
+    expect((app as any).messages()[0].text).toBe('Tab đang chọn');
+    expect((app as any).sharedRouteState()).toBe('none');
+  });
 });

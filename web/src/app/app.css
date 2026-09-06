@@ -246,19 +246,30 @@ textarea:disabled {
   max-width: 180px;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 6px 8px 6px 10px;
+  gap: 0;
   overflow: hidden;
   color: #8e8ea0;
-  font: inherit;
-  font-size: 10px;
   background: #f7f7f8;
   border: 1px solid #e6e6eb;
   border-radius: 8px;
+}
+
+.conversation-tab-main {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 4px 6px 10px;
+  overflow: hidden;
+  color: inherit;
+  font: inherit;
+  font-size: 10px;
+  background: transparent;
+  border: 0;
   cursor: pointer;
 }
 
-.conversation-tab > span:first-child {
+.conversation-tab-main > span:first-child {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -272,10 +283,16 @@ textarea:disabled {
 }
 
 .conversation-tab-close {
+  width: 25px;
+  height: 27px;
   flex-shrink: 0;
   display: grid;
   place-items: center;
+  padding: 0;
   color: #a0a1ad;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
 }
 
 .conversation-tab-close:hover {
@@ -288,6 +305,27 @@ textarea:disabled {
   height: 27px;
   font-size: 18px;
   line-height: 1;
+}
+
+.new-conversation-button:disabled {
+  color: #b7b8c0;
+  background: #f7f7f8;
+  border-color: #e9e9ed;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.conversation-notice {
+  width: min(100%, 620px);
+  margin: auto;
+  padding: 12px 14px;
+  color: #6b6c7b;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+  background: #f7f9ff;
+  border: 1px solid #dbe7ff;
+  border-radius: 12px;
 }
 
 .mini-icon {
@@ -1167,6 +1205,10 @@ textarea:disabled {
   }
 
   .conversation-tab {
+    font-size: 12px;
+  }
+
+  .conversation-tab-main {
     font-size: 12px;
   }
 

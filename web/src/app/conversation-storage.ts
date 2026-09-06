@@ -82,8 +82,16 @@ function normalizeState(value: unknown): ConversationStateSnapshot {
   const activeConversationId = requestedActiveId && seenIds.has(requestedActiveId)
     ? requestedActiveId
     : conversations[0].id;
+  const emptyConversationToKeep = conversations.find((conversation) =>
+    conversation.id === activeConversationId && conversation.messages.length === 0,
+  ) ?? conversations.find((conversation) => conversation.messages.length === 0);
+  const normalizedConversations = emptyConversationToKeep
+    ? conversations.filter((conversation) =>
+        conversation.messages.length > 0 || conversation.id === emptyConversationToKeep.id,
+      )
+    : conversations;
 
-  return { activeConversationId, conversations };
+  return { activeConversationId, conversations: normalizedConversations };
 }
 
 function normalizeConversation(value: unknown): StoredConversation | null {
