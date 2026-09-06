@@ -4,22 +4,42 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
+using ProxyAgent.Api.Settings;
 
 namespace ProxyAgent.Api.WebSearch;
 
-public sealed class TavilySearchProvider(
-    HttpClient httpClient,
-    IOptions<WebSearchOptions> options) : IWebSearchProvider
+public sealed class TavilySearchProvider : IWebSearchProvider
 {
-    private readonly WebSearchOptions settings = options.Value;
+    private readonly HttpClient httpClient;
+    private readonly Func<WebSearchOptions> getSettings;
 
-    public bool IsConfigured =>
+    public TavilySearchProvider(HttpClient httpClient, IOptions<WebSearchOptions> options)
+    {
+        this.httpClient = httpClient;
+        getSettings = () => options.Value;
+    }
+
+    public TavilySearchProvider(HttpClient httpClient, IBackendSettings backendSettings)
+    {
+        this.httpClient = httpClient;
+        getSettings = () => backendSettings.Current.WebSearch;
+    }
+
+    public bool IsConfigured
+    {
+        get
+        {
+            var settings = getSettings();
+            return
         !string.IsNullOrWhiteSpace(settings.ApiKey) &&
         Uri.TryCreate(settings.BaseUrl, UriKind.Absolute, out var baseUri) &&
         baseUri.Scheme is "http" or "https";
+        }
+    }
 
     public async Task<WebSearchResponse> SearchAsync(string query, CancellationToken cancellationToken)
     {
+        var settings = getSettings();
         if (!IsConfigured)
         {
             throw new WebSearchException("Tavily web search is not configured.");
@@ -39,7 +59,7 @@ public sealed class TavilySearchProvider(
             IncludeRawContent = "markdown"
         };
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, BuildEndpoint("search"))
+        using var request = new HttpRequestMessage(HttpMethod.Post, BuildEndpoint("search", settings))
         {
             Content = JsonContent.Create(payload)
         };
@@ -73,7 +93,7 @@ public sealed class TavilySearchProvider(
                     {
                         Title = item.Title,
                         Url = item.Url,
-                        Content = LimitContent(item.RawContent ?? item.Content ?? string.Empty),
+                        Content = LimitContent(item.RawContent ?? item.Content ?? string.Empty, settings),
                         PublishedDate = item.PublishedDate
                     })
                     .ToArray()
@@ -97,13 +117,13 @@ public sealed class TavilySearchProvider(
         }
     }
 
-    private Uri BuildEndpoint(string path)
+    private static Uri BuildEndpoint(string path, WebSearchOptions settings)
     {
         var baseUrl = settings.BaseUrl.TrimEnd('/') + "/";
         return new Uri(new Uri(baseUrl, UriKind.Absolute), path);
     }
 
-    private string LimitContent(string content)
+    private static string LimitContent(string content, WebSearchOptions settings)
     {
         var maxChars = Math.Max(settings.MaxContentCharsPerResult, 500);
         return content.Length <= maxChars ? content : content[..maxChars] + "\n[content truncated]";

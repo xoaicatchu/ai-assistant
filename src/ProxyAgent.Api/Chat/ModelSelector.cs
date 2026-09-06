@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using ProxyAgent.Api.Settings;
 
 namespace ProxyAgent.Api.Chat;
 
@@ -47,10 +48,27 @@ public sealed class UnsupportedProviderException : Exception
     public string Code => "unsupported_provider";
 }
 
-public sealed class ModelSelector(
-    IOptions<RoutingOptions> routingOptions,
-    IOptions<ProvidersOptions> providersOptions) : IModelSelector
+public sealed class ModelSelector : IModelSelector
 {
+    private readonly IOptions<RoutingOptions> routingOptions;
+    private readonly Func<ProvidersOptions> getProviders;
+
+    public ModelSelector(
+        IOptions<RoutingOptions> routingOptions,
+        IOptions<ProvidersOptions> providersOptions)
+    {
+        this.routingOptions = routingOptions;
+        getProviders = () => providersOptions.Value;
+    }
+
+    public ModelSelector(
+        IOptions<RoutingOptions> routingOptions,
+        IBackendSettings backendSettings)
+    {
+        this.routingOptions = routingOptions;
+        getProviders = () => backendSettings.Current.Providers;
+    }
+
     public ProviderSelection Select(string? requestedModel)
     {
         var value = requestedModel?.Trim();
@@ -67,7 +85,7 @@ public sealed class ModelSelector(
             }
         }
 
-        var settings = providersOptions.Value.Get(provider);
+        var settings = getProviders().Get(provider);
         if (string.IsNullOrWhiteSpace(model))
         {
             model = settings.DefaultModel;

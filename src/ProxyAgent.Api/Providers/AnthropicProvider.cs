@@ -3,13 +3,27 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using ProxyAgent.Api.Chat;
+using ProxyAgent.Api.Settings;
 using ProxyAgent.Api.Streaming;
 
 namespace ProxyAgent.Api.Providers;
 
-public sealed class AnthropicProvider(HttpClient httpClient, IOptions<ProviderOptions> options) : IChatProvider
+public sealed class AnthropicProvider : IChatProvider
 {
-    private readonly ProviderOptions settings = options.Value;
+    private readonly HttpClient httpClient;
+    private readonly Func<ProviderOptions> getSettings;
+
+    public AnthropicProvider(HttpClient httpClient, IOptions<ProviderOptions> options)
+    {
+        this.httpClient = httpClient;
+        getSettings = () => options.Value;
+    }
+
+    public AnthropicProvider(HttpClient httpClient, IBackendSettings backendSettings)
+    {
+        this.httpClient = httpClient;
+        getSettings = () => backendSettings.Current.Providers.Anthropic;
+    }
 
     public string Name => "anthropic";
 
@@ -18,9 +32,10 @@ public sealed class AnthropicProvider(HttpClient httpClient, IOptions<ProviderOp
         ProviderSelection selection,
         CancellationToken cancellationToken)
     {
-        EnsureConfigured();
+        var settings = getSettings();
+        EnsureConfigured(settings);
 
-        using var httpRequest = CreateRequest(request, selection, stream: false);
+        using var httpRequest = CreateRequest(request, selection, stream: false, settings);
         using var response = await SendAsync(httpRequest, cancellationToken);
         var payload = await response.Content.ReadFromJsonAsync<AnthropicResponse>(cancellationToken: cancellationToken)
             ?? throw new ProviderRequestException(Name);
@@ -56,9 +71,10 @@ public sealed class AnthropicProvider(HttpClient httpClient, IOptions<ProviderOp
         ProviderSelection selection,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        EnsureConfigured();
+        var settings = getSettings();
+        EnsureConfigured(settings);
 
-        using var httpRequest = CreateRequest(request, selection, stream: true);
+        using var httpRequest = CreateRequest(request, selection, stream: true, settings);
         using var response = await SendAsync(httpRequest, cancellationToken);
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         var toolBlocks = new Dictionary<int, (string Id, string Name)>();
@@ -189,7 +205,11 @@ public sealed class AnthropicProvider(HttpClient httpClient, IOptions<ProviderOp
         }
     }
 
-    private HttpRequestMessage CreateRequest(NormalizedChatRequest request, ProviderSelection selection, bool stream)
+    private HttpRequestMessage CreateRequest(
+        NormalizedChatRequest request,
+        ProviderSelection selection,
+        bool stream,
+        ProviderOptions settings)
     {
         var systemMessages = request.Messages.Where(message => message.Role.Equals("system", StringComparison.OrdinalIgnoreCase));
         var messages = request.Messages
@@ -209,7 +229,7 @@ public sealed class AnthropicProvider(HttpClient httpClient, IOptions<ProviderOp
             ToolChoice = MapToolChoice(request.ToolChoice)
         };
 
-        var httpRequest = new HttpRequestMessage(HttpMethod.Post, BuildEndpoint("messages"))
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, BuildEndpoint("messages", settings))
         {
             Content = JsonContent.Create(payload)
         };
@@ -251,7 +271,7 @@ public sealed class AnthropicProvider(HttpClient httpClient, IOptions<ProviderOp
         }
     }
 
-    private void EnsureConfigured()
+    private void EnsureConfigured(ProviderOptions settings)
     {
         if (string.IsNullOrWhiteSpace(settings.ApiKey) || string.IsNullOrWhiteSpace(settings.BaseUrl))
         {
@@ -259,7 +279,7 @@ public sealed class AnthropicProvider(HttpClient httpClient, IOptions<ProviderOp
         }
     }
 
-    private Uri BuildEndpoint(string path) => new(new Uri(settings.BaseUrl.TrimEnd('/') + "/"), path);
+    private static Uri BuildEndpoint(string path, ProviderOptions settings) => new(new Uri(settings.BaseUrl.TrimEnd('/') + "/"), path);
 
     private static AnthropicMessage MapMessage(ChatMessage message)
     {

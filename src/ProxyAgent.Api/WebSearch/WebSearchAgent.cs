@@ -3,13 +3,11 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using ProxyAgent.Api.Chat;
+using ProxyAgent.Api.Settings;
 
 namespace ProxyAgent.Api.WebSearch;
 
-public sealed class WebSearchAgent(
-    ChatOrchestrator chatOrchestrator,
-    IWebSearchProvider webSearchProvider,
-    IOptions<WebSearchOptions> options)
+public sealed class WebSearchAgent
 {
     private const string ToolName = "web_search";
     private const string SystemInstruction = """
@@ -31,7 +29,31 @@ public sealed class WebSearchAgent(
         }
         """).RootElement.Clone();
 
-    private readonly WebSearchOptions settings = options.Value;
+    private readonly ChatOrchestrator chatOrchestrator;
+    private readonly IWebSearchProvider webSearchProvider;
+    private readonly Func<WebSearchOptions> getSettings;
+
+    public WebSearchAgent(
+        ChatOrchestrator chatOrchestrator,
+        IWebSearchProvider webSearchProvider,
+        IOptions<WebSearchOptions> options)
+    {
+        this.chatOrchestrator = chatOrchestrator;
+        this.webSearchProvider = webSearchProvider;
+        getSettings = () => options.Value;
+    }
+
+    public WebSearchAgent(
+        ChatOrchestrator chatOrchestrator,
+        IWebSearchProvider webSearchProvider,
+        IBackendSettings backendSettings)
+    {
+        this.chatOrchestrator = chatOrchestrator;
+        this.webSearchProvider = webSearchProvider;
+        getSettings = () => backendSettings.Current.WebSearch;
+    }
+
+    private WebSearchOptions Settings => getSettings();
 
     public async Task<NormalizedChatResponse> CompleteAsync(
         NormalizedChatRequest request,
@@ -137,7 +159,7 @@ public sealed class WebSearchAgent(
             }
 
             EnsureToolCallsAreSupported(toolCalls);
-            var remainingToolCalls = Math.Max(settings.MaxToolCalls, 1) - usedToolCalls;
+            var remainingToolCalls = Math.Max(Settings.MaxToolCalls, 1) - usedToolCalls;
             if (remainingToolCalls <= 0)
             {
                 await foreach (var item in StreamFinalAnswerAsync(current, cancellationToken))
@@ -164,7 +186,7 @@ public sealed class WebSearchAgent(
                 Tools = executableToolCalls.Length < toolCalls.Count ? [] : current.Tools
             };
 
-            if (executableToolCalls.Length < toolCalls.Count || usedToolCalls >= Math.Max(settings.MaxToolCalls, 1))
+            if (executableToolCalls.Length < toolCalls.Count || usedToolCalls >= Math.Max(Settings.MaxToolCalls, 1))
             {
                 await foreach (var item in StreamFinalAnswerAsync(current, cancellationToken))
                 {
@@ -195,7 +217,7 @@ public sealed class WebSearchAgent(
             }
 
             EnsureToolCallsAreSupported(toolCalls);
-            var remainingToolCalls = Math.Max(settings.MaxToolCalls, 1) - usedToolCalls;
+            var remainingToolCalls = Math.Max(Settings.MaxToolCalls, 1) - usedToolCalls;
             if (remainingToolCalls <= 0)
             {
                 return await CompleteFinalAnswerAsync(current, cancellationToken);
@@ -218,7 +240,7 @@ public sealed class WebSearchAgent(
                 Tools = executableToolCalls.Length < toolCalls.Count ? [] : current.Tools
             };
 
-            if (executableToolCalls.Length < toolCalls.Count || usedToolCalls >= Math.Max(settings.MaxToolCalls, 1))
+            if (executableToolCalls.Length < toolCalls.Count || usedToolCalls >= Math.Max(Settings.MaxToolCalls, 1))
             {
                 return await CompleteFinalAnswerAsync(current, cancellationToken);
             }
@@ -249,7 +271,7 @@ public sealed class WebSearchAgent(
 
         EnsureToolCallsAreSupported(toolCalls);
         var executableToolCalls = toolCalls
-            .Take(Math.Max(settings.MaxToolCalls, 1))
+            .Take(Math.Max(Settings.MaxToolCalls, 1))
             .ToArray();
         var searchResults = await SearchToolCallsAsync(executableToolCalls, cancellationToken);
         var finalRequest = PrepareWithSearchResults(request, searchResults);
@@ -336,7 +358,7 @@ public sealed class WebSearchAgent(
 
         EnsureToolCallsAreSupported(toolCalls);
         var executableToolCalls = toolCalls
-            .Take(Math.Max(settings.MaxToolCalls, 1))
+            .Take(Math.Max(Settings.MaxToolCalls, 1))
             .ToArray();
         var searchResults = await SearchToolCallsAsync(executableToolCalls, cancellationToken);
         var finalRequest = PrepareWithSearchResults(request, searchResults);
@@ -475,12 +497,12 @@ public sealed class WebSearchAgent(
     }
 
     private bool IsActive(NormalizedChatRequest request) =>
-        settings.Enabled &&
+        Settings.Enabled &&
         webSearchProvider.IsConfigured &&
         !string.Equals(request.ToolChoice, "none", StringComparison.OrdinalIgnoreCase);
 
     private bool ShouldUseToolCalling(NormalizedChatRequest request) =>
-        settings.UseToolCalling &&
+        Settings.UseToolCalling &&
         chatOrchestrator.CapabilitiesFor(request.Model).ToolCalling == ModelCapabilitySupport.Supported;
 
     private static bool ShouldAutoSearch(NormalizedChatRequest request)
