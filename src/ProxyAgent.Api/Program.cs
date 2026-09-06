@@ -17,14 +17,22 @@ builder.Services.Configure<WebSearchOptions>(builder.Configuration.GetSection("W
 builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection("Storage"));
 builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection("Admin"));
 var storageOptions = builder.Configuration.GetSection("Storage").Get<StorageOptions>() ?? new StorageOptions();
+var redisUrl = builder.Configuration["REDIS_URL"];
+if (string.IsNullOrWhiteSpace(redisUrl))
+{
+    redisUrl = storageOptions.RedisUrl;
+}
 var postgresConnectionString = builder.Configuration.GetConnectionString("Postgres");
 if (string.IsNullOrWhiteSpace(postgresConnectionString))
 {
     postgresConnectionString = storageOptions.PostgresConnectionString;
 }
 
-var usePostgres = string.Equals(storageOptions.Provider, "postgres", StringComparison.OrdinalIgnoreCase) ||
-    !string.IsNullOrWhiteSpace(postgresConnectionString);
+var useRedis = string.Equals(storageOptions.Provider, "redis", StringComparison.OrdinalIgnoreCase) ||
+    !string.IsNullOrWhiteSpace(redisUrl);
+var usePostgres = !useRedis && (
+    string.Equals(storageOptions.Provider, "postgres", StringComparison.OrdinalIgnoreCase) ||
+    !string.IsNullOrWhiteSpace(postgresConnectionString));
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options => options.AddPolicy("frontend", policy =>
     policy.WithOrigins(allowedOrigins)
@@ -34,7 +42,18 @@ builder.Services.AddSingleton<IModelSelector>(services => new ModelSelector(
     services.GetRequiredService<IOptions<RoutingOptions>>(),
     services.GetRequiredService<IBackendSettings>()));
 builder.Services.AddSingleton<ChatOrchestrator>();
-if (usePostgres)
+if (useRedis)
+{
+    builder.Services.AddSingleton(new RedisDatabase(redisUrl));
+    builder.Services.AddSingleton<IStorageInitializer>(services =>
+        services.GetRequiredService<RedisDatabase>());
+    builder.Services.AddSingleton<IRedisValueStore>(services =>
+        services.GetRequiredService<RedisDatabase>());
+    builder.Services.AddSingleton<IConversationStore, RedisConversationStore>();
+    builder.Services.AddSingleton<IAdminAccountStore, RedisAdminAccountStore>();
+    builder.Services.AddSingleton<IBackendSettingsStore, RedisBackendSettingsStore>();
+}
+else if (usePostgres)
 {
     builder.Services.AddSingleton(new PostgresDatabase(postgresConnectionString));
     builder.Services.AddSingleton<IStorageInitializer>(services =>
@@ -111,32 +130,28 @@ builder.Services.AddSingleton<IChatProvider>(services =>
 
 var app = builder.Build();
 
-if (!usePostgres)
+var storageInitialized = false;
+try
 {
-    var database = app.Services.GetRequiredService<IStorageInitializer>();
-    var databaseInitialized = false;
+    app.Services.GetRequiredService<IStorageInitializer>().Initialize();
+    storageInitialized = true;
+}
+catch (Exception exception)
+{
+    app.Logger.LogError(
+        exception,
+        "Storage initialization failed; the API will remain available without persistence.");
+}
+
+if (storageInitialized)
+{
     try
     {
-        database.Initialize();
-        databaseInitialized = true;
+        app.Services.GetRequiredService<AdminAuthService>().EnsureSeeded();
     }
     catch (Exception exception)
     {
-        app.Logger.LogError(
-            exception,
-            "SQLite initialization failed; the API will remain available without persistence.");
-    }
-
-    if (databaseInitialized)
-    {
-        try
-        {
-            app.Services.GetRequiredService<AdminAuthService>().EnsureSeeded();
-        }
-        catch (Exception exception)
-        {
-            app.Logger.LogError(exception, "Admin account seeding failed; the API will remain available.");
-        }
+        app.Logger.LogError(exception, "Admin account seeding failed; the API will remain available.");
     }
 }
 

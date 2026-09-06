@@ -58,12 +58,12 @@ public static class ErrorHandling
         StorageUnavailableException => new(
             503,
             "storage_unavailable",
-            "Không thể kết nối PostgreSQL. Kiểm tra cấu hình kết nối và deployment trên Vercel.",
+            "Không thể kết nối kho lưu trữ. Kiểm tra REDIS_URL hoặc cấu hình database trên deployment.",
             null),
         NpgsqlException or TimeoutException or SocketException or IOException => new(
             503,
             "storage_unavailable",
-            "Không thể kết nối PostgreSQL. Kiểm tra cấu hình kết nối và deployment trên Vercel.",
+            "Không thể kết nối kho lưu trữ. Kiểm tra REDIS_URL hoặc cấu hình database trên deployment.",
             null),
         _ => new(500, "internal_error", "An unexpected server error occurred.", null)
     };

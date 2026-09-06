@@ -55,7 +55,8 @@ Các giá trị cấu hình:
 | `WebSearch:MaxToolCalls` | Ngân sách lượt search trước khi agent ép model tổng hợp, mặc định 2 |
 | `WebSearch:TimeoutSeconds` | Timeout gọi Tavily, mặc định 30 giây |
 | `Storage:SqlitePath` | Đường dẫn database SQLite, mặc định `App_Data/proxy-agent.db` |
-| `Storage:Provider` | `postgres` để bắt buộc dùng PostgreSQL; production đã cấu hình sẵn |
+| `Storage:Provider` | `redis` hoặc `postgres`; production hiện dùng Redis |
+| `REDIS_URL` | Redis URL (`redis://` hoặc `rediss://`) cho production |
 | `ConnectionStrings:Postgres` | Connection string PostgreSQL; ưu tiên đặt bằng `ConnectionStrings__Postgres` trong environment |
 | `Storage:PostgresConnectionString` | Tên thay thế cho connection string nếu không dùng `ConnectionStrings:Postgres` |
 | `Admin:InitialUsername` | Tên tài khoản admin tạo lần đầu nếu database chưa có tài khoản |
@@ -138,13 +139,13 @@ WebSearch__Enabled=true
 WebSearch__ApiKey=<tavily-secret>
 WebSearch__UseToolCalling=false
 Cors__AllowedOrigins__0=https://<your-project>.vercel.app
-Storage__Provider=postgres
-ConnectionStrings__Postgres=Host=aws-0-<region>.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.uwfeuedubwoggcmrblzx;Password=<postgres-secret>;SSL Mode=Require
+Storage__Provider=redis
+REDIS_URL=<redis-url-cua-moi-truong>
 ```
 
-Trên Vercel, lấy host/user/port chính xác từ **Supabase → Connect → Session pooler/Transaction pooler**. Direct host `db.<project-ref>.supabase.co:5432` thường là IPv6; Vercel cần pooler IPv4 nếu project chưa bật IPv4 add-on. Backend chấp nhận cả connection string dạng `Host=...;Port=...` và URI `postgresql://...`.
+Nếu chuyển lại PostgreSQL, dùng `Storage__Provider=postgres` và `ConnectionStrings__Postgres` trong environment. Redis URL có thể dùng `rediss://` để bật TLS; không commit URL có secret vào Git.
 
-`supabaseUrl` cùng `sb_publishable_...` là thông tin cho Supabase client/Data API, không thay thế password trong connection string PostgreSQL. API khởi động độc lập với database; migration chỉ chạy khi request đầu tiên cần storage. Nếu storage chưa kết nối được, endpoint trả `503 storage_unavailable` để chat vẫn không bị chết.
+API khởi động độc lập với Redis; nếu storage chưa kết nối được, endpoint cần persistence trả `503 storage_unavailable` để chat vẫn không bị chết.
 
 Nếu dùng custom domain Vercel, thêm origin đó ở `Cors__AllowedOrigins__1`. Sau khi deploy, kiểm tra `https://<public-backend-url>/health` trả `{"status":"ok"}`.
 
@@ -154,7 +155,7 @@ Khi import repo vào Vercel:
 
 1. Để **Root Directory** ở thư mục gốc của repository (để trống hoặc `.`).
 2. Dùng build command `npm run build` và output directory `web/dist/web/browser`.
-3. Chọn framework **Services** trong Project Settings rồi redeploy. Provider credentials, `Storage__Provider=postgres`, connection string PostgreSQL và `Cors__AllowedOrigins__0` đặt trong Environment Variables của backend service. Không commit connection string có mật khẩu vào Git.
+3. Chọn framework **Services** trong Project Settings rồi redeploy. Provider credentials, `Storage__Provider=redis`, `REDIS_URL` và `Cors__AllowedOrigins__0` đặt trong Environment Variables của backend service. Không commit Redis URL có mật khẩu vào Git.
 
 Vercel dùng same-origin `/api` và route path này trực tiếp tới backend container service. Deployment không phải Vercel mới dùng `NG_APP_API_BASE_URL` để gọi backend trực tiếp và cần cấu hình CORS tương ứng.
 

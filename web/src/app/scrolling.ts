@@ -12,3 +12,13 @@ export function shouldAutoScroll(reason: ConversationScrollReason): boolean {
 export function scrollToBottom(container: ScrollContainer): void {
   container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
 }
+
+export function scrollPageToBottom(): void {
+  const documentElement = globalThis.document?.documentElement;
+  const scrollTo = globalThis.scrollTo;
+  if (!documentElement || typeof scrollTo !== 'function') {
+    return;
+  }
+
+  scrollTo({ top: documentElement.scrollHeight, behavior: 'smooth' });
+}

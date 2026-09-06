@@ -10,7 +10,7 @@ describe('App message submission', () => {
     vi.unstubAllGlobals();
   });
 
-  it('scrolls the conversation after submitting a question and keeps streaming enabled', async () => {
+  it('scrolls the browser page after submitting a question and keeps streaming enabled', async () => {
     const scrollTo = vi.fn();
     const chatService = {
       health: vi.fn().mockResolvedValue(undefined),
@@ -29,12 +29,11 @@ describe('App message submission', () => {
       return 0;
     });
     vi.stubGlobal('requestAnimationFrame', requestAnimationFrame);
+    vi.stubGlobal('document', { documentElement: { scrollHeight: 420 } });
+    vi.stubGlobal('scrollTo', scrollTo);
     vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
 
     const app = new App(chatService);
-    (app as any).conversation = {
-      nativeElement: { scrollHeight: 420, scrollTo },
-    };
     (app as any).draft.set('Câu hỏi cần gửi');
 
     await (app as any).send();
@@ -260,6 +259,35 @@ describe('App message submission', () => {
     expect(assistantText).toContain('Kết quả từ nguồn web.');
     expect(assistantText).not.toContain('<tool_call>');
     expect(assistantText).not.toContain('web_search');
+  });
+
+  it('keeps Claude thinking and web markup out of the UI during streaming', async () => {
+    const seenDeltas: string[] = [];
+    const stream = vi.fn(async (
+      _model: string,
+      _messages: ChatMessage[],
+      _signal: AbortSignal,
+      onDelta: (text: string) => void,
+    ) => {
+      onDelta('<thinking>nội dung nội bộ</thinking>');
+      seenDeltas.push((app as any).messages()[1]?.text ?? '');
+      onDelta('\n<web search><query>private query</query></web search>');
+      seenDeltas.push((app as any).messages()[1]?.text ?? '');
+      onDelta('\nCâu trả lời sạch.');
+    });
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
+      callback();
+      return 0;
+    });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined), stream } as unknown as ChatService);
+    (app as any).draft.set('Đọc repository');
+
+    await (app as any).send();
+
+    expect(seenDeltas.every((text) => !text.includes('<thinking>') && !text.includes('<web search>'))).toBe(true);
+    expect((app as any).messages()[1].text).toBe('Câu trả lời sạch.');
   });
 
   it('disables image paste when the selected model has no Vision capability', async () => {
@@ -603,6 +631,62 @@ describe('App message submission', () => {
     (app as any).onModelChange('x-ai/grok-4.6');
 
     expect((app as any).model()).toBe('x-ai/grok-4.6');
+  });
+
+  it('hides the new-tab button at five conversations and keeps it below the limit', () => {
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
+    const conversations = Array.from({ length: 5 }, (_, index) => ({
+      id: index + 1,
+      title: `Chat ${index + 1}`,
+      messages: [{ id: index + 1, requestId: index + 1, role: 'user', text: 'Câu hỏi', status: 'complete' }],
+    }));
+    (app as any).conversations.set(conversations);
+    (app as any).activeConversationId.set(1);
+
+    expect((app as any).canShowNewConversationButton()).toBe(false);
+    expect((app as any).canCreateConversation()).toBe(false);
+
+    (app as any).conversations.set(conversations.slice(0, 4));
+    expect((app as any).canShowNewConversationButton()).toBe(true);
+    expect((app as any).canCreateConversation()).toBe(true);
+  });
+
+  it('edits a user question and replaces that answer branch on Enter', async () => {
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
+      callback();
+      return 0;
+    });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+    const stream = vi.fn(async (
+      _model: string,
+      requestMessages: ChatMessage[],
+      _signal: AbortSignal,
+      onDelta: (text: string) => void,
+    ) => {
+      expect(requestMessages.at(-1)?.content).toBe('Câu hỏi đã sửa');
+      onDelta('Câu trả lời mới');
+    });
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined), stream } as unknown as ChatService);
+    const messages = [
+      { id: 1, requestId: 1, role: 'user', text: 'Câu hỏi cũ', status: 'complete' },
+      { id: 2, requestId: 1, role: 'assistant', text: 'Câu trả lời cũ', status: 'complete' },
+      { id: 3, requestId: 2, role: 'user', text: 'Nhánh sau', status: 'complete' },
+      { id: 4, requestId: 2, role: 'assistant', text: 'Câu trả lời sau', status: 'complete' },
+    ];
+    (app as any).messages.set(messages);
+    (app as any).conversations.set([{ id: 1, title: 'Chat', serverId: 'abcdefghijklmnopqrstuv', messages }]);
+
+    (app as any).startEditingMessage(1);
+    (app as any).editingDraft.set('Câu hỏi đã sửa');
+    await (app as any).submitEditedMessage(1);
+
+    expect(stream).toHaveBeenCalledOnce();
+    expect((app as any).messages().map((message: { text: string }) => message.text)).toEqual([
+      'Câu hỏi đã sửa',
+      'Câu trả lời mới',
+    ]);
+    expect((app as any).editingMessageId()).toBeNull();
   });
 
   it('switches between the default and remembered custom model servers', () => {

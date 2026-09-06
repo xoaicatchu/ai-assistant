@@ -93,22 +93,22 @@ Nếu dùng custom domain, thêm origin đó ở index tiếp theo (`Cors__Allow
 
 ### Admin và link conversation
 
-Tài khoản admin được tạo một lần khi database chưa có tài khoản. Cấu hình bootstrap bằng biến môi trường của backend, không commit mật khẩu:
+Tài khoản admin được tạo một lần khi kho lưu trữ chưa có tài khoản. Cấu hình bootstrap bằng biến môi trường của backend, không commit mật khẩu:
 
 ```text
 Admin__InitialUsername=admin
 Admin__InitialPassword=<mat-khau-it-nhat-8-ky-tu>
-Storage__Provider=postgres
-ConnectionStrings__Postgres=Host=aws-0-<region>.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.uwfeuedubwoggcmrblzx;Password=<mat-khau-postgres>;SSL Mode=Require
+Storage__Provider=redis
+REDIS_URL=<redis-url-cua-moi-truong>
 ```
 
-Sau khi backend khởi động, mở `https://<frontend>/admin`, đăng nhập rồi nhập Base URL, API key, model mặc định và cấu hình Tavily. API key chỉ được lưu ở backend và trang admin chỉ trả về trạng thái đã có key cùng phần che; có thể đổi mật khẩu ngay trong trang này. Các thay đổi có hiệu lực cho request mới. PostgreSQL được chọn tự động khi có `ConnectionStrings__Postgres`; production đã đặt provider là `postgres` để không quay lại SQLite.
+Sau khi backend khởi động, mở `https://<frontend>/admin`, đăng nhập rồi nhập Base URL, API key, model mặc định và cấu hình Tavily. API key chỉ được lưu ở backend và trang admin chỉ trả về trạng thái đã có key cùng phần che; có thể đổi mật khẩu ngay trong trang này. Các thay đổi có hiệu lực cho request mới. Production hiện dùng Redis khi có `REDIS_URL`; adapter PostgreSQL vẫn được giữ để có thể chuyển lại bằng cấu hình mà không đổi API.
 
-Với Supabase trên Vercel, lấy chuỗi **Session pooler** hoặc **Transaction pooler** trong nút **Connect** của Supabase. Không dùng `db.<project-ref>.supabase.co:5432` nếu project chưa bật IPv4 add-on; đó là direct endpoint IPv6 và Vercel có thể không truy cập được. Backend nhận cả dạng `Host=...;Port=...` và URI `postgresql://...`.
+Nếu cần PostgreSQL về sau, đặt `Storage__Provider=postgres` cùng `ConnectionStrings__Postgres` trong environment của backend. Redis nhận cả `redis://` và `rediss://`; URL chỉ được đọc ở server, không đưa vào bundle frontend, localStorage hay log.
 
-Các giá trị `supabaseUrl` và `sb_publishable_...` dùng cho Supabase client/Data API, không phải thông tin đăng nhập PostgreSQL cho adapter này. Không đưa publishable key vào connection string hoặc dùng nó để thay thế mật khẩu database; backend vẫn cần connection string pooler riêng. Migration PostgreSQL chạy ở lần đầu có thao tác storage, không chặn cold start của API.
+Các giá trị Supabase client/Data API không thay thế được credential Redis hoặc PostgreSQL của backend. Redis khởi tạo khi backend start; nếu kho lưu trữ tạm thời không kết nối được, API vẫn khởi động và endpoint cần lưu trả `503 storage_unavailable` thay vì làm chết luồng chat.
 
-Mỗi tab conversation được cấp một ID opaque ngay khi tạo và URL đổi ngay sang `/conversation/<id>`, nhưng lịch sử chưa được gửi lên server trong lúc chat bình thường. Nội dung chỉ được tạo/cập nhật trên PostgreSQL khi người dùng bấm Share; token sở hữu được lưu trên thiết bị để cập nhật conversation đã chia sẻ, còn GET không có token chỉ đọc được conversation đã public. Link trỏ tới đúng conversation server-backed, không phải snapshot và không nhúng nội dung vào URL. SQLite vẫn được giữ cho local/test khi không cấu hình PostgreSQL.
+Mỗi tab conversation được cấp một ID opaque ngay khi tạo và URL đổi ngay sang `/conversation/<id>`, nhưng lịch sử chưa được gửi lên server trong lúc chat bình thường. Nội dung chỉ được tạo/cập nhật trên Redis khi người dùng bấm Share; token sở hữu được lưu trên thiết bị để cập nhật conversation đã chia sẻ, còn GET không có token chỉ đọc được conversation đã public. Link trỏ tới đúng conversation server-backed, không phải snapshot và không nhúng nội dung vào URL. SQLite vẫn được giữ cho local/test khi không cấu hình kho ngoài.
 
 Trong phần Customize, `Custom model Base URL` chỉ đổi endpoint model của trình duyệt; API conversation, share và admin vẫn đi qua backend ứng dụng. Có thể nhập `http://127.0.0.1:<port>` hoặc `http://127.0.0.1:<port>/v1` để gọi trực tiếp 9Router trên cùng máy, kể cả khi giao diện đang mở từ Vercel. 9Router phải bật CORS cho origin của giao diện và cho phép header `Authorization`/`Content-Type`; frontend không thể đọc SSE từ một origin local nếu server không trả CORS.
 

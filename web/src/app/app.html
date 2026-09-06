@@ -152,17 +152,19 @@
             </button>
           </div>
         }
-        <button
-          class="new-conversation-button"
-          type="button"
-          [disabled]="!canCreateConversation()"
-          aria-label="Tạo cuộc trò chuyện mới"
-          [attr.title]="canCreateConversation() ? 'Tạo cuộc trò chuyện mới' : 'Hãy gửi tin nhắn trước khi tạo cuộc trò chuyện mới'"
-          (click)="createConversation()"
-        >
-          <span aria-hidden="true">+</span>
-          <span class="sr-only">Cuộc trò chuyện mới</span>
-        </button>
+        @if (canShowNewConversationButton()) {
+          <button
+            class="new-conversation-button"
+            type="button"
+            [disabled]="!canCreateConversation()"
+            aria-label="Tạo cuộc trò chuyện mới"
+            [attr.title]="canCreateConversation() ? 'Tạo cuộc trò chuyện mới' : 'Hãy gửi tin nhắn trước khi tạo cuộc trò chuyện mới'"
+            (click)="createConversation()"
+          >
+            <span aria-hidden="true">+</span>
+            <span class="sr-only">Cuộc trò chuyện mới</span>
+          </button>
+        }
       </div>
     </nav>
 
@@ -199,10 +201,58 @@
                 @if (message.image) {
                   <img class="message-image" [src]="message.image.dataUrl" alt="Ảnh đính kèm" />
                 }
-                @if (message.text) {
+                @if (message.role === 'user' && editingMessageId() === message.id) {
+                  <div class="edit-question-form">
+                    <textarea
+                      #editQuestionInput
+                      class="edit-question-input"
+                      [ngModel]="editingDraft()"
+                      (ngModelChange)="editingDraft.set($event)"
+                      (keydown)="onEditQuestionKeydown($event, message.id)"
+                      name="edit-question-{{ message.id }}"
+                      rows="2"
+                      aria-label="Sửa câu hỏi"
+                      enterkeyhint="send"
+                    ></textarea>
+                    <div class="edit-question-actions">
+                      <button
+                        class="message-action-button"
+                        type="button"
+                        (click)="cancelEditingMessage()"
+                        aria-label="Hủy sửa câu hỏi"
+                        title="Hủy"
+                      >
+                        <svg lucideX class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                      </button>
+                      <button
+                        class="message-action-button"
+                        type="button"
+                        (click)="submitEditedMessage(message.id)"
+                        [disabled]="!editingDraft().trim() && !message.image"
+                        aria-label="Gửi lại câu hỏi đã sửa"
+                        title="Gửi lại"
+                      >
+                        <svg lucideArrowUp class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                      </button>
+                    </div>
+                  </div>
+                } @else if (message.text) {
                   <div class="message-content" [innerHTML]="renderMarkdown(message.text)"></div>
                 } @else if (message.role === 'assistant' && message.status === 'pending') {
                   <div class="typing" aria-label="Assistant đang trả lời"><span></span><span></span><span></span></div>
+                }
+                @if (message.role === 'user' && editingMessageId() !== message.id) {
+                  <div class="message-actions user-message-actions">
+                    <button
+                      class="message-action-button"
+                      type="button"
+                      (click)="startEditingMessage(message.id)"
+                      aria-label="Sửa câu hỏi"
+                      title="Sửa câu hỏi"
+                    >
+                      <svg lucidePencil class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                    </button>
+                  </div>
                 }
                 @if (message.role === 'assistant' && message.status !== 'pending' && (message.text || canReplayAssistant(message.id))) {
                   <div class="message-actions">

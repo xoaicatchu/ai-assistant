@@ -38,6 +38,10 @@ Create this Vercel environment variable for the Production environment:
 PROXY_AGENT_BACKEND_URL=https://<public-backend-url>
 ```
 
+The backend can use Redis for conversations, admin credentials, and persisted settings. Set
+`REDIS_URL` to a `redis://` or `rediss://` connection string in the backend deployment environment;
+the value is read only on the server and is never bundled into the frontend.
+
 Vercel routes `/api/*` to the .NET backend container service, which streams the response back to the browser. The Angular build defaults to same-origin `/api`; provider credentials are configured on the backend service. SQLite falls back to a temporary file if the configured path cannot be opened, so this does not make Vercel storage durable.
 
 For Vercel, leave `NG_APP_API_BASE_URL` unset; the build uses same-origin `/api`. The Customize tab can override the backend URL, API key, and custom model routes; those values are persisted in local storage. Open `/admin` to log in and manage server-side provider/Tavily settings. Each non-empty conversation receives a server ID before its first model request. Share links use `/conversation/<id>` and load the conversation from the backend instead of embedding a snapshot in the URL; sharing only reveals that URL to other people.
