@@ -79,6 +79,28 @@ public sealed class WebSearchAgentTests
     }
 
     [Fact]
+    public async Task CompleteAsync_executes_textual_tool_calls_in_pre_search_mode()
+    {
+        var provider = new FakeChatProvider(emitTextToolCall: true);
+        var webSearch = new FakeWebSearchProvider();
+        var agent = CreateAgent(provider, webSearch, useToolCalling: false);
+
+        var response = await agent.CompleteAsync(
+            new NormalizedChatRequest
+            {
+                Model = "openai:test-model",
+                Messages = [new ChatMessage { Role = "user", Content = "Aeon Hà Đông" }]
+            },
+            CancellationToken.None);
+
+        Assert.Equal("Tổng hợp từ nguồn web.", response.Message.Content);
+        Assert.Equal(2, provider.Requests.Count);
+        Assert.Equal(2, webSearch.SearchCount);
+        Assert.DoesNotContain("<tool_call>", response.Message.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(provider.Requests[^1].Tools);
+    }
+
+    [Fact]
     public async Task CompleteAsync_forces_final_answer_when_tool_call_budget_is_exhausted()
     {
         var provider = new RepeatingToolCallProvider();
@@ -176,6 +198,35 @@ public sealed class WebSearchAgentTests
         Assert.Equal(2, webSearch.SearchCount);
     }
 
+    [Fact]
+    public async Task StreamAsync_executes_textual_tool_calls_in_pre_search_mode_without_streaming_markup()
+    {
+        var provider = new FakeChatProvider(emitTextToolCall: true);
+        var webSearch = new FakeWebSearchProvider();
+        var agent = CreateAgent(provider, webSearch, useToolCalling: false);
+        var events = new List<ChatStreamEvent>();
+
+        await foreach (var item in agent.StreamAsync(
+                           new NormalizedChatRequest
+                           {
+                               Model = "openai:test-model",
+                               Stream = true,
+                               Messages = [new ChatMessage { Role = "user", Content = "Aeon Hà Đông" }]
+                           },
+                           CancellationToken.None))
+        {
+            events.Add(item);
+        }
+
+        Assert.Equal("Tổng hợp.", string.Concat(events.Where(item => item.TextDelta is not null).Select(item => item.TextDelta)));
+        Assert.DoesNotContain(events, item => item.TextDelta?.Contains("<tool_call>", StringComparison.OrdinalIgnoreCase) == true);
+        Assert.DoesNotContain(events, item => item.TextDelta?.Contains("web_search", StringComparison.OrdinalIgnoreCase) == true);
+        Assert.True(events[^1].IsDone);
+        Assert.Equal(2, provider.Requests.Count);
+        Assert.Equal(2, webSearch.SearchCount);
+        Assert.Empty(provider.Requests[^1].Tools);
+    }
+
     private static WebSearchAgent CreateAgent(
         IChatProvider provider,
         IWebSearchProvider webSearchProvider,
@@ -255,7 +306,9 @@ public sealed class WebSearchAgentTests
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             Requests.Add(request);
-            var hasToolResult = request.Messages.Any(message => message.Role == "tool");
+            var hasToolResult = request.Messages.Any(message =>
+                message.Role == "tool" ||
+                message.Content?.Contains("https://example.com/source", StringComparison.Ordinal) == true);
             if (!hasToolResult)
             {
                 if (emitTextToolCall)
