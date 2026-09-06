@@ -1,31 +1,116 @@
+using System.Net.Sockets;
 using Npgsql;
 
 namespace ProxyAgent.Api.Storage;
 
 public sealed class PostgresDatabase : IStorageInitializer
 {
-    private readonly string connectionString;
+    private readonly string? connectionString;
+    private readonly string? configurationError;
+    private readonly object initializationGate = new();
+    private int initialized;
 
-    public PostgresDatabase(string connectionString)
+    public PostgresDatabase(string? connectionString)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
         {
-            throw new ArgumentException("A PostgreSQL connection string is required.", nameof(connectionString));
+            configurationError = "PostgreSQL connection string is not configured.";
+            return;
         }
 
-        this.connectionString = PostgresConnectionStringNormalizer.Normalize(connectionString);
+        try
+        {
+            this.connectionString = PostgresConnectionStringNormalizer.Normalize(connectionString);
+        }
+        catch (ArgumentException exception)
+        {
+            configurationError = exception.Message;
+        }
     }
 
     public NpgsqlConnection OpenConnection()
     {
-        var connection = new NpgsqlConnection(connectionString);
-        connection.Open();
-        return connection;
+        var connection = OpenRawConnection();
+        try
+        {
+            EnsureInitialized(connection);
+            return connection;
+        }
+        catch
+        {
+            connection.Dispose();
+            throw;
+        }
     }
 
     public void Initialize()
     {
-        using var connection = OpenConnection();
+        using var connection = OpenRawConnection();
+        EnsureInitialized(connection);
+    }
+
+    private NpgsqlConnection OpenRawConnection()
+    {
+        if (configurationError is not null)
+        {
+            throw new StorageUnavailableException(
+                $"PostgreSQL persistence is unavailable: {configurationError}");
+        }
+
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new StorageUnavailableException("PostgreSQL connection string is not configured.");
+        }
+
+        var connection = new NpgsqlConnection(connectionString);
+        try
+        {
+            connection.Open();
+            return connection;
+        }
+        catch (Exception exception) when (IsStorageFailure(exception))
+        {
+            connection.Dispose();
+            throw new StorageUnavailableException(
+                "PostgreSQL persistence is temporarily unavailable.",
+                exception);
+        }
+    }
+
+    private void EnsureInitialized(NpgsqlConnection connection)
+    {
+        if (Volatile.Read(ref initialized) == 1)
+        {
+            return;
+        }
+
+        lock (initializationGate)
+        {
+            if (initialized == 1)
+            {
+                return;
+            }
+
+            try
+            {
+                EnsureSchema(connection);
+                Volatile.Write(ref initialized, 1);
+            }
+            catch (StorageUnavailableException)
+            {
+                throw;
+            }
+            catch (Exception exception) when (IsStorageFailure(exception))
+            {
+                throw new StorageUnavailableException(
+                    "PostgreSQL schema could not be initialized.",
+                    exception);
+            }
+        }
+    }
+
+    private static void EnsureSchema(NpgsqlConnection connection)
+    {
         using var command = connection.CreateCommand();
         command.CommandText = """
             CREATE TABLE IF NOT EXISTS conversations (
@@ -62,6 +147,9 @@ public sealed class PostgresDatabase : IStorageInitializer
             """;
         command.ExecuteNonQuery();
     }
+
+    private static bool IsStorageFailure(Exception exception) => exception is
+        NpgsqlException or TimeoutException or SocketException or IOException;
 }
 
 public static class PostgresConnectionStringNormalizer

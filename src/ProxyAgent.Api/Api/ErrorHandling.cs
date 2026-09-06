@@ -1,6 +1,9 @@
+using System.Net.Sockets;
+using Npgsql;
 using ProxyAgent.Api.Chat;
 using ProxyAgent.Api.Providers;
 using ProxyAgent.Api.Streaming;
+using ProxyAgent.Api.Storage;
 using ProxyAgent.Api.WebSearch;
 
 namespace ProxyAgent.Api.Api;
@@ -52,6 +55,16 @@ public static class ErrorHandling
         ProviderRequestException request => new(502, request.Code, request.Message, request.Provider),
         ProviderUnavailableException unavailable => new(502, unavailable.Code, unavailable.Message, unavailable.Provider),
         WebSearchException search => new(502, search.Code, search.Message, "tavily"),
+        StorageUnavailableException => new(
+            503,
+            "storage_unavailable",
+            "Không thể kết nối PostgreSQL. Kiểm tra cấu hình kết nối và deployment trên Vercel.",
+            null),
+        NpgsqlException or TimeoutException or SocketException or IOException => new(
+            503,
+            "storage_unavailable",
+            "Không thể kết nối PostgreSQL. Kiểm tra cấu hình kết nối và deployment trên Vercel.",
+            null),
         _ => new(500, "internal_error", "An unexpected server error occurred.", null)
     };
 

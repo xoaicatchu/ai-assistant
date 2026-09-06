@@ -42,16 +42,6 @@
 
       <div class="topbar-actions flex items-center gap-2">
         <button
-          class="share-button"
-          type="button"
-          [disabled]="!messages().length"
-          aria-label="Chia sẻ cuộc trò chuyện"
-          title="Chia sẻ cuộc trò chuyện"
-          (click)="shareActiveConversation()"
-        >
-          <svg lucideShare2 class="h-4 w-4" aria-hidden="true"></svg>
-        </button>
-        <button
           id="customize-button"
           class="settings-button"
           type="button"
@@ -151,6 +141,37 @@
                 } @else if (message.role === 'assistant' && message.status === 'pending') {
                   <div class="typing" aria-label="Assistant đang trả lời"><span></span><span></span><span></span></div>
                 }
+                @if (message.role === 'assistant' && message.text && message.status !== 'pending') {
+                  <div class="message-actions">
+                    <button
+                      class="message-action-button"
+                      type="button"
+                      (click)="copyAssistantMessage(message.id)"
+                      aria-label="Sao chép câu trả lời"
+                      title="Sao chép câu trả lời"
+                    >
+                      <svg lucideCopy class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                      <span>Sao chép</span>
+                    </button>
+                    <button
+                      class="message-action-button"
+                      type="button"
+                      (click)="shareActiveConversation(message.id)"
+                      aria-label="Chia sẻ cuộc trò chuyện"
+                      title="Chia sẻ cuộc trò chuyện"
+                    >
+                      <svg lucideShare2 class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                      <span>Chia sẻ</span>
+                    </button>
+                    @if (messageActionFeedback()[message.id]; as feedback) {
+                      <span
+                        class="message-action-feedback"
+                        [class.action-error]="feedback.tone === 'error'"
+                        role="status"
+                      >{{ feedback.text }}</span>
+                    }
+                  </div>
+                }
               </div>
               @if (message.role === 'user' && canRetry(message.id)) {
                 <button
@@ -172,13 +193,6 @@
           <div class="error-banner" role="alert">
             <svg lucideCircleAlert class="h-4 w-4 shrink-0" aria-hidden="true"></svg>
             <span>{{ error() }}</span>
-          </div>
-        }
-
-        @if (shareMessage()) {
-          <div class="share-feedback" role="status">
-            <svg lucideShare2 class="h-4 w-4 shrink-0" aria-hidden="true"></svg>
-            <span>{{ shareMessage() }}</span>
           </div>
         }
 

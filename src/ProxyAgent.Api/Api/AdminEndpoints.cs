@@ -28,6 +28,7 @@ public static class AdminEndpoints
         AdminLoginRequest? request,
         AdminAuthService auth)
     {
+        auth.EnsureSeeded();
         var account = auth.Authenticate(request?.Username, request?.Password);
         if (account is null)
         {

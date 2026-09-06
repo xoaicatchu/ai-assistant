@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import '@angular/compiler';
 import { App } from './app';
-import { ChatMessage, ChatService } from './chat.service';
+import { ChatMessage, ChatService, ConversationRequestError } from './chat.service';
 import { CONVERSATIONS_STORAGE_KEY } from './conversation-storage';
 
 describe('App message submission', () => {
@@ -270,6 +270,55 @@ describe('App message submission', () => {
       'abcdefghijklmnopqrstuv',
       'owner-token-for-tests',
     );
+  });
+
+  it('copies an assistant answer and keeps the feedback attached to that answer', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { clipboard: { writeText } });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
+    (app as any).messages.set([
+      { id: 1, requestId: 1, role: 'user', text: 'Câu hỏi', status: 'complete' },
+      { id: 2, requestId: 1, role: 'assistant', text: 'Câu trả lời cần copy', status: 'complete' },
+    ]);
+
+    await (app as any).copyAssistantMessage(2);
+
+    expect(writeText).toHaveBeenCalledWith('Câu trả lời cần copy');
+    expect((app as any).messageActionFeedback()[2]).toEqual({
+      text: 'Đã sao chép câu trả lời.',
+      tone: 'success',
+    });
+  });
+
+  it('shows a conversation persistence error below the selected answer action', async () => {
+    const replaceState = vi.fn();
+    vi.stubGlobal('location', { href: 'https://example.com/' });
+    vi.stubGlobal('history', { replaceState });
+    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+
+    const chatService = {
+      health: vi.fn().mockResolvedValue(undefined),
+      createConversation: vi.fn().mockRejectedValue(new ConversationRequestError(
+        'Không thể kết nối PostgreSQL.',
+        503,
+        'storage_unavailable',
+      )),
+    } as unknown as ChatService;
+    const app = new App(chatService);
+    (app as any).messages.set([
+      { id: 1, requestId: 1, role: 'user', text: 'Câu hỏi', status: 'complete' },
+      { id: 2, requestId: 1, role: 'assistant', text: 'Câu trả lời', status: 'complete' },
+    ]);
+
+    await (app as any).shareActiveConversation(2);
+
+    expect((app as any).messageActionFeedback()[2]).toEqual({
+      text: 'Không thể kết nối PostgreSQL.',
+      tone: 'error',
+    });
   });
 
   it('loads a shared conversation from its server ID without removing the URL', async () => {

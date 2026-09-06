@@ -144,6 +144,8 @@ ConnectionStrings__Postgres=Host=aws-0-<region>.pooler.supabase.com;Port=6543;Da
 
 Trên Vercel, lấy host/user/port chính xác từ **Supabase → Connect → Session pooler/Transaction pooler**. Direct host `db.<project-ref>.supabase.co:5432` thường là IPv6; Vercel cần pooler IPv4 nếu project chưa bật IPv4 add-on. Backend chấp nhận cả connection string dạng `Host=...;Port=...` và URI `postgresql://...`.
 
+`supabaseUrl` cùng `sb_publishable_...` là thông tin cho Supabase client/Data API, không thay thế password trong connection string PostgreSQL. API khởi động độc lập với database; migration chỉ chạy khi request đầu tiên cần storage. Nếu storage chưa kết nối được, endpoint trả `503 storage_unavailable` để chat vẫn không bị chết.
+
 Nếu dùng custom domain Vercel, thêm origin đó ở `Cors__AllowedOrigins__1`. Sau khi deploy, kiểm tra `https://<public-backend-url>/health` trả `{"status":"ok"}`.
 
 ### Frontend Vercel

@@ -5,6 +5,7 @@ import {
   LucideBot,
   LucideCircleAlert,
   LucideChevronDown,
+  LucideCopy,
   LucideHeartPulse,
   LucideLoaderCircle,
   LucideMic,
@@ -68,6 +69,12 @@ import { AdminPage } from './admin-page';
 
 type HealthState = 'checking' | 'online' | 'offline' | 'unconfigured';
 type ActiveTab = 'chat' | 'setup';
+type MessageActionTone = 'success' | 'error';
+
+interface MessageActionFeedback {
+  text: string;
+  tone: MessageActionTone;
+}
 
 interface ActiveRequest {
   conversationId: number;
@@ -108,6 +115,7 @@ function maxRequestId(conversations: readonly ChatConversation[]): number {
     LucideBot,
     LucideCircleAlert,
     LucideChevronDown,
+    LucideCopy,
     LucideHeartPulse,
     LucideLoaderCircle,
     LucideMic,
@@ -147,6 +155,7 @@ export class App implements OnDestroy {
   protected readonly customModelsText = signal(this.initialSetup.customModels.join('\n'));
   protected readonly setupMessage = signal('');
   protected readonly shareMessage = signal('');
+  protected readonly messageActionFeedback = signal<Record<number, MessageActionFeedback>>({});
   protected readonly draft = signal('');
   protected readonly pendingImage = signal<ImageAttachment | null>(null);
   protected readonly messages = signal<ViewMessage[]>([
@@ -369,7 +378,7 @@ export class App implements OnDestroy {
       }
     } finally {
       if (requestCompleted) {
-        await this.syncConversation(conversationId);
+        await this.syncConversation(conversationId, assistantId);
       }
       if (this.activeRequests.get(conversationId)?.controller === controller) {
         this.activeRequests.delete(conversationId);
@@ -398,50 +407,64 @@ export class App implements OnDestroy {
     }
   }
 
-  protected async shareActiveConversation(): Promise<void> {
+  protected async copyAssistantMessage(messageId: number): Promise<void> {
+    const message = this.messages().find((item) => item.id === messageId && item.role === 'assistant');
+    if (!message?.text.trim()) {
+      return;
+    }
+
+    try {
+      await this.copyToClipboard(message.text);
+      this.setMessageActionFeedback(messageId, 'Đã sao chép câu trả lời.', 'success');
+    } catch {
+      this.setMessageActionFeedback(messageId, 'Không thể sao chép câu trả lời trên thiết bị này.', 'error');
+    }
+  }
+
+  protected async shareActiveConversation(messageId?: number): Promise<void> {
+    const feedbackMessageId = messageId ?? this.latestAssistantMessageId();
     this.persistActiveConversation();
     const conversation = this.conversations().find(
       (item) => item.id === this.activeConversationId(),
     );
     if (!conversation) {
-      this.shareMessage.set('Chưa có nội dung để tạo link chia sẻ.');
+      this.setMessageActionFeedback(feedbackMessageId, 'Chưa có nội dung để tạo link chia sẻ.', 'error');
       return;
     }
 
     const conversationMessages = this.conversationMessagesForApi(conversation.messages);
     if (conversationMessages.length === 0) {
-      this.shareMessage.set('Chưa có nội dung để tạo link chia sẻ.');
+      this.setMessageActionFeedback(feedbackMessageId, 'Chưa có nội dung để tạo link chia sẻ.', 'error');
       return;
     }
 
     if (conversation.isPublic && conversation.serverId && !conversation.serverToken) {
       const publicUrl = createConversationUrl(conversation.serverId, globalThis.location?.href ?? '');
       if (!publicUrl) {
-        this.shareMessage.set('Conversation có ID không hợp lệ.');
+        this.setMessageActionFeedback(feedbackMessageId, 'Conversation có ID không hợp lệ.', 'error');
         return;
       }
 
-      await this.deliverShareUrl(conversation.title, publicUrl);
+      await this.deliverShareUrl(conversation.title, publicUrl, feedbackMessageId);
       return;
     }
 
     let serverId: string | null = null;
     try {
-      serverId = await this.ensureServerConversation(conversation.id);
+      serverId = await this.ensureServerConversation(conversation.id, feedbackMessageId);
       if (!serverId) {
-        this.shareMessage.set('Chưa lưu được conversation lên server để tạo link.');
         return;
       }
 
       const latestConversation = this.conversations().find((item) => item.id === conversation.id);
       if (!latestConversation) {
-        this.shareMessage.set('Chưa có nội dung để tạo link chia sẻ.');
+        this.setMessageActionFeedback(feedbackMessageId, 'Chưa có nội dung để tạo link chia sẻ.', 'error');
         return;
       }
       const latestMessages = this.conversationMessagesForApi(latestConversation.messages);
       const ownerToken = latestConversation.serverToken;
       if (!ownerToken) {
-        this.shareMessage.set('Không còn quyền sở hữu conversation trên thiết bị này.');
+        this.setMessageActionFeedback(feedbackMessageId, 'Không còn quyền sở hữu conversation trên thiết bị này.', 'error');
         return;
       }
       await this.chatService.updateConversation(
@@ -455,16 +478,16 @@ export class App implements OnDestroy {
       this.markConversationSynced(conversation.id);
     } catch (caughtError) {
       if (!this.isMissingConversationError(caughtError)) {
-        this.shareMessage.set('Không thể lưu cuộc trò chuyện để tạo link chia sẻ.');
+        this.setMessageActionFeedback(feedbackMessageId, this.shareFailureMessage(caughtError), 'error');
         return;
       }
 
       this.rotateServerIdentity(conversation.id);
-      serverId = await this.ensureServerConversation(conversation.id);
+      serverId = await this.ensureServerConversation(conversation.id, feedbackMessageId);
       const recoveredConversation = this.conversations().find((item) => item.id === conversation.id);
       const recoveredToken = recoveredConversation?.serverToken;
       if (!serverId || !recoveredConversation || !recoveredToken) {
-        this.shareMessage.set('Không thể lưu cuộc trò chuyện để tạo link chia sẻ.');
+        this.setMessageActionFeedback(feedbackMessageId, 'Không thể lưu cuộc trò chuyện để tạo link chia sẻ.', 'error');
         return;
       }
 
@@ -479,22 +502,22 @@ export class App implements OnDestroy {
         await this.chatService.publishConversation(serverId, recoveredToken);
         this.setConversationPublic(conversation.id, true);
         this.markConversationSynced(conversation.id);
-      } catch {
-        this.shareMessage.set('Không thể lưu cuộc trò chuyện để tạo link chia sẻ.');
+      } catch (recoveryError) {
+        this.setMessageActionFeedback(feedbackMessageId, this.shareFailureMessage(recoveryError), 'error');
         return;
       }
     }
 
     const shareUrl = createConversationUrl(serverId, globalThis.location?.href ?? '');
     if (!shareUrl) {
-      this.shareMessage.set('Server trả về ID cuộc trò chuyện không hợp lệ.');
+      this.setMessageActionFeedback(feedbackMessageId, 'Server trả về ID cuộc trò chuyện không hợp lệ.', 'error');
       return;
     }
 
-    await this.deliverShareUrl(conversation.title, shareUrl);
+    await this.deliverShareUrl(conversation.title, shareUrl, feedbackMessageId);
   }
 
-  private async deliverShareUrl(title: string, shareUrl: string): Promise<void> {
+  private async deliverShareUrl(title: string, shareUrl: string, messageId: number | null): Promise<void> {
     try {
       if (typeof globalThis.navigator?.share === 'function') {
         await globalThis.navigator.share({
@@ -503,13 +526,13 @@ export class App implements OnDestroy {
           url: shareUrl,
         });
         this.replaceCurrentUrl(shareUrl);
-        this.shareMessage.set('Đã mở bảng chia sẻ.');
+        this.setMessageActionFeedback(messageId, 'Đã mở bảng chia sẻ.', 'success');
         return;
       }
 
       await this.copyToClipboard(shareUrl);
       this.replaceCurrentUrl(shareUrl);
-      this.shareMessage.set('Đã sao chép link chia sẻ.');
+      this.setMessageActionFeedback(messageId, 'Đã sao chép link chia sẻ.', 'success');
     } catch (caughtError) {
       if (this.isShareCancellation(caughtError)) {
         return;
@@ -518,9 +541,9 @@ export class App implements OnDestroy {
       try {
         await this.copyToClipboard(shareUrl);
         this.replaceCurrentUrl(shareUrl);
-        this.shareMessage.set('Không mở được bảng chia sẻ; đã sao chép link.');
+        this.setMessageActionFeedback(messageId, 'Không mở được bảng chia sẻ; đã sao chép link.', 'success');
       } catch {
-        this.shareMessage.set('Không thể sao chép link chia sẻ trên thiết bị này.');
+        this.setMessageActionFeedback(messageId, 'Không thể sao chép link chia sẻ trên thiết bị này.', 'error');
       }
     }
   }
@@ -1170,7 +1193,10 @@ export class App implements OnDestroy {
     return serverId;
   }
 
-  private async ensureServerConversation(conversationId: number): Promise<string | null> {
+  private async ensureServerConversation(
+    conversationId: number,
+    feedbackMessageId?: number | null,
+  ): Promise<string | null> {
     const conversation = this.conversations().find((item) => item.id === conversationId);
     if (!conversation) {
       return null;
@@ -1203,9 +1229,13 @@ export class App implements OnDestroy {
         );
         this.setConversationServerIdentity(conversationId, created);
         return created.id;
-      } catch {
+      } catch (caughtError) {
         if (this.activeConversationId() === conversationId) {
-          this.shareMessage.set('Conversation chưa đồng bộ lên server; câu trả lời vẫn được giữ trên thiết bị.');
+          this.setMessageActionFeedback(
+            feedbackMessageId ?? this.latestAssistantMessageId(),
+            this.shareFailureMessage(caughtError),
+            'error',
+          );
         }
         return null;
       }
@@ -1221,7 +1251,7 @@ export class App implements OnDestroy {
     }
   }
 
-  private async syncConversation(conversationId: number): Promise<void> {
+  private async syncConversation(conversationId: number, feedbackMessageId?: number): Promise<void> {
     const conversation = this.conversations().find((item) => item.id === conversationId);
     if (!conversation?.serverId || !conversation.serverToken) {
       return;
@@ -1244,7 +1274,7 @@ export class App implements OnDestroy {
       if (this.isMissingConversationError(caughtError)) {
         try {
           this.rotateServerIdentity(conversationId);
-          const recoveredId = await this.ensureServerConversation(conversationId);
+          const recoveredId = await this.ensureServerConversation(conversationId, feedbackMessageId);
           const recovered = this.conversations().find((item) => item.id === conversationId);
           if (recoveredId && recovered?.serverToken) {
             await this.chatService.updateConversation(
@@ -1262,7 +1292,11 @@ export class App implements OnDestroy {
       }
 
       if (this.activeConversationId() === conversationId) {
-        this.shareMessage.set('Không đồng bộ được conversation lên server; bản trên thiết bị vẫn còn nguyên.');
+        this.setMessageActionFeedback(
+          feedbackMessageId ?? this.latestAssistantMessageId(),
+          this.shareFailureMessage(caughtError),
+          'error',
+        );
       }
     }
   }
@@ -1282,6 +1316,36 @@ export class App implements OnDestroy {
 
   private isMissingConversationError(error: unknown): boolean {
     return error instanceof ConversationRequestError && error.status === 404;
+  }
+
+  private shareFailureMessage(error: unknown): string {
+    if (error instanceof ConversationRequestError && error.message) {
+      return error.message;
+    }
+
+    return 'Không thể lưu cuộc trò chuyện để tạo link chia sẻ.';
+  }
+
+  private latestAssistantMessageId(): number | null {
+    return [...this.messages()]
+      .reverse()
+      .find((message) => message.role === 'assistant' && Boolean(message.text.trim()))?.id ?? null;
+  }
+
+  private setMessageActionFeedback(
+    messageId: number | null | undefined,
+    text: string,
+    tone: MessageActionTone,
+  ): void {
+    this.shareMessage.set(text);
+    if (messageId === null || messageId === undefined) {
+      return;
+    }
+
+    this.messageActionFeedback.update((feedback) => ({
+      ...feedback,
+      [messageId]: { text, tone },
+    }));
   }
 
   private persistConversations(): void {

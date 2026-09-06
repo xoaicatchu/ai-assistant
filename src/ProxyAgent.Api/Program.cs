@@ -25,12 +25,6 @@ if (string.IsNullOrWhiteSpace(postgresConnectionString))
 
 var usePostgres = string.Equals(storageOptions.Provider, "postgres", StringComparison.OrdinalIgnoreCase) ||
     !string.IsNullOrWhiteSpace(postgresConnectionString);
-if (usePostgres && string.IsNullOrWhiteSpace(postgresConnectionString))
-{
-    throw new InvalidOperationException(
-        "Storage is configured for PostgreSQL, but ConnectionStrings:Postgres is missing.");
-}
-
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options => options.AddPolicy("frontend", policy =>
     policy.WithOrigins(allowedOrigins)
@@ -42,7 +36,7 @@ builder.Services.AddSingleton<IModelSelector>(services => new ModelSelector(
 builder.Services.AddSingleton<ChatOrchestrator>();
 if (usePostgres)
 {
-    builder.Services.AddSingleton(new PostgresDatabase(postgresConnectionString!));
+    builder.Services.AddSingleton(new PostgresDatabase(postgresConnectionString));
     builder.Services.AddSingleton<IStorageInitializer>(services =>
         services.GetRequiredService<PostgresDatabase>());
     builder.Services.AddSingleton<IConversationStore, PostgresConversationStore>();
@@ -117,32 +111,46 @@ builder.Services.AddSingleton<IChatProvider>(services =>
 
 var app = builder.Build();
 
-var database = app.Services.GetRequiredService<IStorageInitializer>();
-var databaseInitialized = false;
-try
+if (!usePostgres)
 {
-    database.Initialize();
-    databaseInitialized = true;
-}
-catch (Exception exception)
-{
-    app.Logger.LogError(
-        exception,
-        "{StorageProvider} initialization failed; the API will remain available without persistence.",
-        usePostgres ? "PostgreSQL" : "SQLite");
-}
-
-if (databaseInitialized)
-{
+    var database = app.Services.GetRequiredService<IStorageInitializer>();
+    var databaseInitialized = false;
     try
     {
-        app.Services.GetRequiredService<AdminAuthService>().EnsureSeeded();
+        database.Initialize();
+        databaseInitialized = true;
     }
     catch (Exception exception)
     {
-        app.Logger.LogError(exception, "Admin account seeding failed; the API will remain available.");
+        app.Logger.LogError(
+            exception,
+            "SQLite initialization failed; the API will remain available without persistence.");
+    }
+
+    if (databaseInitialized)
+    {
+        try
+        {
+            app.Services.GetRequiredService<AdminAuthService>().EnsureSeeded();
+        }
+        catch (Exception exception)
+        {
+            app.Logger.LogError(exception, "Admin account seeding failed; the API will remain available.");
+        }
     }
 }
+
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception exception)
+    {
+        await ErrorHandling.WriteAsync(context, exception, context.RequestAborted);
+    }
+});
 
 app.UseCors("frontend");
 app.UseAuthentication();

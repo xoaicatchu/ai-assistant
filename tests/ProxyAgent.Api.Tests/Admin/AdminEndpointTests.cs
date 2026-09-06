@@ -3,6 +3,11 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using ProxyAgent.Api.Admin;
+using ProxyAgent.Api.Storage;
 
 namespace ProxyAgent.Api.Tests.Admin;
 
@@ -103,6 +108,22 @@ public sealed class AdminEndpointTests
         Assert.True(document.RootElement.GetProperty("openAI").GetProperty("hasApiKey").GetBoolean());
     }
 
+    [Fact]
+    public async Task Login_reports_storage_unavailable_instead_of_returning_a_gateway_500()
+    {
+        using var app = new StorageUnavailableApp();
+
+        var response = await app.Client.PostAsJsonAsync("/api/admin/login", new
+        {
+            username = "admin",
+            password = "initial-password-123"
+        });
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("storage_unavailable", document.RootElement.GetProperty("error").GetProperty("code").GetString());
+    }
+
     private sealed class TestApp : WebApplicationFactory<Program>
     {
         private readonly string databasePath = Path.Combine(Path.GetTempPath(), $"proxy-agent-admin-{Guid.NewGuid():N}.db");
@@ -135,5 +156,45 @@ public sealed class AdminEndpointTests
                 }
             }
         }
+    }
+
+    private sealed class StorageUnavailableApp : WebApplicationFactory<Program>
+    {
+        public StorageUnavailableApp()
+        {
+            Client = CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        }
+
+        public HttpClient Client { get; }
+
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.UseEnvironment("Testing");
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IAdminAccountStore>();
+                services.AddSingleton<IAdminAccountStore, ThrowingAdminAccountStore>();
+            });
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            Client.Dispose();
+            base.Dispose(disposing);
+        }
+    }
+
+    private sealed class ThrowingAdminAccountStore : IAdminAccountStore
+    {
+        private static StorageUnavailableException Unavailable() =>
+            new("PostgreSQL persistence is not available.");
+
+        public AdminAccount? Get(string username) => throw Unavailable();
+
+        public bool HasAccount() => throw Unavailable();
+
+        public void Create(string username, string passwordHash) => throw Unavailable();
+
+        public void UpdatePasswordHash(string username, string passwordHash) => throw Unavailable();
     }
 }

@@ -6,6 +6,16 @@ namespace ProxyAgent.Api.Tests.Storage;
 public sealed class PostgresConnectionStringTests
 {
     [Fact]
+    public void Missing_connection_is_reported_when_storage_is_used_not_during_construction()
+    {
+        var database = new PostgresDatabase(string.Empty);
+
+        var exception = Assert.Throws<StorageUnavailableException>(() => database.OpenConnection());
+
+        Assert.Contains("not configured", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Converts_a_postgresql_uri_to_an_npgsql_connection_string()
     {
         var connectionString = PostgresConnectionStringNormalizer.Normalize(
