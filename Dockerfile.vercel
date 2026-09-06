@@ -12,8 +12,8 @@ RUN dotnet publish src/ProxyAgent.Api/ProxyAgent.Api.csproj \
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
-ENV ASPNETCORE_HTTP_PORTS=80
-EXPOSE 80
+EXPOSE 8080
 
 COPY --from=build /app/publish .
-ENTRYPOINT ["dotnet", "ProxyAgent.Api.dll"]
+COPY docker-entrypoint.sh .
+ENTRYPOINT ["sh", "./docker-entrypoint.sh"]
