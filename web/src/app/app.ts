@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnDestroy, signal, ViewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, signal, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   LucideArrowUp,
@@ -295,6 +295,46 @@ export class App implements OnDestroy {
       userMessage.id,
       assistantId,
     );
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  protected onGlobalKeydown(event: KeyboardEvent): void {
+    if (this.isAdminRoute) {
+      return;
+    }
+
+    const key = event.key.toLowerCase();
+    const hasCommandModifier = event.ctrlKey || event.metaKey;
+    if (hasCommandModifier && !event.altKey && !event.shiftKey && key === 'n') {
+      event.preventDefault();
+      this.createConversation();
+      return;
+    }
+
+    if (hasCommandModifier && !event.altKey && !event.shiftKey && key === 'w') {
+      event.preventDefault();
+      this.deleteConversation(this.activeConversationId(), event);
+      return;
+    }
+
+    if (hasCommandModifier && !event.altKey && !event.shiftKey && key === 'k') {
+      event.preventDefault();
+      this.focusComposer();
+      return;
+    }
+
+    if (key === 'escape') {
+      this.serverMenuOpen.set(false);
+      if (this.editingMessageId() !== null) {
+        this.cancelEditingMessage();
+      }
+      return;
+    }
+
+    if (key === '/' && !hasCommandModifier && !event.altKey && !event.shiftKey && !this.isEditableTarget(event.target)) {
+      event.preventDefault();
+      this.focusComposer();
+    }
   }
 
   protected toggleTheme(): void {
@@ -1808,6 +1848,15 @@ export class App implements OnDestroy {
 
   private focusComposer(): void {
     requestAnimationFrame(() => focusComposerOnDesktop(this.composerInput?.nativeElement));
+  }
+
+  private isEditableTarget(target: EventTarget | null): boolean {
+    const element = target as (HTMLElement & { isContentEditable?: boolean }) | null;
+    if (!element) {
+      return false;
+    }
+
+    return Boolean(element.isContentEditable) || ['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName);
   }
 
 }

@@ -9,6 +9,54 @@ describe('App message submission', () => {
     vi.unstubAllGlobals();
   });
 
+  it('focuses the composer with slash when focus is outside an editable field', () => {
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
+    const focus = vi.fn();
+    (app as any).composerInput = { nativeElement: { focus } };
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
+      callback();
+      return 0;
+    });
+
+    const event = { key: '/', ctrlKey: false, metaKey: false, shiftKey: false, target: null, preventDefault: vi.fn() };
+    (app as any).onGlobalKeydown(event);
+
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(focus).toHaveBeenCalledOnce();
+  });
+
+  it('creates a conversation with Ctrl+N and closes the active one with Ctrl+W', () => {
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
+      callback();
+      return 0;
+    });
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
+    const createConversation = vi.spyOn(app as any, 'createConversation');
+    const deleteConversation = vi.spyOn(app as any, 'deleteConversation');
+
+    const createEvent = { key: 'n', ctrlKey: true, metaKey: false, shiftKey: false, target: null, preventDefault: vi.fn(), stopPropagation: vi.fn() };
+    const closeEvent = { key: 'w', ctrlKey: true, metaKey: false, shiftKey: false, target: null, preventDefault: vi.fn(), stopPropagation: vi.fn() };
+    (app as any).onGlobalKeydown(createEvent);
+    (app as any).onGlobalKeydown(closeEvent);
+
+    expect(createEvent.preventDefault).toHaveBeenCalledOnce();
+    expect(closeEvent.preventDefault).toHaveBeenCalledOnce();
+    expect(createConversation).toHaveBeenCalledOnce();
+    expect(deleteConversation).toHaveBeenCalledWith(2, expect.anything());
+  });
+
+  it('does not use slash while typing in an editable field', () => {
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
+    const focus = vi.fn();
+    (app as any).composerInput = { nativeElement: { focus } };
+    const event = { key: '/', ctrlKey: false, metaKey: false, shiftKey: false, target: { tagName: 'TEXTAREA' }, preventDefault: vi.fn() };
+
+    (app as any).onGlobalKeydown(event);
+
+    expect(event.preventDefault).not.toHaveBeenCalled();
+    expect(focus).not.toHaveBeenCalled();
+  });
+
   it('scrolls the browser page after submitting a question and keeps streaming enabled', async () => {
     const scrollTo = vi.fn();
     const chatService = {
