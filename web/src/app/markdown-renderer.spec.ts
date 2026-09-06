@@ -19,4 +19,20 @@ describe('renderMarkdown', () => {
     expect(html).toContain('&lt;script&gt;');
     expect(html).toContain('<strong>an toàn</strong>');
   });
+
+  it('opens source links in a separate tab so the chat page stays mounted', () => {
+    const html = renderMarkdown('[Nguồn thời tiết](https://example.com/weather)');
+
+    expect(html).toContain('href="https://example.com/weather"');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener noreferrer"');
+  });
+
+  it('removes unsafe link protocols instead of rendering them as clickable links', () => {
+    const html = renderMarkdown('[Liên kết xấu](javascript:alert(1))');
+
+    expect(html).not.toContain('javascript:');
+    expect(html).not.toContain('<a');
+    expect(html).toContain('Liên kết xấu');
+  });
 });

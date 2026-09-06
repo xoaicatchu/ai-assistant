@@ -17,7 +17,6 @@ import {
   LucideSparkles,
   LucideSquare,
   LucideUserRound,
-  LucideWifi,
   LucideWifiOff,
   LucideX,
 } from '@lucide/angular';
@@ -37,6 +36,11 @@ import {
   MessageStatus,
   ViewMessage,
 } from './conversation-state';
+import {
+  loadConversationState,
+  saveConversationState,
+  type StoredConversation,
+} from './conversation-storage';
 import { renderMarkdown } from './markdown-renderer';
 import { allModelOptions, modelLabel } from './model-picker';
 import { runtimeConfig, setRuntimeApiBaseUrl } from './runtime-config';
@@ -59,10 +63,26 @@ interface ActiveRequest {
   controller: AbortController;
 }
 
-interface ChatConversation {
-  id: number;
-  title: string;
-  messages: ViewMessage[];
+type ChatConversation = StoredConversation;
+
+function maxConversationId(conversations: readonly ChatConversation[]): number {
+  return conversations.reduce((maxId, conversation) => Math.max(maxId, conversation.id), 0);
+}
+
+function maxMessageId(conversations: readonly ChatConversation[]): number {
+  return conversations.reduce(
+    (maxId, conversation) =>
+      conversation.messages.reduce((messageMax, message) => Math.max(messageMax, message.id), maxId),
+    0,
+  );
+}
+
+function maxRequestId(conversations: readonly ChatConversation[]): number {
+  return conversations.reduce(
+    (maxId, conversation) =>
+      conversation.messages.reduce((requestMax, message) => Math.max(requestMax, message.requestId), maxId),
+    0,
+  );
 }
 
 @Component({
@@ -85,7 +105,6 @@ interface ChatConversation {
     LucideSparkles,
     LucideSquare,
     LucideUserRound,
-    LucideWifi,
     LucideWifiOff,
     LucideX,
   ],
@@ -97,13 +116,12 @@ export class App implements OnDestroy {
   @ViewChild('composerInput') private composerInput?: ElementRef<HTMLTextAreaElement>;
 
   private readonly initialSetup = loadSetupSettings();
+  private readonly initialConversationState = loadConversationState();
   protected readonly runtime = runtimeConfig;
   protected readonly brandLabel = 'MEDICAL HARNESS FRAMEWORK';
   protected readonly activeTab = signal<ActiveTab>('chat');
-  protected readonly conversations = signal<ChatConversation[]>([
-    { id: 1, title: 'Cuộc trò chuyện mới', messages: [] },
-  ]);
-  protected readonly activeConversationId = signal(1);
+  protected readonly conversations = signal<ChatConversation[]>(this.initialConversationState.conversations);
+  protected readonly activeConversationId = signal(this.initialConversationState.activeConversationId);
   protected readonly model = signal(this.initialSetup.selectedModel);
   protected readonly modelOptions = signal(allModelOptions(this.initialSetup.customModels));
   protected readonly gatewayBaseUrl = signal(this.initialSetup.gatewayBaseUrl);
@@ -112,7 +130,11 @@ export class App implements OnDestroy {
   protected readonly setupMessage = signal('');
   protected readonly draft = signal('');
   protected readonly pendingImage = signal<ImageAttachment | null>(null);
-  protected readonly messages = signal<ViewMessage[]>([]);
+  protected readonly messages = signal<ViewMessage[]>([
+    ...(this.initialConversationState.conversations.find(
+      (conversation) => conversation.id === this.initialConversationState.activeConversationId,
+    )?.messages ?? []),
+  ]);
   protected readonly voiceListening = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -121,10 +143,10 @@ export class App implements OnDestroy {
   );
 
   private readonly activeRequests = new Map<number, ActiveRequest>();
-  private requestGeneration = 0;
+  private requestGeneration = maxRequestId(this.initialConversationState.conversations);
   private composing = false;
-  private nextMessageId = 1;
-  private nextConversationId = 2;
+  private nextMessageId = maxMessageId(this.initialConversationState.conversations) + 1;
+  private nextConversationId = maxConversationId(this.initialConversationState.conversations) + 1;
   private readonly maxImageBytes = 5 * 1024 * 1024;
   private readonly acceptedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
   private readonly voiceInput = new VoiceInputController();
@@ -135,6 +157,7 @@ export class App implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.persistActiveConversation();
     this.voiceInput.destroy();
   }
 
@@ -227,6 +250,7 @@ export class App implements OnDestroy {
       status: 'pending',
     };
     this.messages.set([...remainingMessages, retriedUser, retriedAssistant]);
+    this.updateActiveConversation();
     this.error.set('');
     this.scrollConversationToBottom();
 
@@ -337,6 +361,7 @@ export class App implements OnDestroy {
     this.pendingImage.set(null);
     this.busy.set(false);
     this.focusComposer();
+    this.persistConversations();
   }
 
   protected selectConversation(id: number): void {
@@ -357,6 +382,7 @@ export class App implements OnDestroy {
     this.draft.set('');
     this.pendingImage.set(null);
     this.busy.set(this.activeRequests.has(id));
+    this.persistConversations();
     this.scrollConversationToBottom();
     this.focusComposer();
   }
@@ -374,6 +400,7 @@ export class App implements OnDestroy {
     if (remaining.length === 0) {
       this.clear();
       this.conversations.set([{ id: this.activeConversationId(), title: 'Cuộc trò chuyện mới', messages: [] }]);
+      this.persistConversations();
       return;
     }
 
@@ -388,6 +415,7 @@ export class App implements OnDestroy {
       this.busy.set(false);
       this.focusComposer();
     }
+    this.persistConversations();
   }
 
   protected saveSetup(): void {
@@ -628,6 +656,7 @@ export class App implements OnDestroy {
     if (conversationId === this.activeConversationId()) {
       this.messages.update(update);
     }
+    this.persistConversations();
   }
 
   private scrollConversationToBottom(reason: ConversationScrollReason = 'user-action'): void {
@@ -666,6 +695,11 @@ export class App implements OnDestroy {
           : conversation,
       ),
     );
+    this.persistConversations();
+  }
+
+  private persistConversations(): void {
+    saveConversationState(this.conversations(), this.activeConversationId());
   }
 
   private conversationTitle(value: string): string {

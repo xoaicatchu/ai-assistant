@@ -153,8 +153,17 @@ textarea:disabled {
 }
 
 .status-online .status-icon {
-  color: #18864b;
-  background: #e8f7ee;
+  background: transparent;
+}
+
+.online-dot {
+  width: 9px;
+  height: 9px;
+  display: block;
+  background: #20b56d;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px rgba(32, 181, 109, 0.16), 0 0 11px rgba(32, 181, 109, 0.7);
 }
 
 .status-offline .status-icon,

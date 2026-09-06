@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import '@angular/compiler';
 import { App } from './app';
 import { ChatMessage, ChatService } from './chat.service';
+import { CONVERSATIONS_STORAGE_KEY } from './conversation-storage';
 
 describe('App message submission', () => {
   afterEach(() => {
@@ -51,5 +52,35 @@ describe('App message submission', () => {
     const app = new App(chatService);
 
     expect((app as any).brandLabel).toBe('MEDICAL HARNESS FRAMEWORK');
+  });
+
+  it('restores the active conversation from device storage', () => {
+    const stored = {
+      activeConversationId: 4,
+      conversations: [
+        {
+          id: 4,
+          title: 'Lịch sử cũ',
+          messages: [
+            { id: 10, requestId: 6, role: 'user', text: 'Câu hỏi cũ', status: 'complete' },
+            { id: 11, requestId: 6, role: 'assistant', text: 'Câu trả lời cũ', status: 'complete' },
+          ],
+        },
+      ],
+    };
+    const storage = {
+      getItem: vi.fn((key: string) => key === CONVERSATIONS_STORAGE_KEY ? JSON.stringify(stored) : null),
+      setItem: vi.fn(),
+    };
+    vi.stubGlobal('localStorage', storage);
+    const chatService = { health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService;
+
+    const app = new App(chatService);
+
+    expect((app as any).activeConversationId()).toBe(4);
+    expect((app as any).messages().map((message: { text: string }) => message.text)).toEqual([
+      'Câu hỏi cũ',
+      'Câu trả lời cũ',
+    ]);
   });
 });
