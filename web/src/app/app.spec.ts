@@ -427,7 +427,7 @@ describe('App message submission', () => {
     expect(replaceState).not.toHaveBeenCalled();
   });
 
-  it('does not add another empty tab when the active conversation has no messages', () => {
+  it('allows creating another empty tab before the first message', () => {
     vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
       callback();
       return 0;
@@ -438,11 +438,13 @@ describe('App message submission', () => {
 
     (app as any).createConversation();
 
-    expect((app as any).conversations()).toHaveLength(1);
-    expect((app as any).canCreateConversation()).toBe(false);
+    expect((app as any).conversations()).toHaveLength(2);
+    expect((app as any).activeConversationId()).toBe(2);
+    expect((app as any).messages()).toEqual([]);
+    expect((app as any).canCreateConversation()).toBe(true);
   });
 
-  it('reuses an existing empty tab instead of creating a duplicate', () => {
+  it('creates another empty tab even when an empty tab already exists', () => {
     vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
       callback();
       return 0;
@@ -464,7 +466,7 @@ describe('App message submission', () => {
 
     (app as any).createConversation();
 
-    expect((app as any).conversations()).toHaveLength(2);
+    expect((app as any).conversations()).toHaveLength(3);
     expect((app as any).activeConversationId()).toBe(2);
     expect((app as any).messages()).toEqual([]);
   });

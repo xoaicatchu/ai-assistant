@@ -777,14 +777,7 @@ export class App implements OnDestroy {
   }
 
   protected canCreateConversation(): boolean {
-    if (this.isSharedRouteBlocked() || this.conversations().length >= this.maxConversationTabs) {
-      return false;
-    }
-
-    const activeConversation = this.conversations().find(
-      (conversation) => conversation.id === this.activeConversationId(),
-    );
-    return Boolean(activeConversation && activeConversation.messages.length > 0);
+    return !this.isSharedRouteBlocked() && this.conversations().length < this.maxConversationTabs;
   }
 
   protected canShowNewConversationButton(): boolean {
@@ -801,21 +794,6 @@ export class App implements OnDestroy {
   protected createConversation(): void {
     this.voiceInput.stop();
     if (!this.canCreateConversation()) {
-      return;
-    }
-
-    const activeConversation = this.conversations().find(
-      (conversation) => conversation.id === this.activeConversationId(),
-    );
-    if (!activeConversation || activeConversation.messages.length === 0) {
-      return;
-    }
-
-    const emptyConversation = this.conversations().find(
-      (conversation) => conversation.messages.length === 0,
-    );
-    if (emptyConversation) {
-      this.selectConversation(emptyConversation.id);
       return;
     }
 
