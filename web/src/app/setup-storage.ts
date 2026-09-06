@@ -20,7 +20,7 @@ export const DEFAULT_SETUP_SETTINGS: SetupSettings = {
   gatewayBaseUrl: '',
   apiKey: '',
   customModels: [],
-  selectedModel: 'deepseek/deepseek-v4-flash',
+  selectedModel: 'x-ai/grok-4.6',
 };
 
 export function normalizeGatewayBaseUrl(value: string | null | undefined): string {
