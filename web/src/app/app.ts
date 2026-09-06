@@ -64,7 +64,14 @@ import {
   type ModelCapabilitySupport,
 } from './model-picker';
 import { apiUrl, runtimeConfig, setRuntimeApiBaseUrl } from './runtime-config';
-import { isPageNearBottom, scrollPageToBottom, shouldAutoScroll, type ConversationScrollReason } from './scrolling';
+import {
+  isPageNearBottom,
+  restorePageScrollPosition,
+  savePageScrollPosition,
+  scrollPageToBottom,
+  shouldAutoScroll,
+  type ConversationScrollReason,
+} from './scrolling';
 import { loadAutoScrollPreference, saveAutoScrollPreference } from './scroll-preference';
 import {
   DEFAULT_SETUP_SETTINGS,
@@ -336,6 +343,11 @@ export class App implements OnDestroy {
       event.preventDefault();
       this.focusComposer();
     }
+  }
+
+  @HostListener('window:scroll')
+  protected onWindowScroll(): void {
+    savePageScrollPosition();
   }
 
   protected toggleTheme(): void {
@@ -1263,6 +1275,7 @@ export class App implements OnDestroy {
       this.sharedRouteState.set('loaded');
       this.sharedRouteMessage.set('Cuộc trò chuyện này chỉ được xem.');
       this.persistConversations();
+      restorePageScrollPosition();
       return;
     }
 
@@ -1324,6 +1337,7 @@ export class App implements OnDestroy {
     this.sharedRouteMessage.set('Cuộc trò chuyện đã chia sẻ — chỉ được xem.');
     this.persistConversations();
     this.shareMessage.set('Đã mở cuộc trò chuyện từ link chia sẻ.');
+    restorePageScrollPosition();
   }
 
   private importSharedConversation(shared: ConversationApiDocument): ChatConversation {

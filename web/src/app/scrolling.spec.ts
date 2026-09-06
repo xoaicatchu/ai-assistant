@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { isPageNearBottom, scrollPageToBottom, scrollToBottom, shouldAutoScroll } from './scrolling';
+import {
+  isPageNearBottom,
+  restorePageScrollPosition,
+  savePageScrollPosition,
+  scrollPageToBottom,
+  scrollToBottom,
+  shouldAutoScroll,
+} from './scrolling';
 
 describe('scrollToBottom', () => {
   it('scrolls the conversation container to its current bottom', () => {
@@ -39,6 +46,36 @@ describe('isPageNearBottom', () => {
 
     expect(isPageNearBottom()).toBe(false);
 
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('page scroll restoration', () => {
+  it('saves the current browser position for the current route', () => {
+    const setItem = vi.fn();
+    vi.stubGlobal('location', { pathname: '/conversation/example', search: '' });
+    vi.stubGlobal('scrollY', 640);
+    vi.stubGlobal('sessionStorage', { setItem });
+
+    savePageScrollPosition();
+
+    expect(setItem).toHaveBeenCalledWith('medical-harness.scroll.v1:/conversation/example', '640');
+    vi.unstubAllGlobals();
+  });
+
+  it('restores the saved position after the conversation has rendered', () => {
+    const scrollTo = vi.fn();
+    vi.stubGlobal('location', { pathname: '/conversation/example', search: '' });
+    vi.stubGlobal('sessionStorage', { getItem: vi.fn(() => '640') });
+    vi.stubGlobal('scrollTo', scrollTo);
+    vi.stubGlobal('requestAnimationFrame', (callback: (timestamp: number) => void) => {
+      callback(0);
+      return 0;
+    });
+
+    restorePageScrollPosition();
+
+    expect(scrollTo).toHaveBeenCalledWith({ top: 640, behavior: 'auto' });
     vi.unstubAllGlobals();
   });
 });
