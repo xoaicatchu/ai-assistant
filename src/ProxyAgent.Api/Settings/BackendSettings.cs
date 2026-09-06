@@ -34,7 +34,7 @@ public sealed class BackendSettingsService : IBackendSettings
         this.store = store;
         defaultsProviders = Clone(providers.Value);
         defaultsWebSearch = Clone(webSearch.Value);
-        current = Apply(defaultsProviders, defaultsWebSearch, store.Get());
+        current = Apply(defaultsProviders, defaultsWebSearch, TryGetPersistedOverrides());
         lastRefreshUtc = DateTimeOffset.UtcNow;
     }
 
@@ -80,6 +80,20 @@ public sealed class BackendSettingsService : IBackendSettings
         finally
         {
             lastRefreshUtc = DateTimeOffset.UtcNow;
+        }
+    }
+
+    private BackendSettingsOverrides? TryGetPersistedOverrides()
+    {
+        try
+        {
+            return store.Get();
+        }
+        catch
+        {
+            // Persistence is an optional enhancement. Keep the process usable with the
+            // environment/appsettings defaults when the database is unavailable.
+            return null;
         }
     }
 
