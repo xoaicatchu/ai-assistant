@@ -177,12 +177,13 @@ public sealed class OpenAiProvider : IChatProvider
             }
 
             var statusCode = response.StatusCode;
+            var upstreamDetails = await ProviderErrorDetails.ReadAsync(response, cancellationToken);
             response.Dispose();
             throw statusCode switch
             {
                 HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => new ProviderAuthenticationException(Name),
                 HttpStatusCode.PaymentRequired => new ProviderQuotaException(Name),
-                >= HttpStatusCode.BadRequest and < HttpStatusCode.InternalServerError => new ProviderRequestException(Name),
+                >= HttpStatusCode.BadRequest and < HttpStatusCode.InternalServerError => new ProviderRequestException(Name, upstreamDetails),
                 _ => new ProviderUnavailableException(Name)
             };
         }

@@ -53,6 +53,20 @@ public sealed class AnthropicProviderTests
         Assert.Contains("toolu-1", handler.RequestBody);
     }
 
+    [Fact]
+    public async Task CompleteAsync_preserves_upstream_error_details_for_request_failures()
+    {
+        var handler = new RecordingHandler(
+            "{\"error\":{\"message\":\"prompt is too long\"}}",
+            HttpStatusCode.BadRequest);
+        var provider = CreateProvider(handler);
+
+        var error = await Assert.ThrowsAsync<ProviderRequestException>(() =>
+            provider.CompleteAsync(RequestWithSystemAndTool(), Selection("claude-test"), CancellationToken.None));
+
+        Assert.Contains("prompt is too long", error.Message);
+    }
+
     private static AnthropicProvider CreateProvider(RecordingHandler handler)
     {
         return new AnthropicProvider(new HttpClient(handler), Options.Create(new ProviderOptions

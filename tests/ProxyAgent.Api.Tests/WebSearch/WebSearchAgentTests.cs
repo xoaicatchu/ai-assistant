@@ -10,6 +10,25 @@ namespace ProxyAgent.Api.Tests.WebSearch;
 public sealed class WebSearchAgentTests
 {
     [Fact]
+    public async Task CompleteAsync_runs_multiple_searches_in_parallel()
+    {
+        var provider = new FakeChatProvider(emitTextToolCall: true);
+        var webSearch = new ConcurrentWebSearchProvider(TimeSpan.FromMilliseconds(80));
+        var agent = CreateAgent(provider, webSearch, useToolCalling: false);
+
+        await agent.CompleteAsync(
+            new NormalizedChatRequest
+            {
+                Model = "grok-4.6",
+                Messages = [new ChatMessage { Role = "user", Content = "Tìm thông tin mới" }]
+            },
+            CancellationToken.None);
+
+        Assert.Equal(2, webSearch.SearchCount);
+        Assert.Equal(2, webSearch.MaximumConcurrentSearches);
+    }
+
+    [Fact]
     public async Task CompleteAsync_executes_web_search_before_returning_final_answer()
     {
         var provider = new FakeChatProvider();
@@ -466,14 +485,15 @@ public sealed class WebSearchAgentTests
     private sealed class FakeWebSearchProvider : IWebSearchProvider
     {
         public bool IsConfigured => true;
-        public int SearchCount { get; private set; }
+        private int searchCount;
+        public int SearchCount => searchCount;
 
         public Task<WebSearchResponse> SearchAsync(string query, CancellationToken cancellationToken) =>
             Task.FromResult(RecordSearch(query));
 
         private WebSearchResponse RecordSearch(string query)
         {
-            SearchCount++;
+            Interlocked.Increment(ref searchCount);
             return new WebSearchResponse
             {
                 Query = query,
@@ -487,6 +507,24 @@ public sealed class WebSearchAgentTests
                     }
                 ]
             };
+        }
+    }
+
+    private sealed class ConcurrentWebSearchProvider(TimeSpan delay) : IWebSearchProvider
+    {
+        private int activeSearches;
+        public bool IsConfigured => true;
+        public int SearchCount { get; private set; }
+        public int MaximumConcurrentSearches { get; private set; }
+
+        public async Task<WebSearchResponse> SearchAsync(string query, CancellationToken cancellationToken)
+        {
+            SearchCount++;
+            var active = Interlocked.Increment(ref activeSearches);
+            MaximumConcurrentSearches = Math.Max(MaximumConcurrentSearches, active);
+            await Task.Delay(delay, cancellationToken);
+            Interlocked.Decrement(ref activeSearches);
+            return new WebSearchResponse { Query = query };
         }
     }
 }

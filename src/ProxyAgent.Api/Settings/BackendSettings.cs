@@ -24,7 +24,8 @@ public sealed class BackendSettingsService : IBackendSettings
     private readonly ProvidersOptions defaultsProviders;
     private readonly WebSearchOptions defaultsWebSearch;
     private BackendSettingsSnapshot current;
-    private DateTimeOffset lastRefreshUtc;
+    private long lastRefreshUtcTicks;
+    private int refreshInProgress;
 
     public BackendSettingsService(
         IOptions<ProvidersOptions> providers,
@@ -35,18 +36,24 @@ public sealed class BackendSettingsService : IBackendSettings
         defaultsProviders = Clone(providers.Value);
         defaultsWebSearch = Clone(webSearch.Value);
         current = Apply(defaultsProviders, defaultsWebSearch, TryGetPersistedOverrides());
-        lastRefreshUtc = DateTimeOffset.UtcNow;
+        lastRefreshUtcTicks = DateTimeOffset.UtcNow.UtcDateTime.Ticks;
     }
 
     public BackendSettingsSnapshot Current
     {
         get
         {
-            lock (gate)
+            var snapshot = Volatile.Read(ref current);
+            var lastRefreshUtc = new DateTimeOffset(
+                Volatile.Read(ref lastRefreshUtcTicks),
+                TimeSpan.Zero);
+            if (DateTimeOffset.UtcNow - lastRefreshUtc >= RefreshInterval &&
+                Interlocked.CompareExchange(ref refreshInProgress, 1, 0) == 0)
             {
-                RefreshIfStale();
-                return current;
+                _ = Task.Run(RefreshInBackground);
             }
+
+            return snapshot;
         }
     }
 
@@ -56,21 +63,21 @@ public sealed class BackendSettingsService : IBackendSettings
         store.Save(overrides);
         lock (gate)
         {
-            current = next;
-            lastRefreshUtc = DateTimeOffset.UtcNow;
+            Volatile.Write(ref current, next);
+            Volatile.Write(ref lastRefreshUtcTicks, DateTimeOffset.UtcNow.UtcDateTime.Ticks);
         }
     }
 
-    private void RefreshIfStale()
+    private void RefreshInBackground()
     {
-        if (DateTimeOffset.UtcNow - lastRefreshUtc < RefreshInterval)
-        {
-            return;
-        }
-
         try
         {
-            current = Apply(defaultsProviders, defaultsWebSearch, store.Get());
+            var next = Apply(defaultsProviders, defaultsWebSearch, store.Get());
+            lock (gate)
+            {
+                Volatile.Write(ref current, next);
+                Volatile.Write(ref lastRefreshUtcTicks, DateTimeOffset.UtcNow.UtcDateTime.Ticks);
+            }
         }
         catch
         {
@@ -79,7 +86,8 @@ public sealed class BackendSettingsService : IBackendSettings
         }
         finally
         {
-            lastRefreshUtc = DateTimeOffset.UtcNow;
+            Volatile.Write(ref lastRefreshUtcTicks, DateTimeOffset.UtcNow.UtcDateTime.Ticks);
+            Volatile.Write(ref refreshInProgress, 0);
         }
     }
 

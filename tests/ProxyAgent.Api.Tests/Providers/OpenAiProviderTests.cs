@@ -47,6 +47,20 @@ public sealed class OpenAiProviderTests
     }
 
     [Fact]
+    public async Task CompleteAsync_preserves_upstream_error_details_for_request_failures()
+    {
+        var handler = new RecordingHandler(
+            "{\"error\":{\"message\":\"maximum context length exceeded\"}}",
+            HttpStatusCode.BadRequest);
+        var provider = CreateProvider(handler);
+
+        var error = await Assert.ThrowsAsync<ProviderRequestException>(() =>
+            provider.CompleteAsync(RequestWithTool(), Selection("gpt-test"), CancellationToken.None));
+
+        Assert.Contains("maximum context length exceeded", error.Message);
+    }
+
+    [Fact]
     public async Task CompleteAsync_maps_quota_failure_to_actionable_error()
     {
         var handler = new RecordingHandler(

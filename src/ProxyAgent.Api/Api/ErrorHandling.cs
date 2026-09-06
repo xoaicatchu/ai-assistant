@@ -1,5 +1,3 @@
-using System.Net.Sockets;
-using Npgsql;
 using ProxyAgent.Api.Chat;
 using ProxyAgent.Api.Providers;
 using ProxyAgent.Api.Streaming;
@@ -56,11 +54,6 @@ public static class ErrorHandling
         ProviderUnavailableException unavailable => new(502, unavailable.Code, unavailable.Message, unavailable.Provider),
         WebSearchException search => new(502, search.Code, search.Message, "tavily"),
         StorageUnavailableException => new(
-            503,
-            "storage_unavailable",
-            "Không thể kết nối kho lưu trữ. Kiểm tra REDIS_URL hoặc cấu hình database trên deployment.",
-            null),
-        NpgsqlException or TimeoutException or SocketException or IOException => new(
             503,
             "storage_unavailable",
             "Không thể kết nối kho lưu trữ. Kiểm tra REDIS_URL hoặc cấu hình database trên deployment.",

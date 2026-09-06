@@ -463,14 +463,13 @@ public sealed class WebSearchAgent
         IReadOnlyList<ChatToolCall> toolCalls,
         CancellationToken cancellationToken)
     {
-        var results = new List<WebSearchResponse>(toolCalls.Count);
-        foreach (var toolCall in toolCalls)
+        var searches = toolCalls.Select(async toolCall =>
         {
             var query = ReadQuery(toolCall.ArgumentsJson);
-            results.Add(await webSearchProvider.SearchAsync(query, cancellationToken));
-        }
+            return await webSearchProvider.SearchAsync(query, cancellationToken);
+        });
 
-        return results;
+        return await Task.WhenAll(searches);
     }
 
     private static NormalizedChatRequest PrepareWithSearchResults(
