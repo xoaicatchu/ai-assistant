@@ -231,7 +231,7 @@ Không test nào cần API key thật.
 
 ## Giới hạn MVP và hướng mở rộng
 
-SQLite persistence hiện đã có cho conversation/admin/settings, nhưng chưa có client authentication, rate limiting, retry/circuit breaker hoặc browser-style page crawling. SQLite trên filesystem ngắn hạn của Vercel không phải storage production bền vững; PostgreSQL hoặc volume persistent là bước tiếp theo nếu cần giữ dữ liệu sau redeploy. Web search hiện dùng kết quả và raw Markdown content do Tavily trả về.
+SQLite persistence hiện đã có cho conversation/admin/settings, nhưng chưa có client authentication, rate limiting, retry/circuit breaker hoặc browser-style page crawling. Nếu path SQLite không mở được, backend fallback sang file tạm để không làm service chết; filesystem ngắn hạn của Vercel vẫn không phải storage production bền vững. PostgreSQL hoặc volume persistent là bước tiếp theo nếu cần giữ dữ liệu sau redeploy. Web search hiện dùng kết quả và raw Markdown content do Tavily trả về.
 
 Các extension point đã có sẵn:
 

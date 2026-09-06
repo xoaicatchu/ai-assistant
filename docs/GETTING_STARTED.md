@@ -96,7 +96,7 @@ dotnet user-secrets set "Admin:InitialPassword" "<mat-khau-it-nhat-12-ky-tu>" --
 
 Mở `http://localhost:4200/admin`, đăng nhập, sau đó có thể lưu Base URL, API key, model mặc định của OpenAI-compatible/Anthropic và cấu hình Tavily. Mật khẩu được băm PBKDF2 và lưu trong SQLite; API key không được trả lại đầy đủ trong response admin.
 
-Mỗi conversation được cấp ID server trước lượt chat đầu tiên và được đồng bộ qua API backend. Nút chia sẻ tạo link `/conversation/<id>` để người khác mở đúng conversation; nội dung không nằm trong URL. Nếu backend lưu trữ tạm thời lỗi, bản trên thiết bị vẫn được giữ và app sẽ thử đồng bộ ở lượt sau. SQLite được bọc sau các interface storage để có thể thay bằng PostgreSQL sau này. Với Vercel/container ngắn hạn, SQLite không đảm bảo dữ liệu tồn tại sau redeploy; production cần chuyển sang database có volume hoặc PostgreSQL.
+Mỗi conversation được cấp ID server trước lượt chat đầu tiên và được đồng bộ qua API backend. Nút chia sẻ tạo link `/conversation/<id>` để người khác mở đúng conversation; nội dung không nằm trong URL. Nếu backend lưu trữ tạm thời lỗi, bản trên thiết bị vẫn được giữ và app sẽ thử đồng bộ ở lượt sau. SQLite được bọc sau các interface storage để có thể thay bằng PostgreSQL sau này. Nếu filesystem không ghi được, backend dùng file tạm để giữ service hoạt động; với Vercel/container ngắn hạn, dữ liệu SQLite vẫn không đảm bảo tồn tại sau redeploy hoặc khi instance thay đổi. Production cần chuyển sang database có volume hoặc PostgreSQL.
 
 ### System prompt
 

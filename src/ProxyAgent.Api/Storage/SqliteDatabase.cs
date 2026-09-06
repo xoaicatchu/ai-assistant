@@ -5,7 +5,7 @@ namespace ProxyAgent.Api.Storage;
 
 public sealed class SqliteDatabase
 {
-    private readonly string connectionString;
+    private string connectionString = string.Empty;
 
     public SqliteDatabase(IOptions<StorageOptions> options)
     {
@@ -19,20 +19,41 @@ public sealed class SqliteDatabase
             path = Path.Combine(AppContext.BaseDirectory, path);
         }
 
-        DatabasePath = path;
-        connectionString = new SqliteConnectionStringBuilder
-        {
-            DataSource = path,
-            Mode = SqliteOpenMode.ReadWriteCreate,
-            Cache = SqliteCacheMode.Shared,
-            ForeignKeys = true,
-            Pooling = false
-        }.ToString();
+        ConfigurePath(path);
     }
 
-    public string DatabasePath { get; }
+    public string DatabasePath { get; private set; } = string.Empty;
 
     public void Initialize()
+    {
+        try
+        {
+            InitializeConfiguredPath();
+        }
+        catch (Exception exception) when (CanFallBackToTemporaryStorage(exception))
+        {
+            var fallbackPath = Path.Combine(
+                Path.GetTempPath(),
+                "proxy-agent",
+                $"proxy-agent-{Environment.ProcessId}.db");
+            if (string.Equals(DatabasePath, fallbackPath, StringComparison.OrdinalIgnoreCase))
+            {
+                throw;
+            }
+
+            ConfigurePath(fallbackPath);
+            InitializeConfiguredPath();
+        }
+    }
+
+    public SqliteConnection OpenConnection()
+    {
+        var connection = new SqliteConnection(connectionString);
+        connection.Open();
+        return connection;
+    }
+
+    private void InitializeConfiguredPath()
     {
         if (!string.Equals(DatabasePath, ":memory:", StringComparison.OrdinalIgnoreCase))
         {
@@ -73,10 +94,19 @@ public sealed class SqliteDatabase
         command.ExecuteNonQuery();
     }
 
-    public SqliteConnection OpenConnection()
+    private void ConfigurePath(string path)
     {
-        var connection = new SqliteConnection(connectionString);
-        connection.Open();
-        return connection;
+        DatabasePath = path;
+        connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = path,
+            Mode = SqliteOpenMode.ReadWriteCreate,
+            Cache = SqliteCacheMode.Shared,
+            ForeignKeys = true,
+            Pooling = false
+        }.ToString();
     }
+
+    private static bool CanFallBackToTemporaryStorage(Exception exception) =>
+        exception is IOException or UnauthorizedAccessException or SqliteException;
 }
