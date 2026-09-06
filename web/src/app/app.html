@@ -225,7 +225,7 @@
                   <svg lucideBot class="h-4 w-4" aria-hidden="true"></svg>
                 }
               </div>
-              @if (message.role === 'user' && editingMessageId() !== message.id) {
+              @if (message.role === 'user' && editingMessageId() !== message.id && !isSharedConversationReadOnly()) {
                 <div class="message-actions user-message-actions">
                   <button
                     class="message-action-button"
@@ -366,7 +366,7 @@
             (paste)="onComposerPaste($event)"
             name="message"
             rows="2"
-            [disabled]="isSharedRouteBlocked()"
+            [disabled]="isSharedRouteBlocked() || isSharedConversationReadOnly()"
             [placeholder]="modelSupportsVision() ? 'Nhắn tin hoặc dán ảnh vào đây…' : 'Nhắn tin…'"
             aria-label="Tin nhắn"
             enterkeyhint="send"
@@ -375,9 +375,9 @@
             <div class="composer-tools flex min-w-0 items-center gap-2">
               <label
                 class="icon-button attach-button"
-                [class.is-disabled]="!modelSupportsVision() || isSharedRouteBlocked()"
-                [attr.aria-disabled]="!modelSupportsVision() || isSharedRouteBlocked()"
-                [attr.title]="isSharedRouteBlocked() ? 'Không thể nhập trong liên kết này' : modelSupportsVision() ? 'Đính kèm ảnh' : 'Model này không hỗ trợ Vision'"
+                [class.is-disabled]="!modelSupportsVision() || isSharedRouteBlocked() || isSharedConversationReadOnly()"
+                [attr.aria-disabled]="!modelSupportsVision() || isSharedRouteBlocked() || isSharedConversationReadOnly()"
+                [attr.title]="isSharedRouteBlocked() || isSharedConversationReadOnly() ? 'Cuộc trò chuyện này chỉ được xem' : modelSupportsVision() ? 'Đính kèm ảnh' : 'Model này không hỗ trợ Vision'"
                 for="image-upload"
               >
                 <svg lucidePlus class="h-4 w-4" aria-hidden="true"></svg>
@@ -388,7 +388,7 @@
                 class="sr-only"
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/gif"
-                [disabled]="!modelSupportsVision() || isSharedRouteBlocked()"
+                [disabled]="!modelSupportsVision() || isSharedRouteBlocked() || isSharedConversationReadOnly()"
                 (change)="onImageSelected($event)"
               />
               <button
@@ -410,7 +410,7 @@
                   class="model-select"
                   [ngModel]="model()"
                   (ngModelChange)="onModelChange($event)"
-                  [disabled]="isSharedRouteBlocked()"
+                  [disabled]="isSharedRouteBlocked() || isSharedConversationReadOnly()"
                   name="composer-model"
                   aria-label="Model"
                   [attr.title]="selectedModelCapabilitySummary()"
@@ -427,7 +427,7 @@
                 [class.is-listening]="voiceListening()"
                 type="button"
                 (click)="toggleVoiceInput()"
-                [disabled]="isSharedRouteBlocked()"
+                [disabled]="isSharedRouteBlocked() || isSharedConversationReadOnly()"
                 [attr.aria-pressed]="voiceListening()"
                 [attr.aria-label]="voiceListening() ? 'Dừng nhập bằng giọng nói' : 'Nhập bằng giọng nói'"
                 [attr.title]="voiceListening() ? 'Dừng nhập bằng giọng nói' : 'Nhập bằng giọng nói'"
@@ -439,7 +439,7 @@
                   <svg lucideSquare class="h-4 w-4" aria-hidden="true"></svg>
                 </button>
               } @else {
-                <button class="icon-button send-button" type="submit" [disabled]="isSharedRouteBlocked() || (!draft().trim() && !pendingImage())" aria-label="Gửi tin nhắn" title="Gửi tin nhắn">
+                <button class="icon-button send-button" type="submit" [disabled]="isSharedRouteBlocked() || isSharedConversationReadOnly() || (!draft().trim() && !pendingImage())" aria-label="Gửi tin nhắn" title="Gửi tin nhắn">
                   <svg lucideArrowUp class="h-4 w-4" aria-hidden="true"></svg>
                 </button>
               }

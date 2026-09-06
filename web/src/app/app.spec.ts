@@ -460,6 +460,43 @@ describe('App message submission', () => {
     expect(replaceState).not.toHaveBeenCalled();
   });
 
+  it('keeps a shared conversation read-only for the link recipient', async () => {
+    vi.stubGlobal('location', { href: 'https://example.com/conversation/abcdefghijklmnopqrstuv' });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
+      callback();
+      return 0;
+    });
+    const stream = vi.fn();
+    const chatService = {
+      health: vi.fn().mockResolvedValue(undefined),
+      getConversation: vi.fn().mockResolvedValue({
+        id: 'abcdefghijklmnopqrstuv',
+        title: 'Conversation đã chia sẻ',
+        messages: [
+          { id: 20, requestId: 8, role: 'user', text: 'Câu hỏi công khai', status: 'complete' },
+          { id: 21, requestId: 8, role: 'assistant', text: 'Câu trả lời công khai', status: 'complete' },
+        ],
+      }),
+      stream,
+    } as unknown as ChatService;
+    const app = new App(chatService);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    (app as any).draft.set('Không được gửi vào link chia sẻ');
+    await (app as any).send();
+    await (app as any).replayAssistantMessage(21);
+    (app as any).startEditingMessage(20);
+
+    expect((app as any).isSharedConversationReadOnly()).toBe(true);
+    expect(stream).not.toHaveBeenCalled();
+    expect((app as any).editingMessageId()).toBeNull();
+    expect((app as any).messages().map((message: { text: string }) => message.text)).toEqual([
+      'Câu hỏi công khai',
+      'Câu trả lời công khai',
+    ]);
+  });
+
   it('allows creating another empty tab before the first message', () => {
     vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
       callback();

@@ -238,7 +238,7 @@ export class App implements OnDestroy {
 
   protected async send(): Promise<void> {
     this.voiceInput.stop();
-    if (this.isSharedRouteBlocked()) {
+    if (this.isSharedRouteBlocked() || this.isSharedConversationReadOnly()) {
       return;
     }
 
@@ -310,6 +310,9 @@ export class App implements OnDestroy {
   }
 
   protected async replayAssistantMessage(assistantMessageId: number): Promise<void> {
+    if (this.isSharedConversationReadOnly()) {
+      return;
+    }
     const context = this.replayContext(assistantMessageId);
     if (!context) {
       return;
@@ -319,7 +322,7 @@ export class App implements OnDestroy {
   }
 
   protected startEditingMessage(messageId: number): void {
-    if (this.isSharedRouteBlocked()) {
+    if (this.isSharedRouteBlocked() || this.isSharedConversationReadOnly()) {
       return;
     }
 
@@ -356,7 +359,7 @@ export class App implements OnDestroy {
   }
 
   protected async submitEditedMessage(messageId: number): Promise<void> {
-    if (this.isSharedRouteBlocked()) {
+    if (this.isSharedRouteBlocked() || this.isSharedConversationReadOnly()) {
       return;
     }
 
@@ -382,7 +385,7 @@ export class App implements OnDestroy {
   }
 
   protected canReplayAssistant(assistantMessageId: number): boolean {
-    return this.replayContext(assistantMessageId) !== null;
+    return !this.isSharedConversationReadOnly() && this.replayContext(assistantMessageId) !== null;
   }
 
   private replayContext(assistantMessageId: number): {
@@ -413,7 +416,7 @@ export class App implements OnDestroy {
     originalAssistant: ViewMessage,
     replacementText = originalUser.text,
   ): Promise<void> {
-    if (this.isSharedRouteBlocked()) {
+    if (this.isSharedRouteBlocked() || this.isSharedConversationReadOnly()) {
       return;
     }
     if (this.busy()) {
@@ -894,7 +897,7 @@ export class App implements OnDestroy {
     }
 
     this.voiceInput.stop();
-    if (!this.isSharedRouteBlocked()) {
+    if (!this.isSharedRouteBlocked() && !this.isSharedConversationReadOnly()) {
       this.persistActiveConversation();
     }
 
@@ -1084,6 +1087,9 @@ export class App implements OnDestroy {
   }
 
   protected toggleVoiceInput(): void {
+    if (this.isSharedConversationReadOnly()) {
+      return;
+    }
     if (this.voiceListening()) {
       this.voiceInput.stop();
       return;
@@ -1109,6 +1115,10 @@ export class App implements OnDestroy {
   }
 
   protected async onComposerPaste(event: ClipboardEvent): Promise<void> {
+    if (this.isSharedConversationReadOnly()) {
+      event.preventDefault();
+      return;
+    }
     const imageItem = Array.from(event.clipboardData?.items ?? []).find((item) =>
       item.type.startsWith('image/'),
     );
@@ -1130,6 +1140,9 @@ export class App implements OnDestroy {
   }
 
   protected async onImageSelected(event: Event): Promise<void> {
+    if (this.isSharedConversationReadOnly()) {
+      return;
+    }
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (file && this.modelSupportsVision()) {
@@ -1207,7 +1220,7 @@ export class App implements OnDestroy {
       this.activeConversationId.set(localConversation.id);
       this.messages.set([...localConversation.messages]);
       this.sharedRouteState.set('loaded');
-      this.sharedRouteMessage.set('');
+      this.sharedRouteMessage.set('Cuộc trò chuyện này chỉ được xem.');
       this.persistConversations();
       return;
     }
@@ -1267,7 +1280,7 @@ export class App implements OnDestroy {
     this.activeConversationId.set(nextConversation.id);
     this.messages.set([...nextConversation.messages]);
     this.sharedRouteState.set('loaded');
-    this.sharedRouteMessage.set('');
+    this.sharedRouteMessage.set('Cuộc trò chuyện đã chia sẻ — chỉ được xem.');
     this.persistConversations();
     this.shareMessage.set('Đã mở cuộc trò chuyện từ link chia sẻ.');
   }
@@ -1416,7 +1429,7 @@ export class App implements OnDestroy {
     conversationId: number,
     update: (messages: ViewMessage[]) => ViewMessage[],
   ): void {
-    if (this.isSharedRouteBlocked()) {
+    if (this.isSharedRouteBlocked() || this.isSharedConversationReadOnly()) {
       return;
     }
 
@@ -1449,7 +1462,7 @@ export class App implements OnDestroy {
   }
 
   private persistActiveConversation(): void {
-    if (this.isSharedRouteBlocked()) {
+    if (this.isSharedRouteBlocked() || this.isSharedConversationReadOnly()) {
       return;
     }
 
@@ -1457,7 +1470,7 @@ export class App implements OnDestroy {
   }
 
   private updateActiveConversation(title?: string): void {
-    if (this.isSharedRouteBlocked()) {
+    if (this.isSharedRouteBlocked() || this.isSharedConversationReadOnly()) {
       return;
     }
 
@@ -1748,6 +1761,10 @@ export class App implements OnDestroy {
   protected isSharedRouteBlocked(): boolean {
     const state = this.sharedRouteState();
     return state === 'loading' || state === 'missing' || state === 'error';
+  }
+
+  protected isSharedConversationReadOnly(): boolean {
+    return this.initialSharedConversationId !== null && this.sharedRouteState() === 'loaded';
   }
 
   private shareFailureMessage(error: unknown): string {
