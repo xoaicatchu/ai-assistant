@@ -67,11 +67,14 @@
 
 .eyebrow {
   margin: 0;
+  overflow: hidden;
   color: #8e8ea0;
   font-size: 9px;
   font-weight: 800;
-  letter-spacing: 0.13em;
+  letter-spacing: 0.1em;
   line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 h1,

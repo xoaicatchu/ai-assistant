@@ -42,4 +42,14 @@ describe('App message submission', () => {
     expect(chatService.complete).not.toHaveBeenCalled();
     expect((app as any).messages()[0].text).toBe('Câu hỏi cần gửi');
   });
+
+  it('uses the Medical Harness Framework brand label', () => {
+    const chatService = {
+      health: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ChatService;
+
+    const app = new App(chatService);
+
+    expect((app as any).brandLabel).toBe('MEDICAL HARNESS FRAMEWORK');
+  });
 });

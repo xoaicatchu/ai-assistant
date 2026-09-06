@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+:root {
+  --font-ui: Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -19,15 +24,22 @@ body {
 body {
   color: #1d1d1f;
   font-size: 16px;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', sans-serif;
+  font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
 
 button,
 input,
-textarea {
+textarea,
+select {
   font-family: inherit;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
 }
 
 .message-content {

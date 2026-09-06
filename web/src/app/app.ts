@@ -98,6 +98,7 @@ export class App implements OnDestroy {
 
   private readonly initialSetup = loadSetupSettings();
   protected readonly runtime = runtimeConfig;
+  protected readonly brandLabel = 'MEDICAL HARNESS FRAMEWORK';
   protected readonly activeTab = signal<ActiveTab>('chat');
   protected readonly conversations = signal<ChatConversation[]>([
     { id: 1, title: 'Cuộc trò chuyện mới', messages: [] },
