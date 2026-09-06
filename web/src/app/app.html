@@ -12,30 +12,6 @@
           <p class="eyebrow">{{ brandLabel }}</p>
           <div class="brand-title-row flex min-w-0 items-center gap-2">
             <h1>Clinic Support AI</h1>
-            <div
-              class="connection-status"
-              [class]="'connection-status status-' + health()"
-              [attr.aria-label]="'Trạng thái: ' + healthLabel()"
-              [attr.title]="healthLabel()"
-              aria-live="polite"
-            >
-              <span class="status-icon" aria-hidden="true">
-                @switch (health()) {
-                  @case ('online') {
-                    <span class="online-dot"></span>
-                  }
-                  @case ('offline') {
-                    <svg lucideWifiOff class="h-4 w-4" aria-hidden="true"></svg>
-                  }
-                  @case ('unconfigured') {
-                    <svg lucideWifiOff class="h-4 w-4" aria-hidden="true"></svg>
-                  }
-                  @default {
-                    <svg lucideLoaderCircle class="h-4 w-4 animate-spin" aria-hidden="true"></svg>
-                  }
-                }
-              </span>
-            </div>
           </div>
         </div>
       </div>
@@ -53,6 +29,21 @@
             (click)="toggleServerMenu()"
           >
             <svg lucideServer class="h-4 w-4" aria-hidden="true"></svg>
+            <span class="server-button-label">{{ isUsingDefaultServer() ? 'Server gốc' : 'Server tùy chỉnh' }}</span>
+            <span
+              class="connection-status"
+              [class]="'connection-status status-' + health()"
+              [attr.aria-label]="'Trạng thái: ' + healthLabel()"
+              [attr.title]="healthLabel()"
+              aria-live="polite"
+            >
+              @switch (health()) {
+                @case ('online') { <span class="online-dot"></span> }
+                @case ('offline') { <svg lucideWifiOff class="h-3.5 w-3.5" aria-hidden="true"></svg> }
+                @case ('unconfigured') { <svg lucideWifiOff class="h-3.5 w-3.5" aria-hidden="true"></svg> }
+                @default { <svg lucideLoaderCircle class="h-3.5 w-3.5 animate-spin" aria-hidden="true"></svg> }
+              }
+            </span>
           </button>
           @if (serverMenuOpen()) {
             <div class="server-menu" role="menu" aria-label="Chọn server">
@@ -69,6 +60,7 @@
                   <strong>Server gốc</strong>
                   <small>/api của ứng dụng</small>
                 </span>
+                <span class="server-option-status">{{ serverHealthLabel('default') }}</span>
                 @if (isUsingDefaultServer()) {
                   <span class="server-menu-check" aria-hidden="true">✓</span>
                 }
@@ -86,6 +78,7 @@
                   <strong>Server tùy chỉnh</strong>
                   <small>{{ customServerLabel() }}</small>
                 </span>
+                <span class="server-option-status">{{ serverHealthLabel('custom') }}</span>
                 @if (!isUsingDefaultServer() && hasCustomServer()) {
                   <span class="server-menu-check" aria-hidden="true">✓</span>
                 }
@@ -463,7 +456,7 @@
               placeholder="anthropic:claude-sonnet-4-5&#10;openai:gpt-4o-mini"
               aria-label="Custom model routes"
             ></textarea>
-            <small>Mỗi route một dòng. Hai model mặc định vẫn luôn có sẵn trong combobox Chat.</small>
+            <small>Mỗi route một dòng. Các route này chỉ hiện khi bạn chọn Server tùy chỉnh.</small>
           </label>
 
         </div>

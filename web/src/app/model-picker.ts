@@ -13,6 +13,8 @@ export interface ModelOption {
   capabilities: ModelCapabilities;
 }
 
+export type ModelServer = 'default' | 'custom';
+
 const REMOVED_MODEL_ROUTES = new Set([
   'gpt/gpt-5.6-sol-high-fast',
   'x-ai/grok-4.5',
@@ -74,6 +76,26 @@ export function allModelOptions(customModels: readonly string[] = []): ModelOpti
   }
 
   return options;
+}
+
+export function modelOptionsForServer(
+  server: ModelServer,
+  customModels: readonly string[] = [],
+): ModelOption[] {
+  if (server === 'default') {
+    return [...MODEL_OPTIONS];
+  }
+
+  return allModelOptions(customModels).filter((option) => !MODEL_OPTIONS.some((builtIn) => builtIn.route === option.route));
+}
+
+export function resolveModelForServer(
+  server: ModelServer,
+  selectedRoute: string,
+  customModels: readonly string[] = [],
+): ModelOption | undefined {
+  const options = modelOptionsForServer(server, customModels);
+  return options.find((option) => option.route === selectedRoute.trim()) ?? options[0];
 }
 
 export function isRemovedModelRoute(route: string): boolean {

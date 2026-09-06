@@ -4,7 +4,9 @@ import {
   allModelOptions,
   modelCapabilitiesForRoute,
   modelLabel,
+  modelOptionsForServer,
   providerLabel,
+  resolveModelForServer,
 } from './model-picker';
 
 describe('model picker labels', () => {
@@ -67,5 +69,20 @@ describe('model picker labels', () => {
         toolCalling: 'unknown',
       },
     });
+  });
+
+  it('keeps model options scoped to the selected server', () => {
+    expect(modelOptionsForServer('default', ['anthropic:claude-sonnet']).map((option) => option.route)).toEqual([
+      'deepseek/deepseek-v4-flash',
+      'x-ai/grok-4.6',
+    ]);
+    expect(modelOptionsForServer('custom', ['anthropic:claude-sonnet']).map((option) => option.route)).toEqual([
+      'anthropic:claude-sonnet',
+    ]);
+  });
+
+  it('falls back to the selected server default when the current model is unavailable', () => {
+    expect(resolveModelForServer('custom', 'deepseek/deepseek-v4-flash', ['anthropic:claude-sonnet'])?.route)
+      .toBe('anthropic:claude-sonnet');
   });
 });

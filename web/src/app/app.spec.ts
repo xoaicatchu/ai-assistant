@@ -117,7 +117,7 @@ describe('App message submission', () => {
     expect((app as any).shareMessage()).toBe('');
   });
 
-  it('keeps a transport error out of the assistant message markup', () => {
+  it('renders a transport error inside the failed assistant message', () => {
     vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
       callback();
       return 0;
@@ -136,9 +136,10 @@ describe('App message submission', () => {
 
     (app as any).setAssistantError(1, 2, 'Kết nối tới gateway bị gián đoạn. Hãy thử gửi lại.');
 
-    expect((app as any).messages()[1].text).toBe('Phần đã nhận');
-    expect((app as any).messages()[1].text).not.toContain('Lỗi:');
-    expect((app as any).error()).toContain('Kết nối tới gateway');
+    expect((app as any).messages()[1].text).toContain('Lỗi:');
+    expect((app as any).messages()[1].text).toContain('Kết nối tới gateway');
+    expect((app as any).messages()[1].status).toBe('error');
+    expect((app as any).error()).toBe('');
   });
 
   it('uses the Medical Harness Framework brand label', () => {

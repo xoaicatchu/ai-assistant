@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { apiUrl, serverApiUrl } from './runtime-config';
 import type { ConversationApiDocument, ConversationApiMessage } from './conversation-link';
-import { loadSetupSettings } from './setup-storage';
+import { loadSetupSettings, normalizeGatewayBaseUrl } from './setup-storage';
 
 export type ChatRole = 'user' | 'assistant';
 
@@ -130,15 +130,22 @@ export class ChatService {
     }
   }
 
-  async health(signal: AbortSignal): Promise<void> {
-    const response = await fetch(apiUrl('/health'), {
+  async health(signal: AbortSignal, baseUrl?: string): Promise<void> {
+    const normalizedBaseUrl = baseUrl === undefined ? null : normalizeGatewayBaseUrl(baseUrl);
+    const healthUrl = normalizedBaseUrl === null
+      ? apiUrl('/health')
+      : `${normalizedBaseUrl || '/api'}/health`;
+    const response = await fetch(healthUrl, {
       method: 'GET',
       headers: this.authHeaders(),
       signal,
     });
     if (!response.ok) {
       if (response.status === 404 || response.status === 405) {
-        const compatibleResponse = await fetch(apiUrl('/v1/models'), {
+        const compatibleUrl = normalizedBaseUrl === null
+          ? apiUrl('/v1/models')
+          : `${normalizedBaseUrl || '/api'}${normalizedBaseUrl?.endsWith('/v1') ? '/models' : '/v1/models'}`;
+        const compatibleResponse = await fetch(compatibleUrl, {
           method: 'GET',
           headers: this.authHeaders(),
           signal,
