@@ -32,4 +32,18 @@ describe('scrollPageToBottom', () => {
     expect(scrollTo).toHaveBeenCalledWith({ top: 1280, behavior: 'smooth' });
     vi.unstubAllGlobals();
   });
+
+  it('uses a slower eased animation when requested', () => {
+    const requestAnimationFrame = vi.fn();
+    vi.stubGlobal('document', { documentElement: { scrollHeight: 1280 } });
+    vi.stubGlobal('scrollTo', vi.fn());
+    vi.stubGlobal('scrollY', 200);
+    vi.stubGlobal('requestAnimationFrame', requestAnimationFrame);
+    vi.stubGlobal('performance', { now: vi.fn(() => 1000) });
+
+    scrollPageToBottom(true);
+
+    expect(requestAnimationFrame).toHaveBeenCalledOnce();
+    vi.unstubAllGlobals();
+  });
 });

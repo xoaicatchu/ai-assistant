@@ -386,6 +386,18 @@
                 [disabled]="!modelSupportsVision() || isSharedRouteBlocked()"
                 (change)="onImageSelected($event)"
               />
+              <button
+                class="auto-scroll-toggle"
+                type="button"
+                role="switch"
+                [attr.aria-checked]="autoScroll()"
+                [class.is-enabled]="autoScroll()"
+                (click)="toggleAutoScroll()"
+                [attr.title]="autoScroll() ? 'Tắt tự động cuộn' : 'Bật tự động cuộn'"
+              >
+                <span class="auto-scroll-indicator" aria-hidden="true"></span>
+                <span>Tự cuộn</span>
+              </button>
             </div>
             <div class="composer-actions flex items-center gap-1.5">
               <div class="model-select-wrap">

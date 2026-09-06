@@ -65,6 +65,7 @@ import {
 } from './model-picker';
 import { apiUrl, runtimeConfig, setRuntimeApiBaseUrl } from './runtime-config';
 import { scrollPageToBottom, shouldAutoScroll, type ConversationScrollReason } from './scrolling';
+import { loadAutoScrollPreference, saveAutoScrollPreference } from './scroll-preference';
 import {
   DEFAULT_SETUP_SETTINGS,
   loadSetupSettings,
@@ -188,6 +189,7 @@ export class App implements OnDestroy {
   protected readonly shareMessage = signal('');
   protected readonly messageActionFeedback = signal<Record<number, MessageActionFeedback>>({});
   protected readonly draft = signal('');
+  protected readonly autoScroll = signal(loadAutoScrollPreference());
   protected readonly editingMessageId = signal<number | null>(null);
   protected readonly editingDraft = signal('');
   protected readonly pendingImage = signal<ImageAttachment | null>(null);
@@ -299,6 +301,12 @@ export class App implements OnDestroy {
     const nextTheme = this.darkMode() ? 'light' : 'dark';
     this.darkMode.set(nextTheme === 'dark');
     saveTheme(nextTheme);
+  }
+
+  protected toggleAutoScroll(): void {
+    const nextValue = !this.autoScroll();
+    this.autoScroll.set(nextValue);
+    saveAutoScrollPreference(nextValue);
   }
 
   protected async replayAssistantMessage(assistantMessageId: number): Promise<void> {
@@ -1426,12 +1434,12 @@ export class App implements OnDestroy {
   }
 
   private scrollConversationToBottom(reason: ConversationScrollReason = 'user-action'): void {
-    if (!shouldAutoScroll(reason)) {
+    if (!this.autoScroll() || !shouldAutoScroll(reason)) {
       return;
     }
 
     const scroll = () => {
-      scrollPageToBottom();
+      scrollPageToBottom(true);
     };
 
     requestAnimationFrame(() => {

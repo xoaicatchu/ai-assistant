@@ -37,7 +37,7 @@ describe('App message submission', () => {
 
     await (app as any).send();
 
-    expect(scrollTo).toHaveBeenCalledWith({ top: 420, behavior: 'smooth' });
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'auto' }));
     expect(chatService.stream).toHaveBeenCalledOnce();
     expect(chatService.complete).not.toHaveBeenCalled();
     expect((app as any).messages()[0].text).toBe('Câu hỏi cần gửi');
@@ -169,6 +169,18 @@ describe('App message submission', () => {
 
     expect((app as any).darkMode()).toBe(true);
     expect(setItem).toHaveBeenCalledWith('medical-harness-agent.theme.v1', 'dark');
+  });
+
+  it('toggles and saves the auto-scroll preference', () => {
+    const setItem = vi.fn();
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem });
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
+
+    expect((app as any).autoScroll()).toBe(true);
+    (app as any).toggleAutoScroll();
+
+    expect((app as any).autoScroll()).toBe(false);
+    expect(setItem).toHaveBeenCalledWith('medical-harness-agent.auto-scroll.v1', '0');
   });
 
   it('renders the protected admin route without starting chat health checks', () => {
