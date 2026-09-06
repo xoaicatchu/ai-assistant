@@ -57,7 +57,7 @@ import {
   modelLabel,
   type ModelCapabilitySupport,
 } from './model-picker';
-import { runtimeConfig, setRuntimeApiBaseUrl } from './runtime-config';
+import { apiUrl, runtimeConfig, setRuntimeApiBaseUrl } from './runtime-config';
 import { scrollToBottom, shouldAutoScroll, type ConversationScrollReason } from './scrolling';
 import {
   DEFAULT_SETUP_SETTINGS,
@@ -685,6 +685,10 @@ export class App implements OnDestroy {
 
   protected modelDisplayLabel(): string {
     return modelLabel(this.model());
+  }
+
+  protected modelEndpoint(): string {
+    return apiUrl('/v1/chat/completions');
   }
 
   protected selectedModelCapabilitySummary(): string {

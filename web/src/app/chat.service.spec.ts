@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ChatService } from './chat.service';
+import { setRuntimeApiBaseUrl } from './runtime-config';
 
 describe('ChatService streaming', () => {
   it('creates a server-backed conversation and returns its opaque ID', async () => {
@@ -207,6 +208,21 @@ describe('ChatService streaming', () => {
     expect(replace).toHaveBeenCalledWith('Câu trả lời khôi phục');
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
+    vi.unstubAllGlobals();
+  });
+
+  it('recognizes a local OpenAI-compatible gateway when /health is unavailable', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('', { status: 404 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    setRuntimeApiBaseUrl('http://127.0.0.1:8045/v1');
+
+    await new ChatService().health(new AbortController().signal);
+
+    expect(fetchMock.mock.calls[0][0]).toBe('http://127.0.0.1:8045/v1/health');
+    expect(fetchMock.mock.calls[1][0]).toBe('http://127.0.0.1:8045/v1/models');
+    setRuntimeApiBaseUrl('');
     vi.unstubAllGlobals();
   });
 });

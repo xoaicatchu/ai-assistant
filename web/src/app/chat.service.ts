@@ -137,6 +137,17 @@ export class ChatService {
       signal,
     });
     if (!response.ok) {
+      if (response.status === 404 || response.status === 405) {
+        const compatibleResponse = await fetch(apiUrl('/v1/models'), {
+          method: 'GET',
+          headers: this.authHeaders(),
+          signal,
+        });
+        if (compatibleResponse.ok) {
+          return;
+        }
+      }
+
       throw new Error(`Gateway health check failed with HTTP ${response.status}.`);
     }
   }

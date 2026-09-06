@@ -110,6 +110,8 @@ Các giá trị `supabaseUrl` và `sb_publishable_...` dùng cho Supabase client
 
 Mỗi tab conversation được cấp một ID opaque ngay khi tạo và URL đổi ngay sang `/conversation/<id>`, nhưng lịch sử chưa được gửi lên server trong lúc chat bình thường. Nội dung chỉ được tạo/cập nhật trên PostgreSQL khi người dùng bấm Share; token sở hữu được lưu trên thiết bị để cập nhật conversation đã chia sẻ, còn GET không có token chỉ đọc được conversation đã public. Link trỏ tới đúng conversation server-backed, không phải snapshot và không nhúng nội dung vào URL. SQLite vẫn được giữ cho local/test khi không cấu hình PostgreSQL.
 
+Trong phần Customize, `Custom model Base URL` chỉ đổi endpoint model của trình duyệt; API conversation, share và admin vẫn đi qua backend ứng dụng. Có thể nhập `http://127.0.0.1:<port>` hoặc `http://127.0.0.1:<port>/v1` để gọi trực tiếp 9Router trên cùng máy, kể cả khi giao diện đang mở từ Vercel. 9Router phải bật CORS cho origin của giao diện và cho phép header `Authorization`/`Content-Type`; frontend không thể đọc SSE từ một origin local nếu server không trả CORS.
+
 ## Web search agent qua Tavily
 
 Backend có built-in tool `web_search`. Khi `WebSearch:Enabled=true` và có Tavily API key, agent sẽ tìm kiếm các câu hỏi có tín hiệu như “mới nhất”, “tìm trên Internet”, “nguồn”, “kèm link”, “latest” hoặc “current”, sau đó gửi kết quả nguồn vào model để tổng hợp bằng Markdown link.

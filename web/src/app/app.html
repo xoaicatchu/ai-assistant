@@ -151,7 +151,6 @@
                       title="Sao chép câu trả lời"
                     >
                       <svg lucideCopy class="h-3.5 w-3.5" aria-hidden="true"></svg>
-                      <span>Sao chép</span>
                     </button>
                     <button
                       class="message-action-button"
@@ -161,7 +160,6 @@
                       title="Chia sẻ cuộc trò chuyện"
                     >
                       <svg lucideShare2 class="h-3.5 w-3.5" aria-hidden="true"></svg>
-                      <span>Chia sẻ</span>
                     </button>
                     @if (messageActionFeedback()[message.id]; as feedback) {
                       <span
@@ -278,12 +276,12 @@
         <div class="setup-heading">
           <p class="eyebrow">WORKSPACE CUSTOMIZE</p>
           <h2>Tùy chỉnh phiên chat</h2>
-          <p>Backend mặc định đã được cấu hình sẵn. Chỉ dùng phần này khi muốn trỏ sang backend khác.</p>
+          <p>Backend của ứng dụng đã được cấu hình sẵn. Chỉ dùng phần này khi muốn trỏ request model sang endpoint khác.</p>
         </div>
 
         <div class="setup-grid">
           <label class="setup-field setup-field-wide">
-            <span>Custom backend URL</span>
+            <span>Custom model Base URL</span>
             <input
               [ngModel]="gatewayBaseUrl()"
               (ngModelChange)="gatewayBaseUrl.set($event)"
@@ -291,19 +289,23 @@
               autocomplete="off"
               spellcheck="false"
               placeholder="Để trống để dùng /api hoặc proxy local"
-              aria-label="Gateway Base URL"
+              aria-label="Custom model Base URL"
             />
             <small>
               @if (runtime.isVercel) {
-                Để trống để dùng backend mặc định qua <code>/api</code>. Nhập URL khác nếu muốn dùng custom backend.
+                Để trống để gọi model qua gateway mặc định <code>/api</code>. Nhập URL khác nếu muốn gọi model trực tiếp.
               } @else {
-                Ví dụ: <code>https://api.example.com</code>. API key chỉ áp dụng cho custom backend.
+                Ví dụ: <code>https://api.example.com</code>. API key chỉ áp dụng cho model endpoint này.
               }
+            </small>
+            <small class="setup-help-local">
+              9Router chạy trên máy: nhập <code>http://127.0.0.1:8045</code> hoặc <code>http://127.0.0.1:8045/v1</code>.
+              Trình duyệt sẽ gọi thẳng địa chỉ này; 9Router cần bật CORS cho trang đang mở.
             </small>
           </label>
 
           <label class="setup-field setup-field-wide">
-            <span>API Key cho custom backend</span>
+            <span>API Key cho model endpoint</span>
             <input
               type="password"
               [ngModel]="apiKey()"
@@ -314,7 +316,7 @@
               placeholder="sk-..."
               aria-label="OpenAI API Key"
             />
-            <small>Gửi bằng header <code>Authorization: Bearer ...</code>. Key được lưu trên trình duyệt.</small>
+            <small>Gửi bằng header <code>Authorization: Bearer ...</code>. Key được lưu trên trình duyệt và chỉ dùng cho endpoint model.</small>
           </label>
 
           <label class="setup-field setup-field-wide">
@@ -403,7 +405,7 @@
           <div class="endpoint-list">
             <div class="endpoint-line">
               <span>Backend endpoint</span>
-              <code>{{ runtime.apiBaseUrl || '' }}/v1/chat/completions</code>
+              <code>{{ modelEndpoint() }}</code>
             </div>
           </div>
         </div>

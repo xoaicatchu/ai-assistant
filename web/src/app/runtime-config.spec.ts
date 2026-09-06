@@ -6,12 +6,12 @@ describe('runtime config', () => {
     setRuntimeApiBaseUrl('');
   });
 
-  it('updates the API URL used by the chat service at runtime', () => {
+  it('updates only the model API URL used by the chat service at runtime', () => {
     setRuntimeApiBaseUrl('https://api.example.com///');
 
     expect(runtimeConfig.apiBaseUrl).toBe('https://api.example.com');
     expect(apiUrl('/health')).toBe('https://api.example.com/health');
-    expect(serverApiUrl('/conversations')).toBe('https://api.example.com/api/conversations');
+    expect(serverApiUrl('/conversations')).toBe('/api/conversations');
   });
 
   it('falls back to the generated URL for invalid setup input', () => {
@@ -20,7 +20,7 @@ describe('runtime config', () => {
     expect(runtimeConfig.apiBaseUrl).toBe('/api');
   });
 
-  it('uses the same-origin proxy by default while allowing a custom backend on Vercel', () => {
+  it('keeps server APIs on the generated backend while allowing a custom model endpoint', () => {
     const originalIsVercel = runtimeConfig.isVercel;
     runtimeConfig.isVercel = true;
 
@@ -28,7 +28,7 @@ describe('runtime config', () => {
 
     expect(runtimeConfig.apiBaseUrl).toBe('https://aishop24h.com');
     expect(apiUrl('/health')).toBe('https://aishop24h.com/health');
-    expect(serverApiUrl('/conversations')).toBe('https://aishop24h.com/api/conversations');
+    expect(serverApiUrl('/conversations')).toBe('/api/conversations');
 
     setRuntimeApiBaseUrl('');
     expect(runtimeConfig.apiBaseUrl).toBe('/api');
@@ -36,5 +36,14 @@ describe('runtime config', () => {
     expect(serverApiUrl('/conversations')).toBe('/api/conversations');
 
     runtimeConfig.isVercel = originalIsVercel;
+  });
+
+  it('supports a local OpenAI-compatible base URL that already includes /v1', () => {
+    setRuntimeApiBaseUrl('http://127.0.0.1:8045/v1///');
+
+    expect(runtimeConfig.apiBaseUrl).toBe('http://127.0.0.1:8045/v1');
+    expect(apiUrl('/v1/chat/completions')).toBe('http://127.0.0.1:8045/v1/chat/completions');
+    expect(apiUrl('/v1/models')).toBe('http://127.0.0.1:8045/v1/models');
+    expect(serverApiUrl('/conversations')).toBe('/api/conversations');
   });
 });

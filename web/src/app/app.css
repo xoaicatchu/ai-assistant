@@ -506,14 +506,15 @@ textarea:disabled {
 }
 
 .message-action-button {
+  width: 28px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
-  padding: 4px 5px;
+  padding: 0;
   color: #8e8ea0;
   font: inherit;
-  font-size: 10px;
-  font-weight: 650;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 6px;
@@ -538,6 +539,12 @@ textarea:disabled {
 
 .message-action-feedback.action-error {
   color: #b42318;
+}
+
+.setup-help-local {
+  display: block;
+  margin-top: 5px;
+  color: #6b6c7b;
 }
 
 .typing {
