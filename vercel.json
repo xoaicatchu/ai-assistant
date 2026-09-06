@@ -1,19 +1,19 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "services": {
-    "frontend-v2": {
+    "frontend_next": {
       "root": "web",
       "entrypoint": "Dockerfile.vercel",
       "runtime": "container"
     },
-    "backend-v2": {
+    "backend_next": {
       "root": ".",
       "entrypoint": "Dockerfile.vercel",
       "runtime": "container"
     }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": { "service": "backend-v2" } },
-    { "source": "/(.*)", "destination": { "service": "frontend-v2" } }
+    { "source": "/api/(.*)", "destination": { "service": "backend_next" } },
+    { "source": "/(.*)", "destination": { "service": "frontend_next" } }
   ]
 }
