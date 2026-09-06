@@ -20,4 +20,12 @@ public sealed class AdminAuthTests
     {
         Assert.False(AdminPasswordHasher.Verify("password", "not-a-password-hash"));
     }
+
+    [Fact]
+    public void Bootstrap_password_accepts_eight_characters()
+    {
+        var exception = Record.Exception(() => AdminAuthService.ValidatePassword("12345678"));
+
+        Assert.Null(exception);
+    }
 }

@@ -96,7 +96,7 @@ Tài khoản admin được tạo một lần khi database chưa có tài khoả
 
 ```text
 Admin__InitialUsername=admin
-Admin__InitialPassword=<mat-khau-it-nhat-12-ky-tu>
+Admin__InitialPassword=<mat-khau-it-nhat-8-ky-tu>
 Storage__SqlitePath=App_Data/proxy-agent.db
 ```
 

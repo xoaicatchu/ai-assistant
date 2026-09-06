@@ -126,9 +126,9 @@ public sealed class AdminAuthService(
 
     public static void ValidatePassword(string password)
     {
-        if (string.IsNullOrWhiteSpace(password) || password.Length < 12 || password.Length > 256)
+        if (string.IsNullOrWhiteSpace(password) || password.Length < 8 || password.Length > 256)
         {
-            throw new ArgumentException("Admin password must be between 12 and 256 characters.");
+            throw new ArgumentException("Admin password must be between 8 and 256 characters.");
         }
     }
 }

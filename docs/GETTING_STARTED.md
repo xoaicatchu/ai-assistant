@@ -56,7 +56,7 @@ Các giá trị cấu hình:
 | `WebSearch:TimeoutSeconds` | Timeout gọi Tavily, mặc định 30 giây |
 | `Storage:SqlitePath` | Đường dẫn database SQLite, mặc định `App_Data/proxy-agent.db` |
 | `Admin:InitialUsername` | Tên tài khoản admin tạo lần đầu nếu database chưa có tài khoản |
-| `Admin:InitialPassword` | Mật khẩu bootstrap admin; bắt buộc dài 12-256 ký tự |
+| `Admin:InitialPassword` | Mật khẩu bootstrap admin; bắt buộc dài 8-256 ký tự |
 | `Cors:AllowedOrigins` | Danh sách origin frontend được phép gọi API |
 
 ## 3. Chạy ứng dụng
@@ -91,7 +91,7 @@ API key provider không được đưa vào frontend. Backend đọc key từ `a
 
 ```powershell
 dotnet user-secrets set "Admin:InitialUsername" "admin" --project src/ProxyAgent.Api/ProxyAgent.Api.csproj
-dotnet user-secrets set "Admin:InitialPassword" "<mat-khau-it-nhat-12-ky-tu>" --project src/ProxyAgent.Api/ProxyAgent.Api.csproj
+dotnet user-secrets set "Admin:InitialPassword" "<mat-khau-it-nhat-8-ky-tu>" --project src/ProxyAgent.Api/ProxyAgent.Api.csproj
 ```
 
 Mở `http://localhost:4200/admin`, đăng nhập, sau đó có thể lưu Base URL, API key, model mặc định của OpenAI-compatible/Anthropic và cấu hình Tavily. Mật khẩu được băm PBKDF2 và lưu trong SQLite; API key không được trả lại đầy đủ trong response admin.
