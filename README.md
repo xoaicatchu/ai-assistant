@@ -99,10 +99,12 @@ Tài khoản admin được tạo một lần khi database chưa có tài khoả
 Admin__InitialUsername=admin
 Admin__InitialPassword=<mat-khau-it-nhat-8-ky-tu>
 Storage__Provider=postgres
-ConnectionStrings__Postgres=Host=db.uwfeuedubwoggcmrblzx.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=<mat-khau-postgres>;SSL Mode=Require;Trust Server Certificate=true
+ConnectionStrings__Postgres=Host=aws-0-<region>.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.uwfeuedubwoggcmrblzx;Password=<mat-khau-postgres>;SSL Mode=Require
 ```
 
 Sau khi backend khởi động, mở `https://<frontend>/admin`, đăng nhập rồi nhập Base URL, API key, model mặc định và cấu hình Tavily. API key chỉ được lưu ở backend và trang admin chỉ trả về trạng thái đã có key cùng phần che; có thể đổi mật khẩu ngay trong trang này. Các thay đổi có hiệu lực cho request mới. PostgreSQL được chọn tự động khi có `ConnectionStrings__Postgres`; production đã đặt provider là `postgres` để không quay lại SQLite.
+
+Với Supabase trên Vercel, lấy chuỗi **Session pooler** hoặc **Transaction pooler** trong nút **Connect** của Supabase. Không dùng `db.<project-ref>.supabase.co:5432` nếu project chưa bật IPv4 add-on; đó là direct endpoint IPv6 và Vercel có thể không truy cập được. Backend nhận cả dạng `Host=...;Port=...` và URI `postgresql://...`.
 
 Mỗi tab conversation được cấp ID opaque ngay khi tạo và URL đổi ngay sang `/conversation/<id>`. Token sở hữu được lưu trên thiết bị để đồng bộ riêng tư; GET không có token chỉ đọc được conversation đã public. Nút chia sẻ chỉ cập nhật bản ghi hiện tại rồi gọi `publish`, không tạo snapshot và không nhúng nội dung vào URL. PostgreSQL lưu conversation, tài khoản admin và backend settings dùng chung giữa các instance Vercel; SQLite vẫn được giữ cho local/test khi không cấu hình PostgreSQL.
 

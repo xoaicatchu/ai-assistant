@@ -139,8 +139,10 @@ WebSearch__ApiKey=<tavily-secret>
 WebSearch__UseToolCalling=false
 Cors__AllowedOrigins__0=https://<your-project>.vercel.app
 Storage__Provider=postgres
-ConnectionStrings__Postgres=Host=db.uwfeuedubwoggcmrblzx.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=<postgres-secret>;SSL Mode=Require;Trust Server Certificate=true
+ConnectionStrings__Postgres=Host=aws-0-<region>.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.uwfeuedubwoggcmrblzx;Password=<postgres-secret>;SSL Mode=Require
 ```
+
+Trên Vercel, lấy host/user/port chính xác từ **Supabase → Connect → Session pooler/Transaction pooler**. Direct host `db.<project-ref>.supabase.co:5432` thường là IPv6; Vercel cần pooler IPv4 nếu project chưa bật IPv4 add-on. Backend chấp nhận cả connection string dạng `Host=...;Port=...` và URI `postgresql://...`.
 
 Nếu dùng custom domain Vercel, thêm origin đó ở `Cors__AllowedOrigins__1`. Sau khi deploy, kiểm tra `https://<public-backend-url>/health` trả `{"status":"ok"}`.
 

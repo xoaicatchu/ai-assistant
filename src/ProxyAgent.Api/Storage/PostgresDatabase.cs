@@ -13,7 +13,7 @@ public sealed class PostgresDatabase : IStorageInitializer
             throw new ArgumentException("A PostgreSQL connection string is required.", nameof(connectionString));
         }
 
-        this.connectionString = connectionString.Trim();
+        this.connectionString = PostgresConnectionStringNormalizer.Normalize(connectionString);
     }
 
     public NpgsqlConnection OpenConnection()
@@ -61,5 +61,91 @@ public sealed class PostgresDatabase : IStorageInitializer
             );
             """;
         command.ExecuteNonQuery();
+    }
+}
+
+public static class PostgresConnectionStringNormalizer
+{
+    public static string Normalize(string connectionString)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
+        var value = connectionString.Trim();
+        if (!value.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase) &&
+            !value.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase))
+        {
+            return value;
+        }
+
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
+            (!string.Equals(uri.Scheme, "postgres", StringComparison.OrdinalIgnoreCase) &&
+             !string.Equals(uri.Scheme, "postgresql", StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new ArgumentException("PostgreSQL URI is invalid.", nameof(connectionString));
+        }
+
+        var userInfoSeparator = uri.UserInfo.IndexOf(':');
+        if (userInfoSeparator <= 0 || userInfoSeparator == uri.UserInfo.Length - 1)
+        {
+            throw new ArgumentException(
+                "PostgreSQL URI must include a username and password.",
+                nameof(connectionString));
+        }
+
+        var username = Uri.UnescapeDataString(uri.UserInfo[..userInfoSeparator]);
+        var password = Uri.UnescapeDataString(uri.UserInfo[(userInfoSeparator + 1)..]);
+        var database = Uri.UnescapeDataString(uri.AbsolutePath.Trim('/'));
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password) ||
+            string.IsNullOrWhiteSpace(database))
+        {
+            throw new ArgumentException(
+                "PostgreSQL URI must include a username, password, and database.",
+                nameof(connectionString));
+        }
+
+        if (password.Contains("[YOUR-PASSWORD]", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException(
+                "Replace [YOUR-PASSWORD] in the PostgreSQL URI with the real database password.",
+                nameof(connectionString));
+        }
+
+        var builder = new NpgsqlConnectionStringBuilder
+        {
+            Host = uri.Host,
+            Port = uri.IsDefaultPort || uri.Port <= 0 ? 5432 : uri.Port,
+            Database = database,
+            Username = username,
+            Password = password,
+            SslMode = SslMode.Require
+        };
+        ApplyQueryOptions(builder, uri.Query);
+        return builder.ConnectionString;
+    }
+
+    private static void ApplyQueryOptions(NpgsqlConnectionStringBuilder builder, string query)
+    {
+        foreach (var item in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = item.IndexOf('=');
+            if (separator <= 0)
+            {
+                continue;
+            }
+
+            var key = Uri.UnescapeDataString(item[..separator]).ToLowerInvariant();
+            var value = Uri.UnescapeDataString(item[(separator + 1)..]);
+            switch (key)
+            {
+                case "sslmode" when Enum.TryParse<SslMode>(value, true, out var sslMode):
+                    builder.SslMode = sslMode;
+                    break;
+                case "sslmode":
+                    throw new ArgumentException($"Unsupported PostgreSQL sslmode '{value}'.");
+                case "application_name":
+                case "applicationname":
+                    builder.ApplicationName = value;
+                    break;
+            }
+        }
     }
 }
