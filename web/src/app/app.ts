@@ -203,7 +203,8 @@ export class App implements OnDestroy {
   private nextMessageId = maxMessageId(this.initialConversationState.conversations) + 1;
   private nextConversationId = maxConversationId(this.initialConversationState.conversations) + 1;
   private readonly maxImageBytes = 5 * 1024 * 1024;
-  private readonly maxConversationTabs = 5;
+  private readonly desktopConversationTabs = 5;
+  private readonly mobileConversationTabs = 3;
   private readonly acceptedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
   private readonly voiceInput = new VoiceInputController();
   private readonly serverConversationCreates = new Map<number, Promise<string | null>>();
@@ -777,11 +778,19 @@ export class App implements OnDestroy {
   }
 
   protected canCreateConversation(): boolean {
-    return !this.isSharedRouteBlocked() && this.conversations().length < this.maxConversationTabs;
+    return !this.isSharedRouteBlocked() &&
+      this.conversations().length < this.conversationTabLimit();
   }
 
   protected canShowNewConversationButton(): boolean {
-    return this.conversations().length < this.maxConversationTabs;
+    return this.conversations().length < this.conversationTabLimit();
+  }
+
+  private conversationTabLimit(): number {
+    const viewportWidth = globalThis.innerWidth;
+    return typeof viewportWidth === 'number' && viewportWidth > 0 && viewportWidth <= 700
+      ? this.mobileConversationTabs
+      : this.desktopConversationTabs;
   }
 
   protected isConversationActive(id: number): boolean {

@@ -444,6 +444,25 @@ describe('App message submission', () => {
     expect((app as any).canCreateConversation()).toBe(true);
   });
 
+  it('hides the new-tab button at three conversations on mobile', () => {
+    vi.stubGlobal('innerWidth', 390);
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
+    const conversations = Array.from({ length: 3 }, (_, index) => ({
+      id: index + 1,
+      title: `Chat ${index + 1}`,
+      messages: [],
+    }));
+    (app as any).conversations.set(conversations);
+
+    expect((app as any).canShowNewConversationButton()).toBe(false);
+    expect((app as any).canCreateConversation()).toBe(false);
+
+    (app as any).conversations.set(conversations.slice(0, 2));
+    expect((app as any).canShowNewConversationButton()).toBe(true);
+    expect((app as any).canCreateConversation()).toBe(true);
+  });
+
   it('creates another empty tab even when an empty tab already exists', () => {
     vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
       callback();
