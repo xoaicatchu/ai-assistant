@@ -10,6 +10,7 @@ import {
   LucideLoaderCircle,
   LucideMic,
   LucideMessageCircle,
+  LucidePencil,
   LucidePlus,
   LucideRefreshCw,
   LucideServer,
@@ -59,7 +60,7 @@ import {
   type ModelCapabilitySupport,
 } from './model-picker';
 import { apiUrl, runtimeConfig, setRuntimeApiBaseUrl } from './runtime-config';
-import { scrollToBottom, shouldAutoScroll, type ConversationScrollReason } from './scrolling';
+import { scrollPageToBottom, shouldAutoScroll, type ConversationScrollReason } from './scrolling';
 import {
   DEFAULT_SETUP_SETTINGS,
   loadSetupSettings,
@@ -125,6 +126,7 @@ function maxRequestId(conversations: readonly ChatConversation[]): number {
     LucideLoaderCircle,
     LucideMic,
     LucideMessageCircle,
+    LucidePencil,
     LucidePlus,
     LucideRefreshCw,
     LucideServer,
@@ -143,6 +145,7 @@ function maxRequestId(conversations: readonly ChatConversation[]): number {
 export class App implements OnDestroy {
   @ViewChild('conversation') private conversation?: ElementRef<HTMLElement>;
   @ViewChild('composerInput') private composerInput?: ElementRef<HTMLTextAreaElement>;
+  @ViewChild('editQuestionInput') private editQuestionInput?: ElementRef<HTMLTextAreaElement>;
 
   protected readonly isAdminRoute = globalThis.location?.pathname?.startsWith('/admin') ?? false;
   private readonly initialSetup = loadSetupSettings();
@@ -170,6 +173,8 @@ export class App implements OnDestroy {
   protected readonly shareMessage = signal('');
   protected readonly messageActionFeedback = signal<Record<number, MessageActionFeedback>>({});
   protected readonly draft = signal('');
+  protected readonly editingMessageId = signal<number | null>(null);
+  protected readonly editingDraft = signal('');
   protected readonly pendingImage = signal<ImageAttachment | null>(null);
   protected readonly messages = signal<ViewMessage[]>(this.initialSharedConversationId
     ? []
@@ -189,6 +194,7 @@ export class App implements OnDestroy {
   private nextMessageId = maxMessageId(this.initialConversationState.conversations) + 1;
   private nextConversationId = maxConversationId(this.initialConversationState.conversations) + 1;
   private readonly maxImageBytes = 5 * 1024 * 1024;
+  private readonly maxConversationTabs = 5;
   private readonly acceptedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
   private readonly voiceInput = new VoiceInputController();
   private readonly serverConversationCreates = new Map<number, Promise<string | null>>();
@@ -282,6 +288,69 @@ export class App implements OnDestroy {
     await this.replayRequest(context.user, context.assistant);
   }
 
+  protected startEditingMessage(messageId: number): void {
+    if (this.isSharedRouteBlocked()) {
+      return;
+    }
+
+    const message = this.messages().find((item) => item.id === messageId && item.role === 'user');
+    if (!message) {
+      return;
+    }
+
+    if (this.busy()) {
+      this.stopActiveRequest('Đã dừng phản hồi để sửa câu hỏi.');
+    }
+    this.error.set('');
+    this.editingMessageId.set(messageId);
+    this.editingDraft.set(message.text);
+    requestAnimationFrame(() => this.editQuestionInput?.nativeElement.focus());
+  }
+
+  protected cancelEditingMessage(): void {
+    this.editingMessageId.set(null);
+    this.editingDraft.set('');
+  }
+
+  protected onEditQuestionKeydown(event: KeyboardEvent, messageId: number): void {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.cancelEditingMessage();
+      return;
+    }
+
+    if (shouldSubmitOnEnter(event, this.composing)) {
+      event.preventDefault();
+      void this.submitEditedMessage(messageId);
+    }
+  }
+
+  protected async submitEditedMessage(messageId: number): Promise<void> {
+    if (this.isSharedRouteBlocked()) {
+      return;
+    }
+
+    const user = this.messages().find((item) => item.id === messageId && item.role === 'user');
+    const text = this.editingDraft().trim();
+    if (!user || (!text && !user.image)) {
+      this.error.set('Câu hỏi không được để trống.');
+      return;
+    }
+
+    const assistant = this.messages().find(
+      (item) => item.role === 'assistant' && item.requestId === user.requestId,
+    ) ?? {
+      id: this.nextMessageId++,
+      requestId: user.requestId,
+      role: 'assistant' as const,
+      text: '',
+      status: 'error' as const,
+    };
+    this.editingMessageId.set(null);
+    this.editingDraft.set('');
+    await this.replayRequest(user, assistant, text);
+  }
+
   protected canReplayAssistant(assistantMessageId: number): boolean {
     return this.replayContext(assistantMessageId) !== null;
   }
@@ -309,12 +378,20 @@ export class App implements OnDestroy {
     return user ? { user, assistant } : null;
   }
 
-  private async replayRequest(originalUser: ViewMessage, originalAssistant: ViewMessage): Promise<void> {
+  private async replayRequest(
+    originalUser: ViewMessage,
+    originalAssistant: ViewMessage,
+    replacementText = originalUser.text,
+  ): Promise<void> {
     if (this.isSharedRouteBlocked()) {
       return;
     }
     if (this.busy()) {
-      this.stopActiveRequest('Đã dừng để tạo lại câu trả lời.');
+      this.stopActiveRequest(
+        replacementText === originalUser.text
+          ? 'Đã dừng để tạo lại câu trả lời.'
+          : 'Đã dừng để sửa câu hỏi.',
+      );
     }
 
     const selectedModel = this.model().trim();
@@ -335,9 +412,14 @@ export class App implements OnDestroy {
     const requestId = ++this.requestGeneration;
     const remainingMessages = currentMessages.slice(0, userIndex);
     const requestMessages = buildRequestMessages(remainingMessages);
-    requestMessages.push(toChatMessage('user', originalUser.text, originalUser.image?.dataUrl));
+    requestMessages.push(toChatMessage('user', replacementText, originalUser.image?.dataUrl));
 
-    const retriedUser: ViewMessage = { ...originalUser, requestId, status: 'complete' };
+    const retriedUser: ViewMessage = {
+      ...originalUser,
+      requestId,
+      text: replacementText,
+      status: 'complete',
+    };
     const retriedAssistant: ViewMessage = {
       ...originalAssistant,
       requestId,
@@ -350,7 +432,7 @@ export class App implements OnDestroy {
       delete next[originalAssistant.id];
       return next;
     });
-    this.updateActiveConversation();
+    this.updateActiveConversation(userIndex === 0 ? replacementText : undefined);
     this.error.set('');
     this.shareMessage.set('');
     this.scrollConversationToBottom();
@@ -384,14 +466,17 @@ export class App implements OnDestroy {
     this.busy.set(true);
 
     let requestCompleted = false;
+    let rawAssistantText = '';
     try {
       await this.chatService.stream(selectedModel, requestMessages, controller.signal, (delta) => {
         if (!this.isCurrentRequest(conversationId, requestId, controller)) {
           return;
         }
+        rawAssistantText += delta;
+        const visibleText = sanitizeAssistantText(rawAssistantText);
         this.updateConversationMessages(conversationId, (messages) =>
           messages.map((message) =>
-            message.id === assistantId ? { ...message, text: message.text + delta } : message,
+            message.id === assistantId ? { ...message, text: visibleText } : message,
           ),
         );
         this.scrollConversationToBottom('response-update');
@@ -399,6 +484,7 @@ export class App implements OnDestroy {
         if (!this.isCurrentRequest(conversationId, requestId, controller)) {
           return;
         }
+        rawAssistantText = recoveredText;
         this.updateConversationMessages(conversationId, (messages) =>
           messages.map((message) =>
             message.id === assistantId ? { ...message, text: sanitizeAssistantText(recoveredText) } : message,
@@ -670,7 +756,7 @@ export class App implements OnDestroy {
   }
 
   protected canCreateConversation(): boolean {
-    if (this.isSharedRouteBlocked()) {
+    if (this.isSharedRouteBlocked() || this.conversations().length >= this.maxConversationTabs) {
       return false;
     }
 
@@ -678,6 +764,10 @@ export class App implements OnDestroy {
       (conversation) => conversation.id === this.activeConversationId(),
     );
     return Boolean(activeConversation && activeConversation.messages.length > 0);
+  }
+
+  protected canShowNewConversationButton(): boolean {
+    return this.conversations().length < this.maxConversationTabs;
   }
 
   protected isConversationActive(id: number): boolean {
@@ -689,7 +779,7 @@ export class App implements OnDestroy {
 
   protected createConversation(): void {
     this.voiceInput.stop();
-    if (this.isSharedRouteBlocked()) {
+    if (!this.canCreateConversation()) {
       return;
     }
 
@@ -1256,10 +1346,7 @@ export class App implements OnDestroy {
     }
 
     const scroll = () => {
-      const container = this.conversation?.nativeElement;
-      if (container) {
-        scrollToBottom(container);
-      }
+      scrollPageToBottom();
     };
 
     requestAnimationFrame(() => {
