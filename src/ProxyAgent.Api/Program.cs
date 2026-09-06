@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using ProxyAgent.Api.Api;
 using ProxyAgent.Api.Chat;
 using ProxyAgent.Api.Providers;
+using ProxyAgent.Api.Storage;
 using ProxyAgent.Api.WebSearch;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,6 +11,7 @@ builder.Services.Configure<RoutingOptions>(builder.Configuration.GetSection("Rou
 builder.Services.Configure<ProvidersOptions>(builder.Configuration.GetSection("Providers"));
 builder.Services.Configure<ChatPromptOptions>(builder.Configuration.GetSection("Chat"));
 builder.Services.Configure<WebSearchOptions>(builder.Configuration.GetSection("WebSearch"));
+builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection("Storage"));
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options => options.AddPolicy("frontend", policy =>
     policy.WithOrigins(allowedOrigins)
@@ -17,6 +19,10 @@ builder.Services.AddCors(options => options.AddPolicy("frontend", policy =>
         .AllowAnyMethod()));
 builder.Services.AddSingleton<IModelSelector, ModelSelector>();
 builder.Services.AddSingleton<ChatOrchestrator>();
+builder.Services.AddSingleton<SqliteDatabase>();
+builder.Services.AddSingleton<IConversationStore, SqliteConversationStore>();
+builder.Services.AddSingleton<IAdminAccountStore, SqliteAdminAccountStore>();
+builder.Services.AddSingleton<IBackendSettingsStore, SqliteBackendSettingsStore>();
 
 var timeoutSeconds = builder.Configuration.GetValue("Http:TimeoutSeconds", 120);
 builder.Services.AddHttpClient("openai", client => client.Timeout = TimeSpan.FromSeconds(timeoutSeconds));
@@ -45,10 +51,13 @@ builder.Services.AddSingleton<IChatProvider>(services =>
 
 var app = builder.Build();
 
+app.Services.GetRequiredService<SqliteDatabase>().Initialize();
+
 app.UseCors("frontend");
 app.MapGet("/", () => Results.Ok(new { service = "proxy-agent" }));
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
+app.MapConversationEndpoints();
 app.MapChatEndpoints();
 
 app.Run();
