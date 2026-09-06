@@ -53,10 +53,12 @@ import {
   type ConversationApiMessage,
 } from './conversation-link';
 import {
-  allModelOptions,
+  modelOptionsForServer,
   modelCapabilitiesForRoute,
   modelLabel,
   modelSupportsVision,
+  resolveModelForServer,
+  type ModelServer,
   type ModelCapabilitySupport,
 } from './model-picker';
 import { apiUrl, runtimeConfig, setRuntimeApiBaseUrl } from './runtime-config';
@@ -155,6 +157,10 @@ export class App implements OnDestroy {
   protected readonly brandLabel = 'MEDICAL HARNESS FRAMEWORK';
   protected readonly activeTab = signal<ActiveTab>('chat');
   protected readonly serverMenuOpen = signal(false);
+  protected readonly serverHealth = signal<Record<ModelServer, HealthState>>({
+    default: 'checking',
+    custom: 'unconfigured',
+  });
   protected readonly sharedRouteState = signal<SharedRouteState>(
     this.initialSharedConversationId ? 'loading' : 'none',
   );
@@ -164,7 +170,10 @@ export class App implements OnDestroy {
   protected readonly conversations = signal<ChatConversation[]>(this.initialConversationState.conversations);
   protected readonly activeConversationId = signal(this.initialConversationState.activeConversationId);
   protected readonly model = signal(this.initialSetup.selectedModel);
-  protected readonly modelOptions = signal(allModelOptions(this.initialSetup.customModels));
+  protected readonly modelOptions = signal(modelOptionsForServer(
+    this.initialSetup.gatewayBaseUrl.trim() ? 'custom' : 'default',
+    this.initialSetup.customModels,
+  ));
   protected readonly gatewayBaseUrl = signal(this.initialSetup.gatewayBaseUrl);
   protected readonly customGatewayBaseUrl = signal(this.initialSetup.customGatewayBaseUrl);
   protected readonly apiKey = signal(this.initialSetup.apiKey);
@@ -551,6 +560,11 @@ export class App implements OnDestroy {
 
   protected toggleServerMenu(): void {
     this.serverMenuOpen.update((open) => !open);
+    if (!this.serverMenuOpen()) {
+      return;
+    }
+
+    void this.checkAllServerHealth();
   }
 
   protected closeServerMenu(): void {
@@ -975,12 +989,33 @@ export class App implements OnDestroy {
       return;
     }
 
-    this.health.set('checking');
+    await this.checkHealthForServer(this.selectedServer());
+  }
+
+  private async checkAllServerHealth(): Promise<void> {
+    await Promise.allSettled([
+      this.checkHealthForServer('default'),
+      ...(this.hasCustomServer() ? [this.checkHealthForServer('custom')] : []),
+    ]);
+  }
+
+  private async checkHealthForServer(server: ModelServer): Promise<void> {
+    const baseUrl = server === 'default' ? '' : this.customGatewayBaseUrl();
+    this.serverHealth.update((states) => ({ ...states, [server]: 'checking' }));
+    if (server === this.selectedServer()) {
+      this.health.set('checking');
+    }
     try {
-      await this.chatService.health(new AbortController().signal);
-      this.health.set('online');
+      await this.chatService.health(new AbortController().signal, baseUrl);
+      this.serverHealth.update((states) => ({ ...states, [server]: 'online' }));
+      if (server === this.selectedServer()) {
+        this.health.set('online');
+      }
     } catch {
-      this.health.set('offline');
+      this.serverHealth.update((states) => ({ ...states, [server]: 'offline' }));
+      if (server === this.selectedServer()) {
+        this.health.set('offline');
+      }
     }
   }
 
@@ -1073,6 +1108,19 @@ export class App implements OnDestroy {
         return 'Gateway offline';
       case 'unconfigured':
         return 'Thiếu API URL';
+      default:
+        return 'Đang kiểm tra';
+    }
+  }
+
+  protected serverHealthLabel(server: ModelServer): string {
+    switch (this.serverHealth()[server]) {
+      case 'online':
+        return 'Online';
+      case 'offline':
+        return 'Offline';
+      case 'unconfigured':
+        return 'Chưa cấu hình';
       default:
         return 'Đang kiểm tra';
     }
@@ -1251,12 +1299,13 @@ export class App implements OnDestroy {
 
         return {
           ...item,
+          text: formatAssistantError(message),
           status: 'error',
         };
       }),
     );
     this.updateActiveConversation();
-    this.error.set(message);
+    this.error.set('');
     this.scrollConversationToBottom('response-update');
   }
 
@@ -1630,8 +1679,8 @@ export class App implements OnDestroy {
     this.customGatewayBaseUrl.set(settings.customGatewayBaseUrl);
     this.apiKey.set(settings.apiKey);
     this.customModelsText.set(settings.customModels.join('\n'));
-    this.modelOptions.set(allModelOptions(settings.customModels));
-    this.model.set(settings.selectedModel);
+    this.modelOptions.set(modelOptionsForServer(this.selectedServer(), settings.customModels));
+    this.model.set(resolveModelForServer(this.selectedServer(), settings.selectedModel, settings.customModels)?.route ?? '');
     this.setupMessage.set(message);
     void this.checkHealth();
   }
@@ -1639,6 +1688,10 @@ export class App implements OnDestroy {
   private isDefaultGatewayUrl(value: string): boolean {
     const normalized = value.trim().replace(/\/+$/u, '');
     return normalized === '' || normalized === '/api';
+  }
+
+  private selectedServer(): ModelServer {
+    return this.isDefaultGatewayUrl(this.gatewayBaseUrl()) ? 'default' : 'custom';
   }
 
   protected isSharedRouteBlocked(): boolean {
