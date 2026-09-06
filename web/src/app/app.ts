@@ -217,7 +217,7 @@ export class App implements OnDestroy {
     if (this.initialSharedConversationId) {
       void this.loadSharedConversation(this.initialSharedConversationId);
     } else {
-      this.ensureActiveConversationIdentity();
+      void this.ensureActiveConversationIdentity();
     }
     void this.checkHealth();
   }
@@ -674,6 +674,13 @@ export class App implements OnDestroy {
     try {
       serverId = await this.ensureServerConversation(conversation.id, feedbackMessageId);
       if (!serverId) {
+        if (feedbackMessageId !== undefined) {
+          this.setMessageActionFeedback(
+            feedbackMessageId,
+            'Không thể lưu cuộc trò chuyện để tạo link chia sẻ.',
+            'error',
+          );
+        }
         return;
       }
 
@@ -833,8 +840,8 @@ export class App implements OnDestroy {
     this.sharedRouteState.set('none');
     this.sharedRouteMessage.set('');
     this.focusComposer();
-    this.persistConversations();
     this.replaceConversationUrl(conversation.serverId);
+    void this.ensureServerConversation(id);
   }
 
   protected selectConversation(id: number): void {
@@ -870,10 +877,10 @@ export class App implements OnDestroy {
     this.busy.set(this.activeRequests.has(id));
     this.sharedRouteState.set('none');
     this.sharedRouteMessage.set('');
-    this.persistConversations();
     this.scrollConversationToBottom();
     this.focusComposer();
     this.replaceConversationUrl(selected.serverId!);
+    void this.ensureServerConversation(id);
   }
 
   protected deleteConversation(id: number, event: Event): void {
@@ -897,8 +904,8 @@ export class App implements OnDestroy {
       this.conversations.set([replacement]);
       this.sharedRouteState.set('none');
       this.sharedRouteMessage.set('');
-      this.persistConversations();
       this.replaceConversationUrl(replacement.serverId);
+      void this.ensureServerConversation(replacement.id);
       return;
     }
 
@@ -1433,9 +1440,10 @@ export class App implements OnDestroy {
     this.persistConversations();
   }
 
-  private ensureActiveConversationIdentity(): void {
+  private async ensureActiveConversationIdentity(): Promise<void> {
     const serverId = this.ensureLocalConversationIdentity(this.activeConversationId());
     this.replaceConversationUrl(serverId);
+    await this.ensureServerConversation(this.activeConversationId());
   }
 
   private ensureLocalConversationIdentity(conversationId: number): string | null {
@@ -1571,10 +1579,6 @@ export class App implements OnDestroy {
       }
 
       const messages = this.conversationMessagesForApi(current.messages);
-      if (messages.length === 0) {
-        return null;
-      }
-
       try {
         const created = await this.chatService.createConversation(
           current.title,
@@ -1584,9 +1588,9 @@ export class App implements OnDestroy {
         this.setConversationServerIdentity(conversationId, created);
         return created.id;
       } catch (caughtError) {
-        if (this.activeConversationId() === conversationId) {
+        if (feedbackMessageId !== undefined && this.activeConversationId() === conversationId) {
           this.setMessageActionFeedback(
-            feedbackMessageId ?? this.latestAssistantMessageId(),
+            feedbackMessageId,
             this.shareFailureMessage(caughtError),
             'error',
           );
@@ -1606,22 +1610,32 @@ export class App implements OnDestroy {
   }
 
   private async syncConversation(conversationId: number, feedbackMessageId?: number): Promise<void> {
-    const conversation = this.conversations().find((item) => item.id === conversationId);
-    if (!conversation?.serverId || !conversation.serverToken) {
+    let conversation = this.conversations().find((item) => item.id === conversationId);
+    if (!conversation) {
       return;
+    }
+
+    if (!conversation.serverId || !conversation.serverToken) {
+      const serverId = await this.ensureServerConversation(conversationId, feedbackMessageId);
+      const persistedConversation = this.conversations().find((item) => item.id === conversationId);
+      if (!serverId || !persistedConversation?.serverId || !persistedConversation.serverToken) {
+        return;
+      }
+      conversation = persistedConversation;
     }
 
     const messages = this.conversationMessagesForApi(conversation.messages);
     if (messages.length === 0) {
       return;
     }
+    const conversationToSync = conversation;
 
     try {
       await this.chatService.updateConversation(
-        conversation.serverId,
-        conversation.title,
+        conversationToSync.serverId!,
+        conversationToSync.title,
         messages,
-        conversation.serverToken,
+        conversationToSync.serverToken!,
       );
       this.markConversationSynced(conversationId);
     } catch (caughtError) {

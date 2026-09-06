@@ -254,6 +254,7 @@ export class ChatService {
       response = await fetch(serverApiUrl(path), {
         method,
         headers,
+        credentials: 'include',
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
     } catch (caughtError) {

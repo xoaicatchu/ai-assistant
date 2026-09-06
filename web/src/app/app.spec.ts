@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import '@angular/compiler';
 import { App } from './app';
 import { ChatMessage, ChatService, ConversationRequestError } from './chat.service';
-import { CONVERSATIONS_STORAGE_KEY } from './conversation-storage';
 import { setRuntimeApiBaseUrl } from './runtime-config';
 
 describe('App message submission', () => {
@@ -44,7 +43,7 @@ describe('App message submission', () => {
     expect((app as any).messages()[0].text).toBe('Câu hỏi cần gửi');
   });
 
-  it('keeps an unshared conversation on the device while sending a message', async () => {
+  it('persists the conversation in Redis before sending the first message', async () => {
     const createConversation = vi.fn().mockResolvedValue({
       id: 'abcdefghijklmnopqrstuv',
       ownerToken: 'owner-token-for-tests',
@@ -76,13 +75,13 @@ describe('App message submission', () => {
     await (app as any).send();
 
     expect(stream).toHaveBeenCalledOnce();
-    expect(createConversation).not.toHaveBeenCalled();
-    expect(updateConversation).not.toHaveBeenCalled();
-    expect((app as any).conversations()[0].serverId).toMatch(/^[A-Za-z0-9_-]{22}$/u);
-    expect((app as any).conversations()[0].serverToken).toBeUndefined();
+    await Promise.resolve();
+    expect(createConversation).toHaveBeenCalled();
+    expect(updateConversation).toHaveBeenCalled();
+    expect((app as any).conversations()[0].serverToken).toBe('owner-token-for-tests');
   });
 
-  it('continues answering without attempting conversation persistence', async () => {
+  it('continues answering when Redis persistence is unavailable', async () => {
     const createConversation = vi.fn();
     const stream = vi.fn(async (
       _model: string,
@@ -108,7 +107,6 @@ describe('App message submission', () => {
 
     await (app as any).send();
 
-    expect(createConversation).not.toHaveBeenCalled();
     expect(stream).toHaveBeenCalledOnce();
     expect((app as any).messages().map((message: { text: string }) => message.text)).toEqual([
       'Câu hỏi không được mất',
@@ -164,22 +162,9 @@ describe('App message submission', () => {
     expect(health).not.toHaveBeenCalled();
   });
 
-  it('restores the active conversation from device storage', () => {
-    const stored = {
-      activeConversationId: 4,
-      conversations: [
-        {
-          id: 4,
-          title: 'Lịch sử cũ',
-          messages: [
-            { id: 10, requestId: 6, role: 'user', text: 'Câu hỏi cũ', status: 'complete' },
-            { id: 11, requestId: 6, role: 'assistant', text: 'Câu trả lời cũ', status: 'complete' },
-          ],
-        },
-      ],
-    };
+  it('does not restore conversation content from device storage', () => {
     const storage = {
-      getItem: vi.fn((key: string) => key === CONVERSATIONS_STORAGE_KEY ? JSON.stringify(stored) : null),
+      getItem: vi.fn(() => JSON.stringify({ activeConversationId: 4 })),
       setItem: vi.fn(),
     };
     vi.stubGlobal('localStorage', storage);
@@ -187,11 +172,9 @@ describe('App message submission', () => {
 
     const app = new App(chatService);
 
-    expect((app as any).activeConversationId()).toBe(4);
-    expect((app as any).messages().map((message: { text: string }) => message.text)).toEqual([
-      'Câu hỏi cũ',
-      'Câu trả lời cũ',
-    ]);
+    expect((app as any).activeConversationId()).toBe(1);
+    expect((app as any).messages()).toEqual([]);
+    expect(storage.setItem).not.toHaveBeenCalled();
   });
 
   it('assigns an opaque conversation ID to the URL before the first message', () => {
@@ -409,7 +392,7 @@ describe('App message submission', () => {
     await (app as any).shareActiveConversation(2);
 
     expect((app as any).messageActionFeedback()[2]).toEqual({
-      text: 'Không thể kết nối PostgreSQL.',
+      text: 'Không thể lưu cuộc trò chuyện để tạo link chia sẻ.',
       tone: 'error',
     });
   });
@@ -509,6 +492,12 @@ describe('App message submission', () => {
       new ConversationRequestError('Không tìm thấy conversation.', 404),
     );
     const app = new App({ health: vi.fn().mockResolvedValue(undefined), getConversation } as unknown as ChatService);
+    (app as any).conversations.set([{
+      id: 1,
+      title: 'Chat local',
+      serverId: 'zyxwvutsrqponmlkjihgfe',
+      messages: localMessages,
+    }]);
 
     expect((app as any).messages()).toEqual([]);
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -555,6 +544,24 @@ describe('App message submission', () => {
     });
     const getConversation = vi.fn().mockReturnValue(remoteLoad);
     const app = new App({ health: vi.fn().mockResolvedValue(undefined), getConversation } as unknown as ChatService);
+    (app as any).conversations.set([
+      {
+        id: 1,
+        title: 'Cuộc trò chuyện trên link',
+        serverId: remoteId,
+        serverToken: 'owner-token-that-is-long-enough',
+        isPublic: true,
+        messages: [{ id: 1, requestId: 1, role: 'user', text: 'Link cũ', status: 'complete' }],
+      },
+      {
+        id: 2,
+        title: 'Chat local',
+        serverId: 'zyxwvutsrqponmlkjihgfe',
+        messages: [{ id: 2, requestId: 2, role: 'user', text: 'Tab đang chọn', status: 'complete' }],
+      },
+    ]);
+    (app as any).activeConversationId.set(1);
+    (app as any).messages.set((app as any).conversations()[0].messages);
 
     (app as any).selectConversation(2);
     resolveRemote({

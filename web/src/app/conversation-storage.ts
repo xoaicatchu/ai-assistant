@@ -1,7 +1,4 @@
-import { ImageAttachment } from './chat-content';
-import { MessageStatus, ViewMessage } from './conversation-state';
-
-export const CONVERSATIONS_STORAGE_KEY = 'medical-harness-agent.conversations.v1';
+import { ViewMessage } from './conversation-state';
 
 export interface StoredConversation {
   id: number;
@@ -23,195 +20,21 @@ const DEFAULT_CONVERSATION: StoredConversation = {
   title: 'Cuộc trò chuyện mới',
   messages: [],
 };
-const VALID_MESSAGE_STATUSES: readonly MessageStatus[] = ['pending', 'complete', 'error', 'stopped'];
-const MAX_PERSISTED_IMAGE_DATA_URL_LENGTH = 250_000;
 
 export function loadConversationState(): ConversationStateSnapshot {
-  const stored = readStorage();
-  if (!stored) {
-    return freshConversationState();
-  }
-
-  try {
-    return normalizeState(JSON.parse(stored));
-  } catch {
-    return freshConversationState();
-  }
+  // Conversation content is server-owned. The client starts with an empty tab
+  // and hydrates it from Redis through the conversation URL when available.
+  return freshConversationState();
 }
 
 export function saveConversationState(
   conversations: readonly StoredConversation[],
   activeConversationId: number,
 ): void {
-  const normalized = normalizeState({ conversations, activeConversationId });
-
-  try {
-    globalThis.localStorage?.setItem(CONVERSATIONS_STORAGE_KEY, JSON.stringify(normalized));
-  } catch {
-    // A large pasted image or disabled browser storage must not break chat.
-    try {
-      globalThis.localStorage?.setItem(
-        CONVERSATIONS_STORAGE_KEY,
-        JSON.stringify(stripImages(normalized)),
-      );
-    } catch {
-      // Browser storage can be unavailable in private mode or when disabled.
-    }
-  }
-}
-
-function normalizeState(value: unknown): ConversationStateSnapshot {
-  const input = isRecord(value) ? value : {};
-  const rawConversations = Array.isArray(input['conversations']) ? input['conversations'] : [];
-  const seenIds = new Set<number>();
-  const conversations = rawConversations
-    .map((conversation) => normalizeConversation(conversation))
-    .filter((conversation): conversation is StoredConversation => {
-      if (!conversation || seenIds.has(conversation.id)) {
-        return false;
-      }
-      seenIds.add(conversation.id);
-      return true;
-    });
-
-  if (conversations.length === 0) {
-    return freshConversationState();
-  }
-
-  const requestedActiveId = positiveInteger(input['activeConversationId']);
-  const activeConversationId = requestedActiveId && seenIds.has(requestedActiveId)
-    ? requestedActiveId
-    : conversations[0].id;
-  const emptyConversationToKeep = conversations.find((conversation) =>
-    conversation.id === activeConversationId && conversation.messages.length === 0,
-  ) ?? conversations.find((conversation) => conversation.messages.length === 0);
-  const normalizedConversations = emptyConversationToKeep
-    ? conversations.filter((conversation) =>
-        conversation.messages.length > 0 || conversation.id === emptyConversationToKeep.id,
-      )
-    : conversations;
-
-  return { activeConversationId, conversations: normalizedConversations };
-}
-
-function normalizeConversation(value: unknown): StoredConversation | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  const id = positiveInteger(value['id']);
-  if (!id) {
-    return null;
-  }
-
-  const title = typeof value['title'] === 'string'
-    ? value['title'].trim().slice(0, 80) || 'Cuộc trò chuyện mới'
-    : 'Cuộc trò chuyện mới';
-  const storedServerId = typeof value['serverId'] === 'string'
-    ? value['serverId']
-    : value['shareId'];
-  const serverId = typeof storedServerId === 'string' && isOpaqueConversationId(storedServerId)
-    ? storedServerId
-    : undefined;
-  const serverToken = typeof value['serverToken'] === 'string' && value['serverToken'].length >= 20
-    ? value['serverToken']
-    : undefined;
-  const isPublic = value['isPublic'] === true;
-  const serverSyncedFingerprint = typeof value['serverSyncedFingerprint'] === 'string'
-    ? value['serverSyncedFingerprint']
-    : undefined;
-  const rawMessages = Array.isArray(value['messages']) ? value['messages'] : [];
-  const seenMessageIds = new Set<number>();
-  const messages = rawMessages
-    .map((message) => normalizeMessage(message))
-    .filter((message): message is ViewMessage => {
-      if (!message || seenMessageIds.has(message.id)) {
-        return false;
-      }
-      seenMessageIds.add(message.id);
-      return true;
-    });
-
-  return {
-    id,
-    title,
-    messages,
-    ...(serverId ? { serverId } : {}),
-    ...(serverToken ? { serverToken } : {}),
-    ...(isPublic ? { isPublic } : {}),
-    ...(serverSyncedFingerprint ? { serverSyncedFingerprint } : {}),
-  };
-}
-
-function normalizeMessage(value: unknown): ViewMessage | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  const id = positiveInteger(value['id']);
-  const requestId = positiveInteger(value['requestId']);
-  const role = value['role'] === 'user' || value['role'] === 'assistant' ? value['role'] : null;
-  const rawStatus = value['status'];
-  const status = VALID_MESSAGE_STATUSES.includes(rawStatus as MessageStatus)
-    ? rawStatus as MessageStatus
-    : null;
-  const rawText = typeof value['text'] === 'string' ? value['text'] : null;
-
-  if (!id || !requestId || !role || !status || rawText === null) {
-    return null;
-  }
-  if (role === 'assistant' && status === 'pending') {
-    // A pending marker cannot be resumed after a full page navigation.
-    return null;
-  }
-
-  const image = normalizeImage(value['image']);
-  const text = removeLegacyErrorBlock(rawText, role, status);
-  if (role === 'user' && !text && !image) {
-    return null;
-  }
-
-  return {
-    id,
-    requestId,
-    role,
-    text,
-    status: role === 'user' ? 'complete' : status,
-    ...(image ? { image } : {}),
-  };
-}
-
-function removeLegacyErrorBlock(text: string, role: ViewMessage['role'], status: MessageStatus): string {
-  if (role !== 'assistant' || status !== 'error') {
-    return text;
-  }
-
-  return text.replace(/\n+\s*>\s*\*\*Lỗi:\*\*[\s\S]*$/u, '').trimEnd();
-}
-
-function normalizeImage(value: unknown): ImageAttachment | undefined {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-
-  const dataUrl = typeof value['dataUrl'] === 'string' ? value['dataUrl'] : '';
-  if (!dataUrl.startsWith('data:image/') || dataUrl.length > MAX_PERSISTED_IMAGE_DATA_URL_LENGTH) {
-    return undefined;
-  }
-
-  const name = typeof value['name'] === 'string' ? value['name'].slice(0, 160) : 'pasted-image';
-  const type = typeof value['type'] === 'string' ? value['type'].slice(0, 80) : 'image/*';
-  return { dataUrl, name, type };
-}
-
-function stripImages(state: ConversationStateSnapshot): ConversationStateSnapshot {
-  return {
-    activeConversationId: state.activeConversationId,
-    conversations: state.conversations.map((conversation) => ({
-      ...conversation,
-      messages: conversation.messages.map(({ image: _image, ...message }) => message),
-    })),
-  };
+  // Kept as a no-op compatibility seam while Redis persistence happens in
+  // App.syncConversation(). Do not put messages or ownership tokens in browser storage.
+  void conversations;
+  void activeConversationId;
 }
 
 function freshConversationState(): ConversationStateSnapshot {
@@ -219,24 +42,4 @@ function freshConversationState(): ConversationStateSnapshot {
     activeConversationId: DEFAULT_CONVERSATION.id,
     conversations: [{ ...DEFAULT_CONVERSATION, messages: [] }],
   };
-}
-
-function readStorage(): string | null {
-  try {
-    return globalThis.localStorage?.getItem(CONVERSATIONS_STORAGE_KEY) ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function positiveInteger(value: unknown): number | null {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : null;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function isOpaqueConversationId(value: string): boolean {
-  return /^[A-Za-z0-9_-]{22}$/u.test(value);
 }

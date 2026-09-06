@@ -32,9 +32,10 @@ public sealed class ConversationEndpointTests
         Assert.NotNull(id);
         Assert.NotNull(ownerToken);
         Assert.Matches("^[A-Za-z0-9_-]{22}$", id!);
+        Assert.Contains("HttpOnly", string.Join(";", createResponse.Headers.GetValues("Set-Cookie")), StringComparison.OrdinalIgnoreCase);
 
         var readResponse = await app.Client.GetAsync($"/api/conversations/{id}");
-        Assert.Equal(HttpStatusCode.NotFound, readResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, readResponse.StatusCode);
 
         using var ownerReadRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/conversations/{id}");
         ownerReadRequest.Headers.Add("X-Conversation-Token", ownerToken);

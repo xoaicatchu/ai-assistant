@@ -5,6 +5,7 @@ namespace ProxyAgent.Api.Api;
 public static class ConversationEndpoints
 {
     private const string ConversationTokenHeader = "X-Conversation-Token";
+    private const string ConversationTokenCookiePrefix = "medical-harness-conversation-";
 
     public static IEndpointRouteBuilder MapConversationEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -15,7 +16,10 @@ public static class ConversationEndpoints
         return endpoints;
     }
 
-    private static IResult Create(ConversationWriteRequest? request, IConversationStore store)
+    private static IResult Create(
+        ConversationWriteRequest? request,
+        HttpContext context,
+        IConversationStore store)
     {
         if (!TryReadRequest(request, out var title, out var messages, out var error))
         {
@@ -26,6 +30,16 @@ public static class ConversationEndpoints
         }
 
         var created = store.Create(title, messages, request?.Id);
+        context.Response.Cookies.Append(
+            TokenCookieName(created.Id),
+            created.OwnerToken,
+            new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = context.Request.IsHttps,
+                SameSite = SameSiteMode.Lax,
+                Path = $"/api/conversations/{created.Id}"
+            });
         return Results.Created(
             $"/api/conversations/{created.Id}",
             new ConversationCreatedResponse(created.Id, created.OwnerToken));
@@ -33,7 +47,7 @@ public static class ConversationEndpoints
 
     private static IResult Get(string id, HttpContext context, IConversationStore store)
     {
-        var document = store.Get(id, ReadConversationToken(context));
+        var document = store.Get(id, ReadConversationToken(context, id));
         return document is null ? Results.NotFound() : Results.Ok(document);
     }
 
@@ -51,13 +65,13 @@ public static class ConversationEndpoints
             });
         }
 
-        var document = store.Update(id, title, messages, ReadConversationToken(context));
+        var document = store.Update(id, title, messages, ReadConversationToken(context, id));
         return document is null ? Results.NotFound() : Results.Ok(document);
     }
 
     private static IResult Publish(string id, HttpContext context, IConversationStore store)
     {
-        var document = store.Publish(id, ReadConversationToken(context));
+        var document = store.Publish(id, ReadConversationToken(context, id));
         return document is null ? Results.NotFound() : Results.Ok(document);
     }
 
@@ -86,8 +100,11 @@ public static class ConversationEndpoints
         return true;
     }
 
-    private static Task<IResult> CreateAsync(ConversationWriteRequest? request, IConversationStore store)
-        => Task.FromResult(Create(request, store));
+    private static Task<IResult> CreateAsync(
+        ConversationWriteRequest? request,
+        HttpContext context,
+        IConversationStore store)
+        => Task.FromResult(Create(request, context, store));
 
     private static Task<IResult> GetAsync(string id, HttpContext context, IConversationStore store)
         => Task.FromResult(Get(id, context, store));
@@ -102,8 +119,11 @@ public static class ConversationEndpoints
     private static Task<IResult> PublishAsync(string id, HttpContext context, IConversationStore store)
         => Task.FromResult(Publish(id, context, store));
 
-    private static string? ReadConversationToken(HttpContext context)
+    private static string? ReadConversationToken(HttpContext context, string conversationId)
         => context.Request.Headers.TryGetValue(ConversationTokenHeader, out var value)
             ? value.ToString()
-            : null;
+            : context.Request.Cookies[TokenCookieName(conversationId)];
+
+    private static string TokenCookieName(string conversationId) =>
+        $"{ConversationTokenCookiePrefix}{conversationId}";
 }
