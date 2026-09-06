@@ -44,6 +44,7 @@ import {
   type StoredConversation,
 } from './conversation-storage';
 import { renderMarkdown } from './markdown-renderer';
+import { sanitizeAssistantText } from './assistant-text';
 import {
   createConversationUrl,
   createOpaqueConversationId,
@@ -55,6 +56,7 @@ import {
   allModelOptions,
   modelCapabilitiesForRoute,
   modelLabel,
+  modelSupportsVision,
   type ModelCapabilitySupport,
 } from './model-picker';
 import { apiUrl, runtimeConfig, setRuntimeApiBaseUrl } from './runtime-config';
@@ -350,7 +352,7 @@ export class App implements OnDestroy {
         }
         this.updateConversationMessages(conversationId, (messages) =>
           messages.map((message) =>
-            message.id === assistantId ? { ...message, text: recoveredText } : message,
+            message.id === assistantId ? { ...message, text: sanitizeAssistantText(recoveredText) } : message,
           ),
         );
       });
@@ -362,12 +364,15 @@ export class App implements OnDestroy {
       requestCompleted = true;
 
       const assistant = this.conversationMessages(conversationId).find((message) => message.id === assistantId);
-      if (assistant && !assistant.text) {
+      const sanitizedAssistantText = assistant ? sanitizeAssistantText(assistant.text) : '';
+      if (assistant && !sanitizedAssistantText) {
         this.setAssistantError(conversationId, assistantId, 'Gateway trả về thành công nhưng không có nội dung text.');
       } else if (assistant) {
         this.updateConversationMessages(conversationId, (messages) =>
           messages.map((message) =>
-            message.id === assistantId ? { ...message, status: 'complete' } : message,
+            message.id === assistantId
+              ? { ...message, text: sanitizedAssistantText, status: 'complete' }
+              : message,
           ),
         );
       }
@@ -409,12 +414,13 @@ export class App implements OnDestroy {
 
   protected async copyAssistantMessage(messageId: number): Promise<void> {
     const message = this.messages().find((item) => item.id === messageId && item.role === 'assistant');
-    if (!message?.text.trim()) {
+    const text = message ? sanitizeAssistantText(message.text) : '';
+    if (!text.trim()) {
       return;
     }
 
     try {
-      await this.copyToClipboard(message.text);
+      await this.copyToClipboard(text);
       this.setMessageActionFeedback(messageId, 'Đã sao chép câu trả lời.', 'success');
     } catch {
       this.setMessageActionFeedback(messageId, 'Không thể sao chép câu trả lời trên thiết bị này.', 'error');
@@ -741,6 +747,18 @@ export class App implements OnDestroy {
     }
   }
 
+  protected onModelChange(route: string): void {
+    this.model.set(route);
+    if (!modelSupportsVision(route) && this.pendingImage()) {
+      this.pendingImage.set(null);
+      this.error.set('Đã bỏ ảnh đính kèm vì model này không hỗ trợ Vision.');
+    }
+  }
+
+  protected modelSupportsVision(): boolean {
+    return modelSupportsVision(this.model());
+  }
+
   protected toggleVoiceInput(): void {
     if (this.voiceListening()) {
       this.voiceInput.stop();
@@ -774,6 +792,12 @@ export class App implements OnDestroy {
       return;
     }
 
+    if (!this.modelSupportsVision()) {
+      event.preventDefault();
+      this.error.set('Model hiện tại không hỗ trợ Vision nên không thể dán ảnh.');
+      return;
+    }
+
     event.preventDefault();
     const file = imageItem.getAsFile();
     if (file) {
@@ -784,8 +808,10 @@ export class App implements OnDestroy {
   protected async onImageSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
-    if (file) {
+    if (file && this.modelSupportsVision()) {
       await this.attachImage(file);
+    } else if (file) {
+      this.error.set('Model hiện tại không hỗ trợ Vision nên không thể đính kèm ảnh.');
     }
     input.value = '';
   }
@@ -812,12 +838,15 @@ export class App implements OnDestroy {
   }
 
   private canSendImage(selectedModel: string, image: ImageAttachment | null): boolean {
-    if (!image || modelCapabilitiesForRoute(selectedModel).vision !== 'unsupported') {
+    const vision = modelCapabilitiesForRoute(selectedModel).vision;
+    if (!image || vision === 'supported') {
       return true;
     }
 
     this.error.set(
-      `Model ${modelLabel(selectedModel)} không hỗ trợ Vision. Hãy chọn model có nhãn Vision để gửi ảnh.`,
+      vision === 'unsupported'
+        ? `Model ${modelLabel(selectedModel)} không hỗ trợ Vision. Hãy chọn model có nhãn Vision để gửi ảnh.`
+        : `Chưa xác định model ${modelLabel(selectedModel)} có hỗ trợ Vision. Hãy chọn model có nhãn Vision để gửi ảnh.`,
     );
     return false;
   }
@@ -974,6 +1003,11 @@ export class App implements OnDestroy {
   }
 
   private async attachImage(file: File): Promise<void> {
+    if (!this.modelSupportsVision()) {
+      this.error.set('Model hiện tại không hỗ trợ Vision nên không thể đính kèm ảnh.');
+      return;
+    }
+
     if (!this.acceptedImageTypes.has(file.type)) {
       this.error.set('Chỉ hỗ trợ ảnh JPG, PNG, WEBP hoặc GIF.');
       return;
@@ -1313,9 +1347,10 @@ export class App implements OnDestroy {
         id,
         requestId,
         role,
-        text,
+        text: role === 'assistant' ? sanitizeAssistantText(text) : text,
         status: role === 'user' || status === 'pending' ? 'complete' : status,
-      }));
+      }))
+      .filter((message) => Boolean(message.text.trim()));
   }
 
   private isMissingConversationError(error: unknown): boolean {

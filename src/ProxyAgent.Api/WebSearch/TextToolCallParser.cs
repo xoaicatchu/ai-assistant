@@ -23,6 +23,12 @@ public static class TextToolCallParser
     private static readonly Regex InvocationPattern = new(
         @"^\s*(?<name>web_search(?:\s+with\s+snippets)?)\s*(?<json>[\[{])",
         RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private static readonly Regex QueryArgumentPattern = new(
+        @"(?:^|,)\s*query\s*=",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private static readonly Regex NamedArgumentPattern = new(
+        @"^[A-Za-z_][A-Za-z0-9_-]*\s*=",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     public static TextToolCallParseResult Parse(string? content)
     {
@@ -55,6 +61,14 @@ public static class TextToolCallParser
     private static void ParseBlock(string body, ICollection<ChatToolCall> calls)
     {
         var callsBeforeInvocationParsing = calls.Count;
+        foreach (var line in body.Split('\n'))
+        {
+            if (TryParseFunctionInvocation(line, out var query))
+            {
+                AddCall(query, calls);
+            }
+        }
+
         foreach (Match invocation in InvocationPattern.Matches(body))
         {
             var jsonStart = invocation.Groups["json"].Index;
@@ -75,6 +89,132 @@ public static class TextToolCallParser
         {
             AddStructuredCalls(structuredJson, calls);
         }
+    }
+
+    private static bool TryParseFunctionInvocation(string line, out string query)
+    {
+        query = string.Empty;
+        var trimmed = line.Trim();
+        var openingParenthesis = trimmed.IndexOf('(');
+        if (openingParenthesis <= 0 || !trimmed.EndsWith(')') ||
+            !IsWebSearchName(trimmed[..openingParenthesis]))
+        {
+            return false;
+        }
+
+        var arguments = trimmed[(openingParenthesis + 1)..^1];
+        var queryArgument = QueryArgumentPattern.Match(arguments);
+        if (!queryArgument.Success)
+        {
+            return false;
+        }
+
+        var rawValue = arguments[(queryArgument.Index + queryArgument.Length)..].TrimStart();
+        if (rawValue.Length == 0)
+        {
+            return false;
+        }
+
+        string rawQuery;
+        if (rawValue[0] is '"' or '\'')
+        {
+            var quote = rawValue[0];
+            var closingQuote = FindClosingQuote(rawValue, quote);
+            if (closingQuote <= 0)
+            {
+                return false;
+            }
+
+            rawQuery = UnescapeQuotedArgument(rawValue[1..closingQuote]);
+        }
+        else
+        {
+            var nextArgument = FindNamedArgumentSeparator(rawValue);
+            rawQuery = (nextArgument >= 0 ? rawValue[..nextArgument] : rawValue).Trim();
+        }
+
+        query = rawQuery.Trim();
+        return query.Length > 0;
+    }
+
+    private static int FindClosingQuote(string value, char quote)
+    {
+        var escaped = false;
+        for (var index = 1; index < value.Length; index++)
+        {
+            var character = value[index];
+            if (escaped)
+            {
+                escaped = false;
+                continue;
+            }
+
+            if (character == '\\')
+            {
+                escaped = true;
+                continue;
+            }
+
+            if (character == quote)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private static string UnescapeQuotedArgument(string value)
+    {
+        var builder = new StringBuilder(value.Length);
+        var escaped = false;
+        foreach (var character in value)
+        {
+            if (escaped)
+            {
+                builder.Append(character is '\\' or '"' or '\'' ? character : '\\');
+                if (character is not '\\' and not '"' and not '\'')
+                {
+                    builder.Append(character);
+                }
+
+                escaped = false;
+            }
+            else if (character == '\\')
+            {
+                escaped = true;
+            }
+            else
+            {
+                builder.Append(character);
+            }
+        }
+
+        if (escaped)
+        {
+            builder.Append('\\');
+        }
+
+        return builder.ToString();
+    }
+
+    private static int FindNamedArgumentSeparator(string value)
+    {
+        for (var index = 0; index < value.Length; index++)
+        {
+            if (value[index] != ',')
+            {
+                continue;
+            }
+
+            var remainder = value[(index + 1)..].TrimStart();
+            if (NamedArgumentPattern.IsMatch(remainder))
+            {
+                return index;
+            }
+        }
+
+        return -1;
     }
 
     private static void AddQueryCalls(string json, ICollection<ChatToolCall> calls)

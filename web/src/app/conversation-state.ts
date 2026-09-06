@@ -1,4 +1,5 @@
 import { ChatMessage } from './chat.service';
+import { sanitizeAssistantText } from './assistant-text';
 import { ImageAttachment, toChatMessage } from './chat-content';
 
 export type MessageStatus = 'pending' | 'complete' | 'error' | 'stopped';
@@ -15,7 +16,18 @@ export interface ViewMessage {
 export function buildRequestMessages(messages: ViewMessage[]): ChatMessage[] {
   return messages
     .filter((message) => message.role === 'user' || (message.status === 'complete' && Boolean(message.text.trim())))
-    .map((message) => toChatMessage(message.role, message.text, message.image?.dataUrl));
+    .map((message) => toChatMessage(
+      message.role,
+      message.role === 'assistant' ? sanitizeAssistantText(message.text) : message.text,
+      message.image?.dataUrl,
+    ))
+    .filter((message) => {
+      if (Array.isArray(message.content)) {
+        return message.content.length > 0;
+      }
+
+      return Boolean(message.content.trim());
+    });
 }
 
 export function findAssistantForUser(messages: ViewMessage[], userMessageId: number): ViewMessage | null {

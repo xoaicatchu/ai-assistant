@@ -1,6 +1,7 @@
 import { isRemovedModelRoute, MODEL_OPTIONS } from './model-picker';
 
 const STORAGE_KEY = 'medical-harness-agent.setup.v1';
+const LEGACY_DEFAULT_MODEL = 'x-ai/grok-4.6';
 
 export interface SetupSettings {
   gatewayBaseUrl: string;
@@ -20,7 +21,7 @@ export const DEFAULT_SETUP_SETTINGS: SetupSettings = {
   gatewayBaseUrl: '',
   apiKey: '',
   customModels: [],
-  selectedModel: 'x-ai/grok-4.6',
+  selectedModel: 'deepseek/deepseek-v4-flash',
 };
 
 export function normalizeGatewayBaseUrl(value: string | null | undefined): string {
@@ -67,7 +68,11 @@ export function loadSetupSettings(): SetupSettings {
   }
 
   try {
-    return normalizeSetup(JSON.parse(stored) as SetupSettingsInput);
+    const parsed = JSON.parse(stored) as SetupSettingsInput & { selectedModelExplicit?: boolean };
+    const normalized = normalizeSetup(parsed);
+    return parsed.selectedModelExplicit === true || parsed.selectedModel?.trim() !== LEGACY_DEFAULT_MODEL
+      ? normalized
+      : { ...normalized, selectedModel: DEFAULT_SETUP_SETTINGS.selectedModel };
   } catch {
     return cloneDefaults();
   }
@@ -77,7 +82,10 @@ export function saveSetupSettings(settings: SetupSettingsInput): SetupSettings {
   const normalized = normalizeSetup(settings);
 
   try {
-    globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(normalized));
+    globalThis.localStorage?.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ...normalized, selectedModelExplicit: true }),
+    );
   } catch {
     // Browser storage can be unavailable in private mode or when disabled.
   }

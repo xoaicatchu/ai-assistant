@@ -18,7 +18,7 @@ describe('setup storage', () => {
 
   it('returns safe defaults when no saved setup exists', () => {
     expect(loadSetupSettings()).toEqual(DEFAULT_SETUP_SETTINGS);
-    expect(DEFAULT_SETUP_SETTINGS.selectedModel).toBe('x-ai/grok-4.6');
+    expect(DEFAULT_SETUP_SETTINGS.selectedModel).toBe('deepseek/deepseek-v4-flash');
   });
 
   it('normalizes a saved setup and removes duplicate custom routes', () => {
@@ -49,6 +49,27 @@ describe('setup storage', () => {
     expect(loadSetupSettings()).toEqual(DEFAULT_SETUP_SETTINGS);
     expect(normalizeGatewayBaseUrl('ftp://example.com')).toBe('');
     expect(normalizeGatewayBaseUrl('not a url')).toBe('');
+  });
+
+  it('migrates the previous Grok default to DeepSeek when it was never explicitly saved', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => JSON.stringify({ selectedModel: 'x-ai/grok-4.6' })),
+      setItem: vi.fn(),
+    });
+
+    expect(loadSetupSettings().selectedModel).toBe('deepseek/deepseek-v4-flash');
+  });
+
+  it('preserves Grok when the saved setup explicitly selected it', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => JSON.stringify({
+        selectedModel: 'x-ai/grok-4.6',
+        selectedModelExplicit: true,
+      })),
+      setItem: vi.fn(),
+    });
+
+    expect(loadSetupSettings().selectedModel).toBe('x-ai/grok-4.6');
   });
 
   it('normalizes URL and model route input before saving', () => {

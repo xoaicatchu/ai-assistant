@@ -32,6 +32,10 @@ export function modelCapabilitiesForRoute(route: string): ModelCapabilities {
   return capabilities ? { ...capabilities } : { vision: 'unknown', toolCalling: 'unknown' };
 }
 
+export function modelSupportsVision(route: string): boolean {
+  return modelCapabilitiesForRoute(route).vision === 'supported';
+}
+
 export const MODEL_OPTIONS: readonly ModelOption[] = [
   {
     route: 'deepseek/deepseek-v4-flash',

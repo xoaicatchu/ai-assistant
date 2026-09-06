@@ -1,4 +1,5 @@
 import { marked, Renderer } from 'marked';
+import { sanitizeAssistantText } from './assistant-text';
 
 const htmlEscapeMap: Record<string, string> = {
   '&': '&amp;',
@@ -22,7 +23,7 @@ renderer.link = function ({ href, title, tokens }) {
 };
 
 export function renderMarkdown(markdown: string): string {
-  return marked.parse(markdown, {
+  return marked.parse(sanitizeAssistantText(markdown), {
     async: false,
     breaks: true,
     gfm: true,

@@ -233,6 +233,69 @@ describe('App message submission', () => {
     expect((app as any).error()).toContain('không hỗ trợ Vision');
   });
 
+  it('keeps provider tool-call markup out of the completed assistant message', async () => {
+    const stream = vi.fn(async (
+      _model: string,
+      _messages: ChatMessage[],
+      _signal: AbortSignal,
+      onDelta: (text: string) => void,
+    ) => {
+      onDelta('Đang kiểm tra.\n<tool_call>\n');
+      onDelta('web_search(query=thời tiết Hà Nội, num_results=5)');
+      onDelta('\n</tool_call>\nKết quả từ nguồn web.');
+    });
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
+      callback();
+      return 0;
+    });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined), stream } as unknown as ChatService);
+    (app as any).draft.set('Thời tiết Hà Nội hôm nay');
+
+    await (app as any).send();
+
+    const assistantText = (app as any).messages()[1].text;
+    expect(assistantText).toContain('Kết quả từ nguồn web.');
+    expect(assistantText).not.toContain('<tool_call>');
+    expect(assistantText).not.toContain('web_search');
+  });
+
+  it('disables image paste when the selected model has no Vision capability', async () => {
+    const getAsFile = vi.fn();
+    const preventDefault = vi.fn();
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
+    await (app as any).onComposerPaste({
+      clipboardData: { items: [{ type: 'image/png', getAsFile }] },
+      preventDefault,
+    } as unknown as ClipboardEvent);
+
+    expect(preventDefault).toHaveBeenCalledOnce();
+    expect(getAsFile).not.toHaveBeenCalled();
+    expect((app as any).pendingImage()).toBeNull();
+    expect((app as any).error()).toContain('không hỗ trợ Vision');
+  });
+
+  it('removes an attached image when switching to a model without Vision', () => {
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
+    (app as any).model.set('x-ai/grok-4.6');
+    (app as any).pendingImage.set({
+      dataUrl: 'data:image/png;base64,AA==',
+      name: 'test.png',
+      type: 'image/png',
+    });
+
+    (app as any).onModelChange('deepseek/deepseek-v4-flash');
+
+    expect((app as any).pendingImage()).toBeNull();
+    expect((app as any).model()).toBe('deepseek/deepseek-v4-flash');
+    expect((app as any).error()).toContain('Đã bỏ ảnh');
+  });
+
   it('copies a shareable URL for the active conversation on desktop', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     const replaceState = vi.fn();
