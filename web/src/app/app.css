@@ -834,55 +834,6 @@ textarea:disabled {
   font-size: 0.95em;
 }
 
-.stream-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: #6b6c7b;
-  font-size: 10px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.stream-toggle input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.toggle-track {
-  width: 30px;
-  height: 18px;
-  padding: 2px;
-  display: flex;
-  align-items: center;
-  background: #d1d1d6;
-  border-radius: 99px;
-}
-
-.toggle-track span {
-  width: 14px;
-  height: 14px;
-  background: #ffffff;
-  border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
-}
-
-.stream-toggle input:checked + .toggle-track {
-  justify-content: flex-end;
-  background: #22a35a;
-}
-
-.composer-stream-toggle {
-  min-width: 0;
-  flex-shrink: 1;
-  gap: 5px;
-}
-
-.composer-stream-toggle .toggle-track {
-  flex-shrink: 0;
-}
-
 .connection-card {
   margin-top: 16px;
   padding: 17px;
@@ -1125,21 +1076,6 @@ textarea:disabled {
   .composer-actions {
     flex: 0 0 auto;
     gap: 4px;
-  }
-
-  .composer-stream-toggle {
-    height: 32px;
-    font-size: 12px;
-  }
-
-  .composer-stream-toggle .toggle-track {
-    width: 28px;
-    height: 18px;
-  }
-
-  .composer-stream-toggle .toggle-track span {
-    width: 14px;
-    height: 14px;
   }
 
   .attach-button {

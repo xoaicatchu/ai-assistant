@@ -112,7 +112,6 @@ export class App implements OnDestroy {
   protected readonly draft = signal('');
   protected readonly pendingImage = signal<ImageAttachment | null>(null);
   protected readonly messages = signal<ViewMessage[]>([]);
-  protected readonly streamEnabled = signal(true);
   protected readonly voiceListening = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -173,6 +172,7 @@ export class App implements OnDestroy {
       userMessage,
       { id: assistantId, requestId, role: 'assistant', text: '', status: 'pending' },
     ]);
+    this.scrollConversationToBottom();
     this.draft.set('');
     this.pendingImage.set(null);
     restoreComposerAfterSend(this.composerInput?.nativeElement);
@@ -263,30 +263,17 @@ export class App implements OnDestroy {
     this.busy.set(true);
 
     try {
-      if (this.streamEnabled()) {
-        await this.chatService.stream(selectedModel, requestMessages, controller.signal, (delta) => {
-          if (!this.isCurrentRequest(conversationId, requestId, controller)) {
-            return;
-          }
-          this.updateConversationMessages(conversationId, (messages) =>
-            messages.map((message) =>
-              message.id === assistantId ? { ...message, text: message.text + delta } : message,
-            ),
-          );
-          this.scrollConversationToBottom('response-update');
-        });
-      } else {
-        const response = await this.chatService.complete(selectedModel, requestMessages, controller.signal);
+      await this.chatService.stream(selectedModel, requestMessages, controller.signal, (delta) => {
         if (!this.isCurrentRequest(conversationId, requestId, controller)) {
           return;
         }
         this.updateConversationMessages(conversationId, (messages) =>
           messages.map((message) =>
-            message.id === assistantId ? { ...message, text: response } : message,
+            message.id === assistantId ? { ...message, text: message.text + delta } : message,
           ),
         );
         this.scrollConversationToBottom('response-update');
-      }
+      });
 
       if (!this.isCurrentRequest(conversationId, requestId, controller)) {
         return;
