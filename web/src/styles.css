@@ -385,6 +385,153 @@ h3 {
   border-color: #374151;
 }
 
+.mcp-help-card {
+  margin-top: 16px;
+  overflow: hidden;
+  background: #f7faff;
+  border: 1px solid #dbe7fb;
+  border-radius: 13px;
+}
+
+.mcp-help-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  color: #243b64;
+  cursor: pointer;
+  list-style: none;
+}
+
+.mcp-help-summary::-webkit-details-marker {
+  display: none;
+}
+
+.mcp-help-icon {
+  display: grid;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  background: #e8f0ff;
+  border-radius: 9px;
+  font-size: 16px;
+}
+
+.mcp-help-title {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.mcp-help-title strong {
+  font-size: 13px;
+}
+
+.mcp-help-title small {
+  color: #697792;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.mcp-help-chevron {
+  margin-left: auto;
+  color: #6b7fa6;
+  font-size: 18px;
+  transition: transform 160ms ease;
+}
+
+.mcp-help-card[open] .mcp-help-chevron {
+  transform: rotate(180deg);
+}
+
+.mcp-help-body {
+  padding: 0 16px 16px 56px;
+  color: #4b5870;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.mcp-help-note,
+.mcp-help-warning {
+  margin: 0 0 10px;
+}
+
+.mcp-help-steps {
+  margin: 0 0 12px;
+  padding-left: 18px;
+}
+
+.mcp-help-steps li + li {
+  margin-top: 5px;
+}
+
+.mcp-help-body code {
+  color: #2563eb;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.95em;
+}
+
+.mcp-help-example {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #dbe7fb;
+  border-radius: 9px;
+}
+
+.mcp-help-example div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mcp-help-example span {
+  color: #697792;
+  font-size: 11px;
+}
+
+.mcp-help-warning {
+  color: #697792;
+}
+
+.dark-mode .mcp-help-card {
+  background: #17243b;
+  border-color: #2c4774;
+}
+
+.dark-mode .mcp-help-summary {
+  color: #dbe8ff;
+}
+
+.dark-mode .mcp-help-icon,
+.dark-mode .mcp-help-example {
+  background: #1f3355;
+  border-color: #2c4774;
+}
+
+.dark-mode .mcp-help-title small,
+.dark-mode .mcp-help-body,
+.dark-mode .mcp-help-warning,
+.dark-mode .mcp-help-example span {
+  color: #aabbd8;
+}
+
+@media (max-width: 640px) {
+  .mcp-help-body {
+    padding-left: 16px;
+  }
+
+  .mcp-help-example div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
 .dark-mode .composer {
   border-color: #4b5563;
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.35);

@@ -557,6 +557,38 @@
           <p class="capability-help">Vision = nhận ảnh. Tool call = model có thể gọi function/tool. Route custom chưa được xác minh.</p>
         </section>
 
+        <details class="mcp-help-card">
+          <summary class="mcp-help-summary">
+            <span class="mcp-help-icon" aria-hidden="true">🔌</span>
+            <span class="mcp-help-title">
+              <strong>Hướng dẫn tích hợp MCP</strong>
+              <small>Kết nối MCP server qua gateway và dùng tool trong cuộc trò chuyện</small>
+            </span>
+            <span class="mcp-help-chevron" aria-hidden="true">⌄</span>
+          </summary>
+
+          <div class="mcp-help-body">
+            <p class="mcp-help-note">
+              Customize hiện không chạy MCP server trực tiếp trong trình duyệt. MCP cần được cấu hình ở
+              9Router/backend, sau đó gateway chuyển tool call tới model.
+            </p>
+            <ol class="mcp-help-steps">
+              <li>Chạy MCP server của bạn bằng <code>stdio</code> hoặc HTTP/SSE ở 9Router.</li>
+              <li>Đăng ký server và các tool trong 9Router, rồi expose gateway ở endpoint OpenAI-compatible.</li>
+              <li>Nhập Base URL, API key và route model của gateway ở các ô phía trên.</li>
+              <li>Chọn model có badge <strong>Tool call</strong>, rồi gửi câu hỏi cần dùng tool.</li>
+            </ol>
+            <div class="mcp-help-example" aria-label="Ví dụ cấu hình gateway MCP">
+              <div><span>Base URL</span><code>http://127.0.0.1:8045/v1</code></div>
+              <div><span>Model route</span><code>openai:gpt-4o-mini</code></div>
+            </div>
+            <p class="mcp-help-warning">
+              Nếu mở web từ thiết bị khác, <code>127.0.0.1</code> trỏ về chính thiết bị đó. Hãy dùng địa chỉ gateway
+              có thể truy cập được và bật CORS; không đưa secret của MCP lên frontend công khai.
+            </p>
+          </div>
+        </details>
+
         <div class="connection-card">
           <div class="connection-card-header">
             <div class="connection-card-heading">
