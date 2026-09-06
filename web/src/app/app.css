@@ -639,7 +639,7 @@ textarea:disabled {
 }
 
 .user-message-actions {
-  justify-content: flex-end;
+  align-self: flex-end;
   margin-top: 5px;
   padding-top: 0;
   border-top: 0;

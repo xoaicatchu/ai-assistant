@@ -157,3 +157,225 @@ h3 {
 .message-content td:last-child {
   border-right: 0;
 }
+
+.app-shell.dark-mode {
+  color-scheme: dark;
+  background: #0b1120;
+}
+
+.dark-mode .chat-card,
+.dark-mode .composer {
+  background: #111827;
+}
+
+.dark-mode .topbar,
+.dark-mode .tab-bar {
+  border-color: #263244;
+}
+
+.dark-mode h1,
+.dark-mode .welcome-card h2,
+.dark-mode .setup-heading h2,
+.dark-mode .message-content,
+.dark-mode .message-content h1,
+.dark-mode .message-content h2,
+.dark-mode .message-content h3,
+.dark-mode .message-content h4,
+.dark-mode .connection-card h3,
+.dark-mode .setup-field > span,
+.dark-mode .capability-card-heading h3,
+.dark-mode .capability-model strong {
+  color: #f3f4f6;
+}
+
+.dark-mode .brand-mark {
+  color: #fb7185;
+  background: #3b1722;
+  box-shadow: inset 0 0 0 1px rgba(251, 113, 133, 0.35);
+}
+
+.dark-mode .server-switcher,
+.dark-mode .server-menu-option:hover:not(:disabled),
+.dark-mode .server-menu-option.is-selected {
+  color: #93c5fd;
+  background: #172554;
+  border-color: #1e3a8a;
+}
+
+.dark-mode .server-menu,
+.dark-mode .server-menu-customize,
+.dark-mode .settings-button,
+.dark-mode .new-conversation-button,
+.dark-mode .conversation-tab,
+.dark-mode .status-icon,
+.dark-mode .mini-icon,
+.dark-mode .secondary-button {
+  color: #d1d5db;
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.dark-mode .server-menu-customize:hover,
+.dark-mode .settings-button:hover,
+.dark-mode .settings-button.active-settings,
+.dark-mode .new-conversation-button:hover,
+.dark-mode .secondary-button:hover:not(:disabled) {
+  color: #bfdbfe;
+  background: #1e3a8a;
+  border-color: #3b82f6;
+}
+
+.dark-mode .server-menu-option,
+.dark-mode .tab-button,
+.dark-mode .conversation-tab,
+.dark-mode .message-meta,
+.dark-mode .server-menu-heading,
+.dark-mode .server-menu-option small,
+.dark-mode .model-select-chevron,
+.dark-mode .endpoint-line,
+.dark-mode .capability-help {
+  color: #9ca3af;
+}
+
+.dark-mode .active-tab,
+.dark-mode .tab-button:hover,
+.dark-mode .active-conversation-tab,
+.dark-mode .conversation-tab:hover {
+  color: #93c5fd;
+}
+
+.dark-mode .active-tab::after {
+  background: #60a5fa;
+}
+
+.dark-mode .user-row .message-bubble {
+  color: #f3f4f6;
+  background: #374151;
+}
+
+.dark-mode .avatar,
+.dark-mode .user-row .user-avatar {
+  color: #d1d5db;
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.dark-mode .assistant-row .avatar,
+.dark-mode .conversation-notice {
+  color: #93c5fd;
+  background: #172554;
+  border-color: #1e40af;
+}
+
+.dark-mode .message-actions {
+  border-color: #263244;
+}
+
+.dark-mode .message-action-button {
+  color: #9ca3af;
+}
+
+.dark-mode .message-action-button:hover {
+  color: #bfdbfe;
+  background: #1e3a8a;
+  border-color: #3b82f6;
+}
+
+.dark-mode .edit-question-input,
+.dark-mode .composer textarea,
+.dark-mode .model-select,
+.dark-mode .setup-field input,
+.dark-mode .setup-field textarea {
+  color: #f3f4f6;
+  background: #111827;
+  border-color: #374151;
+}
+
+.dark-mode .composer {
+  border-color: #4b5563;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.35);
+}
+
+.dark-mode .composer textarea::placeholder,
+.dark-mode .setup-field small,
+.dark-mode .attachment-preview small {
+  color: #6b7280;
+}
+
+.dark-mode .attachment-preview,
+.dark-mode .setup-field,
+.dark-mode .connection-card,
+.dark-mode .capability-card {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.dark-mode .capability-card {
+  background: #111827;
+}
+
+.dark-mode .capability-list,
+.dark-mode .capability-row,
+.dark-mode .endpoint-list,
+.dark-mode .setup-footer {
+  border-color: #374151;
+}
+
+.dark-mode .attachment-preview strong,
+.dark-mode .endpoint-line code {
+  color: #d1d5db;
+}
+
+.dark-mode .attach-button,
+.dark-mode .voice-button,
+.dark-mode .stop-button {
+  color: #d1d5db;
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.dark-mode .attach-button:hover,
+.dark-mode .voice-button:hover,
+.dark-mode .stop-button:hover:not(:disabled) {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+.dark-mode .new-conversation-button:disabled {
+  color: #6b7280;
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.dark-mode .error-banner {
+  color: #fca5a5;
+  background: #3b1d22;
+  border-color: #7f1d1d;
+}
+
+.dark-mode .message-content blockquote {
+  color: #9ca3af;
+  border-color: #4b5563;
+}
+
+.dark-mode .message-content code {
+  color: #d1d5db;
+  background: #374151;
+}
+
+.dark-mode .message-content hr {
+  border-color: #374151;
+}
+
+.dark-mode .message-content table {
+  border-color: #4b5563;
+}
+
+.dark-mode .message-content th,
+.dark-mode .message-content td {
+  border-color: #374151;
+}
+
+.dark-mode .message-content th {
+  background: #1f2937;
+}

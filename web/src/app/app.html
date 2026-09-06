@@ -1,7 +1,7 @@
 @if (isAdminRoute) {
   <app-admin-page></app-admin-page>
 } @else {
-<main class="app-shell bg-slate-50" (click)="closeServerMenu()">
+<main class="app-shell bg-slate-50" [class.dark-mode]="darkMode()" (click)="closeServerMenu()">
   <section class="chat-card mx-auto w-full max-w-[920px]" aria-label="Medical Harness Framework">
     <header class="topbar flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-7">
       <div class="brand flex min-w-0 items-center gap-3">
@@ -17,6 +17,19 @@
       </div>
 
       <div class="topbar-actions flex items-center gap-2">
+        <button
+          class="settings-button"
+          type="button"
+          [attr.aria-label]="darkMode() ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'"
+          [attr.title]="darkMode() ? 'Giao diện sáng' : 'Giao diện tối'"
+          (click)="toggleTheme(); $event.stopPropagation()"
+        >
+          @if (darkMode()) {
+            <svg lucideSun class="h-4 w-4" aria-hidden="true"></svg>
+          } @else {
+            <svg lucideMoon class="h-4 w-4" aria-hidden="true"></svg>
+          }
+        </button>
         <div class="server-switcher" (click)="$event.stopPropagation()">
           <button
             class="settings-button"
@@ -189,6 +202,19 @@
                   <svg lucideBot class="h-4 w-4" aria-hidden="true"></svg>
                 }
               </div>
+              @if (message.role === 'user' && editingMessageId() !== message.id) {
+                <div class="message-actions user-message-actions">
+                  <button
+                    class="message-action-button"
+                    type="button"
+                    (click)="startEditingMessage(message.id)"
+                    aria-label="Sửa câu hỏi"
+                    title="Sửa câu hỏi"
+                  >
+                    <svg lucidePencil class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                  </button>
+                </div>
+              }
               <div class="message-bubble">
                 <div class="message-meta">{{ message.role === 'user' ? 'Bạn' : 'Trợ lý' }}</div>
                 @if (message.image) {
@@ -233,19 +259,6 @@
                   <div class="message-content" [innerHTML]="renderMarkdown(message.text)"></div>
                 } @else if (message.role === 'assistant' && message.status === 'pending') {
                   <div class="typing" aria-label="Assistant đang trả lời"><span></span><span></span><span></span></div>
-                }
-                @if (message.role === 'user' && editingMessageId() !== message.id) {
-                  <div class="message-actions user-message-actions">
-                    <button
-                      class="message-action-button"
-                      type="button"
-                      (click)="startEditingMessage(message.id)"
-                      aria-label="Sửa câu hỏi"
-                      title="Sửa câu hỏi"
-                    >
-                      <svg lucidePencil class="h-3.5 w-3.5" aria-hidden="true"></svg>
-                    </button>
-                  </div>
                 }
                 @if (message.role === 'assistant' && message.status !== 'pending' && (message.text || canReplayAssistant(message.id))) {
                   <div class="message-actions">

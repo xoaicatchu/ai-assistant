@@ -10,6 +10,7 @@ import {
   LucideLoaderCircle,
   LucideMic,
   LucideMessageCircle,
+  LucideMoon,
   LucidePencil,
   LucidePlus,
   LucideRefreshCw,
@@ -19,6 +20,7 @@ import {
   LucideShieldCheck,
   LucideSparkles,
   LucideSquare,
+  LucideSun,
   LucideUserRound,
   LucideWifiOff,
   LucideX,
@@ -72,6 +74,7 @@ import {
 } from './setup-storage';
 import { VoiceInputController } from './voice-input';
 import { AdminPage } from './admin-page';
+import { loadTheme, saveTheme } from './theme';
 
 type HealthState = 'checking' | 'online' | 'offline' | 'unconfigured';
 type ActiveTab = 'chat' | 'setup';
@@ -128,6 +131,7 @@ function maxRequestId(conversations: readonly ChatConversation[]): number {
     LucideLoaderCircle,
     LucideMic,
     LucideMessageCircle,
+    LucideMoon,
     LucidePencil,
     LucidePlus,
     LucideRefreshCw,
@@ -137,6 +141,7 @@ function maxRequestId(conversations: readonly ChatConversation[]): number {
     LucideShieldCheck,
     LucideSparkles,
     LucideSquare,
+    LucideSun,
     LucideUserRound,
     LucideWifiOff,
     LucideX,
@@ -155,6 +160,7 @@ export class App implements OnDestroy {
   private readonly initialSharedConversationId = readConversationId(globalThis.location?.href ?? '');
   protected readonly runtime = runtimeConfig;
   protected readonly brandLabel = 'MEDICAL HARNESS FRAMEWORK';
+  protected readonly darkMode = signal(loadTheme() === 'dark');
   protected readonly activeTab = signal<ActiveTab>('chat');
   protected readonly serverMenuOpen = signal(false);
   protected readonly serverHealth = signal<Record<ModelServer, HealthState>>({
@@ -287,6 +293,12 @@ export class App implements OnDestroy {
       userMessage.id,
       assistantId,
     );
+  }
+
+  protected toggleTheme(): void {
+    const nextTheme = this.darkMode() ? 'light' : 'dark';
+    this.darkMode.set(nextTheme === 'dark');
+    saveTheme(nextTheme);
   }
 
   protected async replayAssistantMessage(assistantMessageId: number): Promise<void> {

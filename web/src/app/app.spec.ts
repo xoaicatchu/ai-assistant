@@ -150,6 +150,18 @@ describe('App message submission', () => {
     expect((app as any).brandLabel).toBe('MEDICAL HARNESS FRAMEWORK');
   });
 
+  it('toggles and saves the dark mode preference', () => {
+    const setItem = vi.fn();
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => 'light'), setItem });
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
+
+    expect((app as any).darkMode()).toBe(false);
+    (app as any).toggleTheme();
+
+    expect((app as any).darkMode()).toBe(true);
+    expect(setItem).toHaveBeenCalledWith('medical-harness-agent.theme.v1', 'dark');
+  });
+
   it('renders the protected admin route without starting chat health checks', () => {
     vi.stubGlobal('location', { pathname: '/admin', href: 'https://example.com/admin' });
     vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
