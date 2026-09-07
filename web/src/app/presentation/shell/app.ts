@@ -247,8 +247,6 @@ export class App implements OnDestroy {
     setRuntimeApiBaseUrl(this.initialSetup.gatewayBaseUrl);
     if (this.initialSharedConversationId) {
       void this.loadSharedConversation(this.initialSharedConversationId);
-    } else {
-      this.ensureActiveConversationIdentity();
     }
     void this.checkHealth();
   }
@@ -941,7 +939,6 @@ export class App implements OnDestroy {
       id,
       title: 'Cuộc trò chuyện mới',
       messages: [],
-      serverId: createOpaqueConversationId(),
     };
     this.conversations.update((conversations) => [
       ...conversations,
@@ -956,7 +953,6 @@ export class App implements OnDestroy {
     this.sharedRouteState.set('none');
     this.sharedRouteMessage.set('');
     this.focusComposer();
-    this.replaceConversationUrl(conversation.serverId);
   }
 
   protected selectConversation(id: number): void {
@@ -976,14 +972,7 @@ export class App implements OnDestroy {
       this.persistActiveConversation();
     }
 
-    const selected = conversation.serverId
-      ? conversation
-      : { ...conversation, serverId: createOpaqueConversationId() };
-    if (selected !== conversation) {
-      this.conversations.update((conversations) => conversations.map((item) =>
-        item.id === id ? selected : item,
-      ));
-    }
+    const selected = conversation;
     this.activeConversationId.set(id);
     this.messages.set([...selected.messages]);
     this.error.set('');
@@ -994,7 +983,7 @@ export class App implements OnDestroy {
     this.sharedRouteMessage.set('');
     this.scrollConversationToBottom();
     this.focusComposer();
-    this.replaceConversationUrl(selected.serverId!);
+    this.replaceConversationUrl(selected.serverId);
   }
 
   protected deleteConversation(id: number, event: Event): void {
@@ -1013,12 +1002,11 @@ export class App implements OnDestroy {
         id: this.activeConversationId(),
         title: 'Cuộc trò chuyện mới',
         messages: [],
-        serverId: createOpaqueConversationId(),
       };
       this.conversations.set([replacement]);
       this.sharedRouteState.set('none');
       this.sharedRouteMessage.set('');
-      this.replaceConversationUrl(replacement.serverId);
+      this.replaceCurrentUrl(this.chatRootUrl());
       return;
     }
 
@@ -1034,7 +1022,7 @@ export class App implements OnDestroy {
       this.pendingImage.set(null);
       this.busy.set(false);
       this.focusComposer();
-      this.replaceConversationUrl(next.serverId ?? this.ensureLocalConversationIdentity(next.id));
+      this.replaceConversationUrl(next.serverId);
     }
     this.persistConversations();
   }
@@ -1579,28 +1567,6 @@ export class App implements OnDestroy {
     this.persistConversations();
   }
 
-  private ensureActiveConversationIdentity(): void {
-    const serverId = this.ensureLocalConversationIdentity(this.activeConversationId());
-    this.replaceConversationUrl(serverId);
-  }
-
-  private ensureLocalConversationIdentity(conversationId: number): string | null {
-    const conversation = this.conversations().find((item) => item.id === conversationId);
-    if (!conversation) {
-      return null;
-    }
-    if (conversation.serverId) {
-      return conversation.serverId;
-    }
-
-    const serverId = createOpaqueConversationId();
-    this.conversations.update((conversations) => conversations.map((item) =>
-      item.id === conversationId ? { ...item, serverId } : item,
-    ));
-    this.persistConversations();
-    return serverId;
-  }
-
   private replaceConversationUrl(serverId: string | null | undefined): void {
     if (!serverId) {
       return;
@@ -1744,6 +1710,18 @@ export class App implements OnDestroy {
       if (this.serverConversationCreates.get(conversationId) === request) {
         this.serverConversationCreates.delete(conversationId);
       }
+    }
+  }
+
+  private chatRootUrl(): string {
+    try {
+      const url = new URL(globalThis.location?.href ?? '');
+      url.pathname = '/';
+      url.search = '';
+      url.hash = '';
+      return url.toString();
+    } catch {
+      return '/';
     }
   }
 

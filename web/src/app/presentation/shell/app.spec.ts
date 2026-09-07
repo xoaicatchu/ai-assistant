@@ -297,21 +297,22 @@ describe('App message submission', () => {
     expect(storage.setItem).not.toHaveBeenCalled();
   });
 
-  it('assigns an opaque conversation ID to the URL before the first message', () => {
+  it('does not allocate a conversation ID or server record for a blank tab', async () => {
     const replaceState = vi.fn();
     vi.stubGlobal('location', { href: 'https://example.com/' });
     vi.stubGlobal('history', { replaceState });
     vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+    const createConversation = vi.fn();
 
-    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
-    const serverId = (app as any).conversations()[0].serverId;
+    const app = new App({
+      health: vi.fn().mockResolvedValue(undefined),
+      createConversation,
+    } as unknown as ChatService);
+    await Promise.resolve();
 
-    expect(serverId).toMatch(/^[A-Za-z0-9_-]{22}$/u);
-    expect(replaceState).toHaveBeenCalledWith(
-      null,
-      '',
-      `https://example.com/conversation/${serverId}`,
-    );
+    expect((app as any).conversations()[0].serverId).toBeUndefined();
+    expect(createConversation).not.toHaveBeenCalled();
+    expect(replaceState).not.toHaveBeenCalled();
   });
 
   it('does not send an image to a known text-only model', async () => {
@@ -460,7 +461,7 @@ describe('App message submission', () => {
     expect(writeText).toHaveBeenCalledOnce();
     expect(writeText.mock.calls[0][0]).toBe('https://example.com/conversation/abcdefghijklmnopqrstuv');
     expect(chatService.createConversation).toHaveBeenCalledOnce();
-    expect(replaceState).toHaveBeenCalledTimes(3);
+    expect(replaceState).toHaveBeenCalledTimes(2);
     expect((app as any).shareMessage()).toContain('Đã sao chép');
     expect(chatService.publishConversation).toHaveBeenCalledWith(
       'abcdefghijklmnopqrstuv',
