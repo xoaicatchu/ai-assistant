@@ -3,6 +3,7 @@
 :root {
   --font-ui: Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-display: Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --app-header-height: 100px;
 }
 
 * {
@@ -158,10 +159,19 @@ h3 {
 }
 
 .app-header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 50%;
   z-index: 30;
+  width: min(100%, 920px);
   background: #ffffff;
+  transform: translateX(-50%);
+}
+
+/* Fixed chrome is outside normal flow; preserve the space it occupies so the
+   browser page remains the only scroll container without covering messages. */
+.chat-card {
+  padding-top: calc(var(--app-header-height) + env(safe-area-inset-top));
 }
 
 .chat-footer {
@@ -178,6 +188,12 @@ h3 {
 
 .chat-footer .composer {
   margin-bottom: 8px;
+}
+
+@media (max-width: 700px) {
+  :root {
+    --app-header-height: 98px;
+  }
 }
 
 .auto-scroll-toggle {

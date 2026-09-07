@@ -17,7 +17,7 @@
   flex-direction: column;
   overflow: visible;
   background: #ffffff;
-  padding-top: env(safe-area-inset-top);
+  padding-top: calc(var(--app-header-height, 100px) + env(safe-area-inset-top));
   padding-bottom: calc(128px + env(safe-area-inset-bottom));
 }
 
