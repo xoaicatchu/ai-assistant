@@ -7,12 +7,13 @@ const configPath = resolve(scriptDirectory, '../public/app-config.js');
 const rawApiBaseUrl = process.env.NG_APP_API_BASE_URL?.trim() ?? '';
 const rawBackendUrl = process.env.NG_APP_BACKEND_URL?.trim() ?? '';
 const isVercel = process.env.VERCEL === '1';
+const isProductionBuild = isVercel || process.env.NODE_ENV === 'production';
 const configuredApiBaseUrl = rawApiBaseUrl.replace(/\/+$/, '');
 const configuredBackendUrl = rawBackendUrl.replace(/\/+$/, '');
 // NG_APP_API_BASE_URL remains an explicit model-gateway override. When the
 // frontend is deployed separately, NG_APP_BACKEND_URL is the backend origin
 // used for the default gateway and conversation/admin APIs.
-const vercelBackendFallback = isVercel ? 'https://ai-assistant-backend-xoaicatchu.vercel.app' : '/api';
+const vercelBackendFallback = isProductionBuild ? 'https://ai-assistant-backend-xoaicatchu.vercel.app' : '/api';
 const defaultApiBaseUrl = configuredBackendUrl || configuredApiBaseUrl || vercelBackendFallback;
 const apiBaseUrl = configuredApiBaseUrl || defaultApiBaseUrl;
 const serverApiBaseUrl = configuredBackendUrl || vercelBackendFallback;
