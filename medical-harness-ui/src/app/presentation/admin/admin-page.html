@@ -1,0 +1,235 @@
+<main class="admin-page" aria-label="Quản trị backend">
+  <section class="admin-card">
+    <header class="admin-header">
+      <div class="admin-brand">
+        <div class="admin-brand-mark" aria-hidden="true">
+          <svg lucideHeartPulse class="h-5 w-5" aria-hidden="true"></svg>
+        </div>
+        <div>
+          <p class="admin-eyebrow">MEDICAL HARNESS FRAMEWORK</p>
+          <h1>Backend Admin</h1>
+        </div>
+      </div>
+      <a class="admin-back-link" href="/">Về Chat</a>
+    </header>
+
+    @if (loading()) {
+      <div class="admin-loading" role="status">
+        <svg lucideRefreshCw class="h-4 w-4 animate-spin" aria-hidden="true"></svg>
+        Đang kiểm tra phiên đăng nhập…
+      </div>
+    } @else if (!authenticated()) {
+      <form class="admin-login" (ngSubmit)="login()">
+        <div class="admin-section-heading">
+          <span class="admin-section-icon" aria-hidden="true">
+            <svg lucideShieldCheck class="h-4 w-4" aria-hidden="true"></svg>
+          </span>
+          <div>
+            <p class="admin-eyebrow">RESTRICTED AREA</p>
+            <h2>Đăng nhập quản trị</h2>
+          </div>
+        </div>
+        <p class="admin-description">Nhập tài khoản admin để cấu hình backend và các provider. Mật khẩu bootstrap tối thiểu 8 ký tự; nếu vừa thêm biến môi trường trên Vercel, hãy tạo deployment mới.</p>
+
+        <label class="admin-field">
+          <span>Tên đăng nhập</span>
+          <input
+            [ngModel]="username()"
+            (ngModelChange)="username.set($event)"
+            name="username"
+            autocomplete="username"
+            spellcheck="false"
+            required
+          />
+        </label>
+        <label class="admin-field">
+          <span>Mật khẩu</span>
+          <input
+            [ngModel]="password()"
+            (ngModelChange)="password.set($event)"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+        </label>
+        @if (error()) {
+          <p class="admin-error" role="alert">{{ error() }}</p>
+        }
+        <button class="admin-primary-button" type="submit" [disabled]="busy()">
+          @if (busy()) {
+            <svg lucideRefreshCw class="h-4 w-4 animate-spin" aria-hidden="true"></svg>
+            Đang đăng nhập…
+          } @else {
+            <svg lucideShieldCheck class="h-4 w-4" aria-hidden="true"></svg>
+            Đăng nhập
+          }
+        </button>
+      </form>
+    } @else {
+      <div class="admin-content">
+        <div class="admin-toolbar">
+          <div>
+            <p class="admin-eyebrow">SYSTEM CONFIGURATION</p>
+            <h2>Cấu hình backend</h2>
+            <p>Đang đăng nhập: <strong>{{ username() }}</strong>. Để trống API key nếu muốn giữ key hiện tại.</p>
+          </div>
+          <button class="admin-secondary-button" type="button" (click)="logout()" [disabled]="busy()">
+            Đăng xuất
+          </button>
+        </div>
+
+        <div class="admin-grid">
+          <section class="admin-panel">
+            <div class="admin-panel-heading">
+              <span class="admin-section-icon" aria-hidden="true">
+                <svg lucideServer class="h-4 w-4" aria-hidden="true"></svg>
+              </span>
+              <div>
+                <p class="admin-eyebrow">OPENAI-COMPATIBLE</p>
+                <h3>OpenAI / Grok / custom gateway</h3>
+              </div>
+            </div>
+            <label class="admin-field">
+              <span>Base URL</span>
+              <input [ngModel]="openAiBaseUrl()" (ngModelChange)="openAiBaseUrl.set($event)" name="openAiBaseUrl" spellcheck="false" />
+            </label>
+            <label class="admin-field">
+              <span>API key</span>
+              <input [ngModel]="openAiApiKey()" (ngModelChange)="openAiApiKey.set($event); clearOpenAiApiKey.set(false)" name="openAiApiKey" type="password" autocomplete="new-password" placeholder="Để trống để giữ key hiện tại" />
+              @if (openAiApiKeyHint()) {
+                <small>Key hiện tại: {{ openAiApiKeyHint() }}</small>
+              }
+              <button class="admin-inline-button" type="button" (click)="clearOpenAiKey()" [class.active-danger]="clearOpenAiApiKey()">
+                <svg lucideX class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                {{ clearOpenAiApiKey() ? 'Sẽ xóa key khi lưu' : 'Xóa key' }}
+              </button>
+            </label>
+            <label class="admin-field">
+              <span>Model mặc định</span>
+              <input [ngModel]="openAiDefaultModel()" (ngModelChange)="openAiDefaultModel.set($event)" name="openAiDefaultModel" spellcheck="false" />
+            </label>
+          </section>
+
+          <section class="admin-panel">
+            <div class="admin-panel-heading">
+              <span class="admin-section-icon" aria-hidden="true">
+                <svg lucideServer class="h-4 w-4" aria-hidden="true"></svg>
+              </span>
+              <div>
+                <p class="admin-eyebrow">ANTHROPIC-COMPATIBLE</p>
+                <h3>Anthropic</h3>
+              </div>
+            </div>
+            <label class="admin-field">
+              <span>Base URL</span>
+              <input [ngModel]="anthropicBaseUrl()" (ngModelChange)="anthropicBaseUrl.set($event)" name="anthropicBaseUrl" spellcheck="false" />
+            </label>
+            <label class="admin-field">
+              <span>API key</span>
+              <input [ngModel]="anthropicApiKey()" (ngModelChange)="anthropicApiKey.set($event); clearAnthropicApiKey.set(false)" name="anthropicApiKey" type="password" autocomplete="new-password" placeholder="Để trống để giữ key hiện tại" />
+              @if (anthropicApiKeyHint()) {
+                <small>Key hiện tại: {{ anthropicApiKeyHint() }}</small>
+              }
+              <button class="admin-inline-button" type="button" (click)="clearAnthropicKey()" [class.active-danger]="clearAnthropicApiKey()">
+                <svg lucideX class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                {{ clearAnthropicApiKey() ? 'Sẽ xóa key khi lưu' : 'Xóa key' }}
+              </button>
+            </label>
+            <label class="admin-field">
+              <span>Model mặc định</span>
+              <input [ngModel]="anthropicDefaultModel()" (ngModelChange)="anthropicDefaultModel.set($event)" name="anthropicDefaultModel" spellcheck="false" />
+            </label>
+            <label class="admin-field">
+              <span>Anthropic API version</span>
+              <input [ngModel]="anthropicApiVersion()" (ngModelChange)="anthropicApiVersion.set($event)" name="anthropicApiVersion" spellcheck="false" />
+            </label>
+          </section>
+
+          <section class="admin-panel admin-panel-wide">
+            <div class="admin-panel-heading">
+              <span class="admin-section-icon" aria-hidden="true">
+                <svg lucideSettings2 class="h-4 w-4" aria-hidden="true"></svg>
+              </span>
+              <div>
+                <p class="admin-eyebrow">WEB SEARCH</p>
+                <h3>Tavily search</h3>
+              </div>
+            </div>
+            <div class="admin-form-grid">
+              <label class="admin-field">
+                <span>Base URL</span>
+                <input [ngModel]="searchBaseUrl()" (ngModelChange)="searchBaseUrl.set($event)" name="searchBaseUrl" spellcheck="false" />
+              </label>
+              <label class="admin-field">
+                <span>API key</span>
+                <input [ngModel]="searchApiKey()" (ngModelChange)="searchApiKey.set($event); clearSearchApiKey.set(false)" name="searchApiKey" type="password" autocomplete="new-password" placeholder="Để trống để giữ key hiện tại" />
+                @if (searchApiKeyHint()) {
+                  <small>Key hiện tại: {{ searchApiKeyHint() }}</small>
+                }
+                <button class="admin-inline-button" type="button" (click)="clearSearchKey()" [class.active-danger]="clearSearchApiKey()">
+                  <svg lucideX class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                  {{ clearSearchApiKey() ? 'Sẽ xóa key khi lưu' : 'Xóa key' }}
+                </button>
+              </label>
+              <label class="admin-check-field">
+                <input type="checkbox" [ngModel]="searchEnabled()" (ngModelChange)="searchEnabled.set($event)" name="searchEnabled" />
+                <span>Bật web search</span>
+              </label>
+              <label class="admin-check-field">
+                <input type="checkbox" [ngModel]="searchUseToolCalling()" (ngModelChange)="searchUseToolCalling.set($event)" name="searchUseToolCalling" />
+                <span>Cho phép tool calling</span>
+              </label>
+              <label class="admin-field">
+                <span>Số kết quả tối đa</span>
+                <input type="number" min="1" max="20" [ngModel]="searchMaxResults()" (ngModelChange)="searchMaxResults.set(+$event)" name="searchMaxResults" />
+              </label>
+              <label class="admin-field">
+                <span>Timeout (giây)</span>
+                <input type="number" min="1" max="300" [ngModel]="searchTimeoutSeconds()" (ngModelChange)="searchTimeoutSeconds.set(+$event)" name="searchTimeoutSeconds" />
+              </label>
+            </div>
+          </section>
+        </div>
+
+        @if (error()) {
+          <p class="admin-error" role="alert">{{ error() }}</p>
+        }
+        @if (message()) {
+          <p class="admin-success" role="status">{{ message() }}</p>
+        }
+
+        <div class="admin-footer">
+          <p>Thay đổi có hiệu lực ngay cho request mới. API key không được hiển thị lại đầy đủ.</p>
+          <button class="admin-primary-button" type="button" (click)="saveSettings()" [disabled]="busy()">
+            @if (busy()) {
+              <svg lucideRefreshCw class="h-4 w-4 animate-spin" aria-hidden="true"></svg>
+              Đang lưu…
+            } @else {
+              <svg lucideShieldCheck class="h-4 w-4" aria-hidden="true"></svg>
+              Lưu cấu hình
+            }
+          </button>
+        </div>
+
+        <section class="admin-password-panel">
+          <div>
+            <p class="admin-eyebrow">ACCOUNT SECURITY</p>
+            <h3>Đổi mật khẩu admin</h3>
+          </div>
+          <div class="admin-form-grid password-grid">
+            <label class="admin-field">
+              <span>Mật khẩu hiện tại</span>
+              <input [ngModel]="currentPassword()" (ngModelChange)="currentPassword.set($event)" name="currentPassword" type="password" autocomplete="current-password" />
+            </label>
+            <label class="admin-field">
+              <span>Mật khẩu mới</span>
+              <input [ngModel]="newPassword()" (ngModelChange)="newPassword.set($event)" name="newPassword" type="password" autocomplete="new-password" />
+            </label>
+          </div>
+          <button class="admin-secondary-button" type="button" (click)="changePassword()" [disabled]="busy()">Đổi mật khẩu</button>
+        </section>
+      </div>
+    }
+  </section>
+</main>

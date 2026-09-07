@@ -1,0 +1,20 @@
+{
+  "/v1": {
+    "target": "http://localhost:5030",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "info"
+  },
+  "/api": {
+    "target": "http://localhost:5030",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "info"
+  },
+  "/health": {
+    "target": "http://localhost:5030",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "info"
+  }
+}

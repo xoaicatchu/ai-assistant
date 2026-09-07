@@ -1,0 +1,629 @@
+@if (isAdminRoute) {
+  <app-admin-page></app-admin-page>
+} @else {
+<main class="app-shell bg-slate-50" [class.dark-mode]="darkMode()" (click)="closeServerMenu()">
+  <section class="chat-card mx-auto w-full max-w-[920px]" aria-label="Medical Harness Framework">
+    <header class="app-header">
+      <div class="topbar flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-7">
+      <div class="brand flex min-w-0 items-center gap-3">
+        <div class="brand-mark grid shrink-0 place-items-center" aria-hidden="true">
+          <svg lucideHeartPulse class="h-5 w-5" aria-hidden="true"></svg>
+        </div>
+        <div class="brand-copy min-w-0">
+          <p class="eyebrow">{{ brandLabel }}</p>
+          <div class="brand-title-row flex min-w-0 items-center gap-2">
+            <h1>Clinic Support AI</h1>
+          </div>
+        </div>
+      </div>
+
+      <div class="topbar-actions flex items-center gap-2">
+        <button
+          class="settings-button"
+          type="button"
+          [attr.aria-label]="darkMode() ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'"
+          [attr.title]="darkMode() ? 'Giao diện sáng' : 'Giao diện tối'"
+          (click)="toggleTheme(); $event.stopPropagation()"
+        >
+          @if (darkMode()) {
+            <svg lucideSun class="h-4 w-4" aria-hidden="true"></svg>
+          } @else {
+            <svg lucideMoon class="h-4 w-4" aria-hidden="true"></svg>
+          }
+        </button>
+        <div class="server-switcher" (click)="$event.stopPropagation()">
+          <button
+            class="settings-button"
+            type="button"
+            [class.active-settings]="serverMenuOpen() || activeTab() === 'setup'"
+            [attr.aria-expanded]="serverMenuOpen()"
+            aria-haspopup="menu"
+            aria-label="Đổi server"
+            title="Đổi server"
+            (click)="toggleServerMenu()"
+          >
+            <svg lucideSettings2 class="h-4 w-4" aria-hidden="true"></svg>
+            <span
+              class="connection-status"
+              [class]="'connection-status status-' + health()"
+              [attr.aria-label]="'Trạng thái: ' + healthLabel()"
+              [attr.title]="healthLabel()"
+              aria-live="polite"
+            >
+              @switch (health()) {
+                @case ('online') { <span class="online-dot"></span> }
+                @case ('offline') { <svg lucideWifiOff class="h-3.5 w-3.5" aria-hidden="true"></svg> }
+                @case ('unconfigured') { <svg lucideWifiOff class="h-3.5 w-3.5" aria-hidden="true"></svg> }
+                @default { <svg lucideLoaderCircle class="h-3.5 w-3.5 animate-spin" aria-hidden="true"></svg> }
+              }
+            </span>
+            <span
+              class="server-button-label"
+              [attr.title]="selectedEndpointLabel()"
+            >{{ selectedEndpointLabel() }}</span>
+          </button>
+          @if (serverMenuOpen()) {
+            <div class="server-menu" role="menu" aria-label="Chọn server">
+              <div class="server-menu-heading">Server model</div>
+              <button
+                class="server-menu-option"
+                type="button"
+                role="menuitemradio"
+                [attr.aria-checked]="isUsingDefaultServer()"
+                [class.is-selected]="isUsingDefaultServer()"
+                (click)="switchServer('default')"
+              >
+                <span>
+                  <strong>{{ serverEndpointLabel('default') }}</strong>
+                </span>
+                <span
+                  class="server-option-status"
+                  [attr.aria-label]="'Trạng thái server: ' + serverHealthLabel('default')"
+                  [attr.title]="serverHealthLabel('default')"
+                >
+                  @switch (serverHealthState('default')) {
+                    @case ('online') { <span class="online-dot"></span> }
+                    @case ('offline') { <svg lucideWifiOff class="h-3.5 w-3.5" aria-hidden="true"></svg> }
+                    @default { <svg lucideLoaderCircle class="h-3.5 w-3.5 animate-spin" aria-hidden="true"></svg> }
+                  }
+                </span>
+              </button>
+              <button
+                class="server-menu-option"
+                type="button"
+                role="menuitemradio"
+                [disabled]="!hasCustomServer()"
+                [attr.aria-checked]="!isUsingDefaultServer()"
+                [class.is-selected]="!isUsingDefaultServer()"
+                (click)="switchServer('custom')"
+              >
+                <span>
+                  <strong>{{ serverEndpointLabel('custom') }}</strong>
+                </span>
+                <span
+                  class="server-option-status"
+                  [attr.aria-label]="'Trạng thái server: ' + serverHealthLabel('custom')"
+                  [attr.title]="serverHealthLabel('custom')"
+                >
+                  @switch (serverHealthState('custom')) {
+                    @case ('online') { <span class="online-dot"></span> }
+                    @case ('offline') { <svg lucideWifiOff class="h-3.5 w-3.5" aria-hidden="true"></svg> }
+                    @default { <svg lucideLoaderCircle class="h-3.5 w-3.5 animate-spin" aria-hidden="true"></svg> }
+                  }
+                </span>
+              </button>
+              <button class="server-menu-customize" type="button" (click)="openCustomizeFromServerMenu()">
+                Mở Customize để sửa server
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+      </div>
+
+      <nav class="tab-bar flex items-center gap-1 px-5 sm:px-7" role="tablist" aria-label="Workspace">
+      <button
+        id="chat-tab"
+        class="tab-button"
+        [class.active-tab]="activeTab() === 'chat'"
+        role="tab"
+        type="button"
+        aria-controls="chat-panel"
+        [attr.aria-selected]="activeTab() === 'chat'"
+        (click)="selectTab('chat')"
+      >
+        <svg lucideMessageCircle class="h-4 w-4" aria-hidden="true"></svg>
+        Chat
+      </button>
+      <div class="conversation-tabs" role="tablist" aria-label="Các cuộc trò chuyện">
+        @for (conversation of conversations(); track conversation.id) {
+          <div
+            class="conversation-tab"
+            [class.active-conversation-tab]="isConversationActive(conversation.id)"
+          >
+            <button
+              class="conversation-tab-main"
+              type="button"
+              role="tab"
+              [attr.aria-selected]="isConversationActive(conversation.id)"
+              (click)="selectConversation(conversation.id)"
+              [attr.aria-label]="'Mở ' + conversation.title"
+            >
+              <span>{{ conversation.title }}</span>
+            </button>
+            <button
+              class="conversation-tab-close"
+              type="button"
+              aria-label="Đóng cuộc trò chuyện"
+              title="Đóng cuộc trò chuyện"
+              (click)="deleteConversation(conversation.id, $event)"
+            >
+              <svg lucideX class="h-3 w-3" aria-hidden="true"></svg>
+            </button>
+          </div>
+        }
+        @if (canShowNewConversationButton()) {
+          <button
+            class="new-conversation-button"
+            type="button"
+            [disabled]="!canCreateConversation()"
+            aria-label="Tạo cuộc trò chuyện mới"
+            [attr.title]="canCreateConversation() ? 'Tạo cuộc trò chuyện mới' : 'Hãy gửi tin nhắn trước khi tạo cuộc trò chuyện mới'"
+            (click)="createConversation()"
+          >
+            <span aria-hidden="true">+</span>
+            <span class="sr-only">Cuộc trò chuyện mới</span>
+          </button>
+        }
+      </div>
+      </nav>
+    </header>
+
+    @if (activeTab() === 'chat') {
+      <section id="chat-panel" class="chat-panel" role="tabpanel" aria-labelledby="chat-tab">
+        <section #conversation class="conversation" tabindex="-1" aria-live="polite" aria-label="Conversation">
+          @if (sharedRouteMessage()) {
+            <div class="conversation-notice" role="status">{{ sharedRouteMessage() }}</div>
+          }
+          @if (messages().length === 0 && !isSharedRouteBlocked()) {
+            <div class="welcome-card">
+              <div class="welcome-icon grid place-items-center" aria-hidden="true">
+                <svg lucideSparkles class="h-5 w-5" aria-hidden="true"></svg>
+              </div>
+              <h2>Hôm nay tôi có thể giúp gì cho bạn?</h2>
+            </div>
+          }
+
+          @for (message of messages(); track message.id) {
+            <article
+              class="message-row"
+              [class.user-row]="message.role === 'user'"
+              [class.assistant-row]="message.role === 'assistant'"
+            >
+              <div class="avatar" [class.user-avatar]="message.role === 'user'" aria-hidden="true">
+                @if (message.role === 'user') {
+                  <svg lucideUserRound class="h-4 w-4" aria-hidden="true"></svg>
+                } @else {
+                  <svg lucideBot class="h-4 w-4" aria-hidden="true"></svg>
+                }
+              </div>
+              @if (message.role === 'user' && editingMessageId() !== message.id && !isSharedConversationReadOnly()) {
+                <div class="message-actions user-message-actions">
+                  <button
+                    class="message-action-button"
+                    type="button"
+                    (click)="startEditingMessage(message.id)"
+                    aria-label="Sửa câu hỏi"
+                    title="Sửa câu hỏi"
+                  >
+                    <svg lucidePencil class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                  </button>
+                </div>
+              }
+              <div class="message-bubble">
+                <div class="message-meta">{{ message.role === 'user' ? 'Bạn' : 'Trợ lý' }}</div>
+                @if (message.image) {
+                  <img class="message-image" [src]="message.image.dataUrl" alt="Ảnh đính kèm" />
+                }
+                @if (message.role === 'user' && editingMessageId() === message.id) {
+                  <div class="edit-question-form">
+                    <textarea
+                      #editQuestionInput
+                      class="edit-question-input"
+                      [ngModel]="editingDraft()"
+                      (ngModelChange)="editingDraft.set($event)"
+                      (keydown)="onEditQuestionKeydown($event, message.id)"
+                      name="edit-question-{{ message.id }}"
+                      rows="2"
+                      aria-label="Sửa câu hỏi"
+                      enterkeyhint="send"
+                    ></textarea>
+                    <div class="edit-question-actions">
+                      <button
+                        class="message-action-button"
+                        type="button"
+                        (click)="cancelEditingMessage()"
+                        aria-label="Hủy sửa câu hỏi"
+                        title="Hủy"
+                      >
+                        <svg lucideX class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                      </button>
+                      <button
+                        class="message-action-button"
+                        type="button"
+                        (click)="submitEditedMessage(message.id)"
+                        [disabled]="!editingDraft().trim() && !message.image"
+                        aria-label="Gửi lại câu hỏi đã sửa"
+                        title="Gửi lại"
+                      >
+                        <svg lucideArrowUp class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                      </button>
+                    </div>
+                  </div>
+                } @else if (message.text) {
+                  <div class="message-content" [innerHTML]="renderMarkdown(message.text)"></div>
+                } @else if (message.role === 'assistant' && message.status === 'pending') {
+                  <div class="typing" aria-label="Assistant đang trả lời"><span></span><span></span><span></span></div>
+                }
+                @if (message.role === 'assistant' && message.status !== 'pending' && (message.text || canReplayAssistant(message.id))) {
+                  <div class="message-actions">
+                    @if (message.text) {
+                      <button
+                        class="message-action-button"
+                        type="button"
+                        (click)="copyAssistantMessage(message.id)"
+                        aria-label="Sao chép câu trả lời"
+                        title="Sao chép câu trả lời"
+                      >
+                        <svg lucideCopy class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                      </button>
+                    }
+                    @if (canReplayAssistant(message.id)) {
+                      <button
+                        class="message-action-button"
+                        type="button"
+                        (click)="replayAssistantMessage(message.id)"
+                        aria-label="Tạo lại câu trả lời"
+                        title="Tạo lại câu trả lời"
+                      >
+                        <svg lucideRefreshCw class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                      </button>
+                    }
+                    @if (message.text) {
+                      <button
+                        class="message-action-button"
+                        type="button"
+                        (click)="shareActiveConversation(message.id)"
+                        aria-label="Chia sẻ cuộc trò chuyện"
+                        title="Chia sẻ cuộc trò chuyện"
+                      >
+                        <svg lucideShare2 class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                      </button>
+                    }
+                    @if (messageActionFeedback()[message.id]; as feedback) {
+                      <span
+                        class="message-action-feedback"
+                        [class.action-error]="feedback.tone === 'error'"
+                        role="status"
+                      >{{ feedback.text }}</span>
+                    }
+                  </div>
+                }
+              </div>
+            </article>
+          }
+
+        </section>
+
+      </section>
+
+      <footer class="chat-footer">
+        @if (error()) {
+          <div class="error-banner" role="alert">
+            <svg lucideCircleAlert class="h-4 w-4 shrink-0" aria-hidden="true"></svg>
+            <span>{{ error() }}</span>
+          </div>
+        }
+
+        <form class="composer" (ngSubmit)="send()">
+          @if (pendingImage(); as image) {
+            <div class="attachment-preview">
+              <img [src]="image.dataUrl" alt="Ảnh sắp gửi" />
+              <div>
+                <strong>{{ image.name }}</strong>
+                <small>Ảnh đính kèm</small>
+              </div>
+              <button class="remove-image" type="button" (click)="removeImage()" aria-label="Xóa ảnh đính kèm" title="Xóa ảnh">
+                <svg lucideX class="h-4 w-4" aria-hidden="true"></svg>
+              </button>
+            </div>
+          }
+          <textarea
+            #composerInput
+            [ngModel]="draft()"
+            (ngModelChange)="draft.set($event)"
+            (keydown)="onComposerKeydown($event)"
+            (compositionstart)="onComposerCompositionStart()"
+            (compositionend)="onComposerCompositionEnd()"
+            (paste)="onComposerPaste($event)"
+            name="message"
+            rows="2"
+            [disabled]="isSharedRouteBlocked() || isSharedConversationReadOnly()"
+            [placeholder]="modelSupportsVision() ? 'Nhắn tin hoặc dán ảnh vào đây…' : 'Nhắn tin…'"
+            aria-label="Tin nhắn"
+            enterkeyhint="send"
+          ></textarea>
+          <div class="composer-footer flex items-center justify-between gap-3">
+            <div class="composer-tools flex min-w-0 items-center gap-2">
+              <label
+                class="icon-button attach-button"
+                [class.is-disabled]="!modelSupportsVision() || isSharedRouteBlocked() || isSharedConversationReadOnly()"
+                [attr.aria-disabled]="!modelSupportsVision() || isSharedRouteBlocked() || isSharedConversationReadOnly()"
+                [attr.title]="isSharedRouteBlocked() || isSharedConversationReadOnly() ? 'Cuộc trò chuyện này chỉ được xem' : modelSupportsVision() ? 'Đính kèm ảnh' : 'Model này không hỗ trợ Vision'"
+                for="image-upload"
+              >
+                <svg lucidePlus class="h-4 w-4" aria-hidden="true"></svg>
+                <span class="sr-only">Đính kèm ảnh</span>
+              </label>
+              <input
+                id="image-upload"
+                class="sr-only"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                [disabled]="!modelSupportsVision() || isSharedRouteBlocked() || isSharedConversationReadOnly()"
+                (change)="onImageSelected($event)"
+              />
+              <button
+                class="auto-scroll-toggle"
+                type="button"
+                role="switch"
+                [attr.aria-checked]="autoScroll()"
+                [class.is-enabled]="autoScroll()"
+                (click)="toggleAutoScroll()"
+                [attr.title]="autoScroll() ? 'Tắt tự động cuộn' : 'Bật tự động cuộn'"
+              >
+                <span class="auto-scroll-indicator" aria-hidden="true"></span>
+                <span>Tự cuộn</span>
+              </button>
+            </div>
+            <div class="composer-actions flex items-center gap-1.5">
+              <div class="model-select-wrap">
+                <select
+                  class="model-select"
+                  [ngModel]="model()"
+                  (ngModelChange)="onModelChange($event)"
+                  [disabled]="isSharedRouteBlocked() || isSharedConversationReadOnly()"
+                  name="composer-model"
+                  aria-label="Model"
+                  [attr.title]="selectedModelCapabilitySummary()"
+                >
+                  @for (option of modelOptions(); track option.route) {
+                    <option [value]="option.route">{{ option.label }}</option>
+                  }
+                </select>
+                <span class="model-select-label" aria-hidden="true">{{ modelDisplayLabel() }}</span>
+                <svg lucideChevronDown class="model-select-chevron" aria-hidden="true"></svg>
+              </div>
+              <button
+                class="icon-button voice-button"
+                [class.is-listening]="voiceListening()"
+                type="button"
+                (click)="toggleVoiceInput()"
+                [disabled]="isSharedRouteBlocked() || isSharedConversationReadOnly()"
+                [attr.aria-pressed]="voiceListening()"
+                [attr.aria-label]="voiceListening() ? 'Dừng nhập bằng giọng nói' : 'Nhập bằng giọng nói'"
+                [attr.title]="voiceListening() ? 'Dừng nhập bằng giọng nói' : 'Nhập bằng giọng nói'"
+              >
+                <svg lucideMic class="h-4 w-4" aria-hidden="true"></svg>
+              </button>
+              @if (busy()) {
+                <button class="icon-button stop-button" type="button" (click)="stop()" aria-label="Dừng phản hồi" title="Dừng phản hồi">
+                  <svg lucideSquare class="h-4 w-4" aria-hidden="true"></svg>
+                </button>
+              } @else {
+                <button class="icon-button send-button" type="submit" [disabled]="isSharedRouteBlocked() || isSharedConversationReadOnly() || (!draft().trim() && !pendingImage())" aria-label="Gửi tin nhắn" title="Gửi tin nhắn">
+                  <svg lucideArrowUp class="h-4 w-4" aria-hidden="true"></svg>
+                </button>
+              }
+            </div>
+          </div>
+        </form>
+      </footer>
+    } @else {
+      <section id="setup-panel" class="setup-panel" role="tabpanel" aria-labelledby="customize-button">
+        <div class="setup-heading">
+          <p class="eyebrow">WORKSPACE CUSTOMIZE</p>
+          <h2>Tùy chỉnh phiên chat</h2>
+          <p>Backend của ứng dụng đã được cấu hình sẵn. Chỉ dùng phần này khi muốn trỏ request model sang endpoint khác.</p>
+        </div>
+
+        <div class="setup-grid">
+          <label class="setup-field setup-field-wide">
+            <span>Custom model Base URL</span>
+            <input
+              [ngModel]="gatewayBaseUrl()"
+              (ngModelChange)="gatewayBaseUrl.set($event)"
+              [disabled]="busy()"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="Để trống để dùng /api hoặc proxy local"
+              aria-label="Custom model Base URL"
+            />
+            <small>
+              @if (runtime.isVercel) {
+                Để trống để gọi model qua gateway mặc định <code>/api</code>. Nhập URL khác nếu muốn gọi model trực tiếp.
+              } @else {
+                Ví dụ: <code>https://api.example.com</code>. API key chỉ áp dụng cho model endpoint này.
+              }
+            </small>
+            <small class="setup-help-local">
+              9Router chạy trên máy: nhập <code>http://127.0.0.1:8045</code> hoặc <code>http://127.0.0.1:8045/v1</code>.
+              Trình duyệt sẽ gọi thẳng địa chỉ này; 9Router cần bật CORS cho trang đang mở.
+            </small>
+          </label>
+
+          <label class="setup-field setup-field-wide">
+            <span>API Key cho model endpoint</span>
+            <input
+              type="password"
+              [ngModel]="apiKey()"
+              (ngModelChange)="apiKey.set($event)"
+              [disabled]="busy()"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="sk-..."
+              aria-label="OpenAI API Key"
+            />
+            <small>Gửi bằng header <code>Authorization: Bearer ...</code>. Key được lưu trên trình duyệt và chỉ dùng cho endpoint model.</small>
+          </label>
+
+          <label class="setup-field setup-field-wide">
+            <span>Custom model routes</span>
+            <textarea
+              [ngModel]="customModelsText()"
+              (ngModelChange)="customModelsText.set($event)"
+              [disabled]="busy()"
+              rows="3"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="anthropic:claude-sonnet-4-5&#10;openai:gpt-4o-mini"
+              aria-label="Custom model routes"
+            ></textarea>
+            <small>Mỗi route một dòng. Các route này chỉ hiện khi bạn chọn Server tùy chỉnh.</small>
+          </label>
+
+        </div>
+
+        <section class="capability-card" aria-labelledby="model-capability-heading">
+          <div>
+            <div class="capability-card-heading">
+              <span class="mini-icon grid place-items-center" aria-hidden="true">
+                <svg lucideShieldCheck class="h-4 w-4" aria-hidden="true"></svg>
+              </span>
+              <div>
+                <p class="eyebrow">MODEL CAPABILITIES</p>
+                <h3 id="model-capability-heading">Vision và Tool call</h3>
+              </div>
+            </div>
+          </div>
+          <div class="capability-list">
+            @for (option of modelOptions(); track option.route) {
+              <div class="capability-row">
+                <div class="capability-model">
+                  <strong>{{ option.label }}</strong>
+                  <code>{{ option.route }}</code>
+                </div>
+                <div class="capability-badges">
+                  <span
+                    class="capability-badge"
+                    [class.capability-supported]="option.capabilities.vision === 'supported'"
+                    [class.capability-unsupported]="option.capabilities.vision === 'unsupported'"
+                    [class.capability-unknown]="option.capabilities.vision === 'unknown'"
+                    [attr.aria-label]="capabilityAriaLabel('Vision', option.capabilities.vision)"
+                  >
+                    {{ capabilityBadgeLabel('Vision', option.capabilities.vision) }}
+                  </span>
+                  <span
+                    class="capability-badge"
+                    [class.capability-supported]="option.capabilities.toolCalling === 'supported'"
+                    [class.capability-unsupported]="option.capabilities.toolCalling === 'unsupported'"
+                    [class.capability-unknown]="option.capabilities.toolCalling === 'unknown'"
+                    [attr.aria-label]="capabilityAriaLabel('Tool call', option.capabilities.toolCalling)"
+                  >
+                    {{ capabilityBadgeLabel('Tool call', option.capabilities.toolCalling) }}
+                  </span>
+                </div>
+              </div>
+            }
+          </div>
+          <p class="capability-help">Vision = nhận ảnh. Tool call = model có thể gọi function/tool. Route custom chưa được xác minh.</p>
+        </section>
+
+        <details class="mcp-help-card">
+          <summary class="mcp-help-summary">
+            <span class="mcp-help-icon" aria-hidden="true">🔌</span>
+            <span class="mcp-help-title">
+              <strong>Hướng dẫn tích hợp MCP</strong>
+              <small>Kết nối MCP server qua gateway và dùng tool trong cuộc trò chuyện</small>
+            </span>
+            <span class="mcp-help-chevron" aria-hidden="true">⌄</span>
+          </summary>
+
+          <div class="mcp-help-body">
+            <p class="mcp-help-note">
+              Customize hiện không chạy MCP server trực tiếp trong trình duyệt. MCP cần được cấu hình ở
+              9Router/backend, sau đó gateway chuyển tool call tới model.
+            </p>
+            <ol class="mcp-help-steps">
+              <li>Chạy MCP server của bạn bằng <code>stdio</code> hoặc HTTP/SSE ở 9Router.</li>
+              <li>Đăng ký server và các tool trong 9Router, rồi expose gateway ở endpoint OpenAI-compatible.</li>
+              <li>Nhập Base URL, API key và route model của gateway ở các ô phía trên.</li>
+              <li>Chọn model có badge <strong>Tool call</strong>, rồi gửi câu hỏi cần dùng tool.</li>
+            </ol>
+            <div class="mcp-help-example" aria-label="Ví dụ cấu hình gateway MCP">
+              <div><span>Base URL</span><code>http://127.0.0.1:8045/v1</code></div>
+              <div><span>Model route</span><code>openai:gpt-4o-mini</code></div>
+            </div>
+            <p class="mcp-help-warning">
+              Nếu mở web từ thiết bị khác, <code>127.0.0.1</code> trỏ về chính thiết bị đó. Hãy dùng địa chỉ gateway
+              có thể truy cập được và bật CORS; không đưa secret của MCP lên frontend công khai.
+            </p>
+          </div>
+        </details>
+
+        <div class="connection-card">
+          <div class="connection-card-header">
+            <div class="connection-card-heading">
+              <span class="mini-icon grid place-items-center" aria-hidden="true">
+                <svg lucideServer class="h-4 w-4" aria-hidden="true"></svg>
+              </span>
+              <div>
+                <p class="eyebrow">GATEWAY CONNECTION</p>
+                <h3>{{ healthLabel() }}</h3>
+              </div>
+            </div>
+            <button
+              class="secondary-button"
+              type="button"
+              (click)="checkHealth()"
+              [disabled]="health() === 'checking'"
+            >
+              <svg lucideRefreshCw class="h-3.5 w-3.5" aria-hidden="true"></svg>
+              Kiểm tra
+            </button>
+          </div>
+          <div class="endpoint-list">
+            <div class="endpoint-line">
+              <span>Backend endpoint</span>
+              <code>{{ modelEndpoint() }}</code>
+            </div>
+          </div>
+        </div>
+
+        @if (health() === 'unconfigured') {
+          <div class="setup-warning" role="alert">
+            <strong>Backend chưa được cấu hình.</strong>
+            Kiểm tra Vercel Services và cấu hình backend container.
+          </div>
+        }
+
+        <div class="setup-footer">
+          <div class="setup-footer-actions">
+            @if (setupMessage()) {
+              <span class="setup-message" role="status">{{ setupMessage() }}</span>
+            }
+            <button class="secondary-button reset-button" type="button" (click)="resetSetup()">
+              <svg lucideRefreshCw class="h-3.5 w-3.5" aria-hidden="true"></svg>
+              Khôi phục mặc định
+            </button>
+          </div>
+          <button class="primary-button" type="button" (click)="saveSetupAndOpenChat()">
+            <svg lucideShieldCheck class="h-4 w-4" aria-hidden="true"></svg>
+            Lưu tùy chỉnh và mở Chat
+          </button>
+        </div>
+      </section>
+    }
+  </section>
+</main>
+}

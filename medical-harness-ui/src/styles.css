@@ -1,0 +1,947 @@
+@import "tailwindcss";
+
+:root {
+  --font-ui: Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --app-header-height: 100px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  min-width: 320px;
+  min-height: 100dvh;
+  margin: 0;
+  background: #f5f7fb;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+body {
+  color: #1d1d1f;
+  font-size: 16px;
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+}
+
+.message-content {
+  color: #343541;
+  font-size: 13px;
+  line-height: 1.62;
+  overflow-wrap: anywhere;
+}
+
+.message-content :first-child {
+  margin-top: 0;
+}
+
+.message-content :last-child {
+  margin-bottom: 0;
+}
+
+.message-content p,
+.message-content ul,
+.message-content ol,
+.message-content blockquote,
+.message-content pre,
+.message-content table {
+  margin: 0.65em 0;
+}
+
+.message-content ul,
+.message-content ol {
+  padding-left: 1.35em;
+}
+
+.message-content li + li {
+  margin-top: 0.25em;
+}
+
+.message-content h1,
+.message-content h2,
+.message-content h3,
+.message-content h4 {
+  margin: 0.85em 0 0.3em;
+  color: #202123;
+  font-size: 1.06em;
+  font-weight: 700;
+}
+
+.message-content blockquote {
+  padding-left: 11px;
+  color: #6b6c7b;
+  border-left: 3px solid #d1d1d6;
+}
+
+.message-content code {
+  padding: 0.12em 0.32em;
+  color: #555762;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.88em;
+  background: #ececf0;
+  border-radius: 5px;
+}
+
+.message-content pre {
+  max-width: 100%;
+  padding: 11px 13px;
+  overflow-x: auto;
+  background: #202123;
+  border-radius: 9px;
+}
+
+.message-content pre code {
+  padding: 0;
+  color: #f7f7f8;
+  background: transparent;
+}
+
+.message-content a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.message-content hr {
+  margin: 1em 0;
+  border: 0;
+  border-top: 1px solid #e6e6eb;
+}
+
+.message-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-spacing: 0;
+  border: 1px solid #d1d1d6;
+  border-radius: 8px;
+}
+
+.message-content th,
+.message-content td {
+  padding: 6px 8px;
+  text-align: left;
+  border-right: 1px solid #e6e6eb;
+  border-bottom: 1px solid #e6e6eb;
+}
+
+.message-content th {
+  background: #f7f7f8;
+  font-weight: 700;
+}
+
+.app-header {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  z-index: 30;
+  width: min(100%, var(--shell-max-width, 920px));
+  background: #ffffff;
+  transform: translateX(-50%);
+}
+
+/* Fixed chrome is outside normal flow; preserve the space it occupies so the
+   browser page remains the only scroll container without covering messages. */
+.chat-card {
+  padding-top: calc(var(--app-header-height) + env(safe-area-inset-top));
+}
+
+.chat-footer {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 50%;
+  z-index: 25;
+  width: min(100%, var(--shell-max-width, 920px));
+  padding: 12px 0 max(8px, env(safe-area-inset-bottom));
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #ffffff 24px);
+  border-top: 1px solid rgba(230, 230, 235, 0.72);
+  transform: translateX(-50%);
+}
+
+.chat-footer .composer {
+  margin-bottom: 0;
+}
+
+@media (max-width: 700px) {
+  :root {
+    --app-header-height: 98px;
+  }
+}
+
+.auto-scroll-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 4px;
+  color: #8e8ea0;
+  font: inherit;
+  font-size: 10px;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.auto-scroll-indicator {
+  width: 25px;
+  height: 15px;
+  position: relative;
+  display: inline-block;
+  background: #d1d1d6;
+  border-radius: 999px;
+  transition: background 150ms ease;
+}
+
+.auto-scroll-indicator::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 9px;
+  height: 9px;
+  content: '';
+  background: #ffffff;
+  border-radius: 50%;
+  transition: transform 150ms ease;
+}
+
+.auto-scroll-toggle.is-enabled {
+  color: #18864b;
+}
+
+.auto-scroll-toggle.is-enabled .auto-scroll-indicator {
+  background: #20b56d;
+}
+
+.auto-scroll-toggle.is-enabled .auto-scroll-indicator::after {
+  transform: translateX(10px);
+}
+
+.auto-scroll-toggle:focus-visible {
+  outline: 2px solid #93b4f8;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.dark-mode .auto-scroll-toggle {
+  color: #9ca3af;
+}
+
+.dark-mode .auto-scroll-toggle.is-enabled {
+  color: #86efac;
+}
+
+.dark-mode .auto-scroll-indicator {
+  background: #4b5563;
+}
+
+.message-content tr:last-child td {
+  border-bottom: 0;
+}
+
+.message-content th:last-child,
+.message-content td:last-child {
+  border-right: 0;
+}
+
+.app-shell.dark-mode {
+  color-scheme: dark;
+  background: #0b1120;
+}
+
+.dark-mode .chat-card,
+.dark-mode .composer,
+.dark-mode .chat-footer {
+  background: #111827;
+}
+
+.dark-mode .app-header {
+  background: #111827;
+}
+
+.dark-mode .topbar,
+.dark-mode .tab-bar {
+  border-color: #263244;
+}
+
+.dark-mode h1,
+.dark-mode .welcome-card h2,
+.dark-mode .setup-heading h2,
+.dark-mode .message-content,
+.dark-mode .message-content h1,
+.dark-mode .message-content h2,
+.dark-mode .message-content h3,
+.dark-mode .message-content h4,
+.dark-mode .connection-card h3,
+.dark-mode .setup-field > span,
+.dark-mode .capability-card-heading h3,
+.dark-mode .capability-model strong {
+  color: #f3f4f6;
+}
+
+.dark-mode .brand-mark {
+  color: #fb7185;
+  background: #3b1722;
+  box-shadow: inset 0 0 0 1px rgba(251, 113, 133, 0.35);
+}
+
+.dark-mode .server-menu-option:hover:not(:disabled),
+.dark-mode .server-menu-option.is-selected {
+  color: #93c5fd;
+  background: #172554;
+  border-color: #1e3a8a;
+}
+
+.dark-mode .server-menu,
+.dark-mode .server-menu-customize,
+.dark-mode .settings-button,
+.dark-mode .new-conversation-button,
+.dark-mode .conversation-tab,
+.dark-mode .status-icon,
+.dark-mode .mini-icon,
+.dark-mode .secondary-button {
+  color: #d1d5db;
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.dark-mode .server-menu-customize:hover,
+.dark-mode .settings-button:hover,
+.dark-mode .settings-button.active-settings,
+.dark-mode .new-conversation-button:hover,
+.dark-mode .secondary-button:hover:not(:disabled) {
+  color: #bfdbfe;
+  background: #1e3a8a;
+  border-color: #3b82f6;
+}
+
+.dark-mode .server-menu-option,
+.dark-mode .tab-button,
+.dark-mode .conversation-tab,
+.dark-mode .message-meta,
+.dark-mode .server-menu-heading,
+.dark-mode .server-menu-option small,
+.dark-mode .model-select-chevron,
+.dark-mode .endpoint-line,
+.dark-mode .capability-help {
+  color: #9ca3af;
+}
+
+.dark-mode .active-tab,
+.dark-mode .tab-button:hover,
+.dark-mode .active-conversation-tab,
+.dark-mode .conversation-tab:hover {
+  color: #93c5fd;
+}
+
+.dark-mode .active-tab::after {
+  background: #60a5fa;
+}
+
+.dark-mode .user-row .message-bubble {
+  color: #f3f4f6;
+  background: #374151;
+}
+
+.dark-mode .avatar,
+.dark-mode .user-row .user-avatar {
+  color: #d1d5db;
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.dark-mode .assistant-row .avatar,
+.dark-mode .conversation-notice {
+  color: #93c5fd;
+  background: #172554;
+  border-color: #1e40af;
+}
+
+.dark-mode .message-actions {
+  border-color: #263244;
+}
+
+.dark-mode .message-action-button {
+  color: #9ca3af;
+}
+
+.dark-mode .message-action-button:hover {
+  color: #bfdbfe;
+  background: #1e3a8a;
+  border-color: #3b82f6;
+}
+
+.dark-mode .edit-question-input,
+.dark-mode .composer textarea,
+.dark-mode .model-select,
+.dark-mode .setup-field input,
+.dark-mode .setup-field textarea {
+  color: #f3f4f6;
+  background: #111827;
+  border-color: #374151;
+}
+
+.mcp-help-card {
+  margin-top: 16px;
+  overflow: hidden;
+  background: #f7faff;
+  border: 1px solid #dbe7fb;
+  border-radius: 13px;
+}
+
+.mcp-help-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  color: #243b64;
+  cursor: pointer;
+  list-style: none;
+}
+
+.mcp-help-summary::-webkit-details-marker {
+  display: none;
+}
+
+.mcp-help-icon {
+  display: grid;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  background: #e8f0ff;
+  border-radius: 9px;
+  font-size: 16px;
+}
+
+.mcp-help-title {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.mcp-help-title strong {
+  font-size: 13px;
+}
+
+.mcp-help-title small {
+  color: #697792;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.mcp-help-chevron {
+  margin-left: auto;
+  color: #6b7fa6;
+  font-size: 18px;
+  transition: transform 160ms ease;
+}
+
+.mcp-help-card[open] .mcp-help-chevron {
+  transform: rotate(180deg);
+}
+
+.mcp-help-body {
+  padding: 0 16px 16px 56px;
+  color: #4b5870;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.mcp-help-note,
+.mcp-help-warning {
+  margin: 0 0 10px;
+}
+
+.mcp-help-steps {
+  margin: 0 0 12px;
+  padding-left: 18px;
+}
+
+.mcp-help-steps li + li {
+  margin-top: 5px;
+}
+
+.mcp-help-body code {
+  color: #2563eb;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.95em;
+}
+
+.mcp-help-example {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #dbe7fb;
+  border-radius: 9px;
+}
+
+.mcp-help-example div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mcp-help-example span {
+  color: #697792;
+  font-size: 11px;
+}
+
+.mcp-help-warning {
+  color: #697792;
+}
+
+.dark-mode .mcp-help-card {
+  background: #17243b;
+  border-color: #2c4774;
+}
+
+.dark-mode .mcp-help-summary {
+  color: #dbe8ff;
+}
+
+.dark-mode .mcp-help-icon,
+.dark-mode .mcp-help-example {
+  background: #1f3355;
+  border-color: #2c4774;
+}
+
+.dark-mode .mcp-help-title small,
+.dark-mode .mcp-help-body,
+.dark-mode .mcp-help-warning,
+.dark-mode .mcp-help-example span {
+  color: #aabbd8;
+}
+
+@media (max-width: 640px) {
+  .mcp-help-body {
+    padding-left: 16px;
+  }
+
+  .mcp-help-example div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
+.dark-mode .composer {
+  border-color: #4b5563;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.35);
+}
+
+.dark-mode .composer textarea::placeholder,
+.dark-mode .setup-field small,
+.dark-mode .attachment-preview small {
+  color: #6b7280;
+}
+
+.dark-mode .attachment-preview,
+.dark-mode .setup-field,
+.dark-mode .connection-card,
+.dark-mode .capability-card {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.dark-mode .capability-card {
+  background: #111827;
+}
+
+/* Keep dark tokens above Angular component-scoped light rules. */
+.app-shell.dark-mode,
+.app-shell.dark-mode .chat-card,
+.app-shell.dark-mode .app-header,
+.app-shell.dark-mode .chat-footer,
+.app-shell.dark-mode .composer {
+  color: #e5e7eb !important;
+  background: #111827 !important;
+}
+
+.app-shell.dark-mode {
+  background: #0b1120 !important;
+}
+
+.app-shell.dark-mode .chat-footer {
+  background: linear-gradient(to bottom, rgba(17, 24, 39, 0), #111827 28px, #111827 100%) !important;
+  border-color: #263244;
+}
+
+.app-shell.dark-mode .message-content,
+.app-shell.dark-mode .message-content p,
+.app-shell.dark-mode .message-content li,
+.app-shell.dark-mode .message-content h1,
+.app-shell.dark-mode .message-content h2,
+.app-shell.dark-mode .message-content h3,
+.app-shell.dark-mode .message-content h4,
+.app-shell.dark-mode .welcome-card h2,
+.app-shell.dark-mode .setup-heading h2,
+.app-shell.dark-mode .connection-card h3,
+.app-shell.dark-mode .setup-field > span,
+.app-shell.dark-mode .capability-card-heading h3,
+.app-shell.dark-mode .capability-model strong {
+  color: #f3f4f6 !important;
+}
+
+/* Component-scoped shell rules contain explicit light colors. Keep every
+   visible header, tab, composer and control label readable in dark mode. */
+.app-shell.dark-mode .brand-title-row h1,
+.app-shell.dark-mode .tab-button,
+.app-shell.dark-mode .conversation-tab,
+.app-shell.dark-mode .conversation-tab-main,
+.app-shell.dark-mode .server-button-label,
+.app-shell.dark-mode .auto-scroll-toggle,
+.app-shell.dark-mode .model-select-label,
+.app-shell.dark-mode .model-select,
+.app-shell.dark-mode .settings-button,
+.app-shell.dark-mode .new-conversation-button,
+.app-shell.dark-mode .attach-button,
+.app-shell.dark-mode .voice-button,
+.app-shell.dark-mode .stop-button {
+  color: #e5e7eb !important;
+}
+
+.app-shell.dark-mode .eyebrow,
+.app-shell.dark-mode .message-meta,
+.app-shell.dark-mode .model-select-chevron {
+  color: #aab4c5 !important;
+}
+
+.app-shell.dark-mode .settings-button,
+.app-shell.dark-mode .new-conversation-button,
+.app-shell.dark-mode .attach-button,
+.app-shell.dark-mode .voice-button,
+.app-shell.dark-mode .stop-button,
+.app-shell.dark-mode .model-select-wrap {
+  background: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+.app-shell.dark-mode .server-menu {
+  color: #e5e7eb !important;
+  background: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+.app-shell.dark-mode .server-menu-option {
+  color: #d1d5db !important;
+}
+
+.app-shell.dark-mode .server-menu-option:hover:not(:disabled),
+.app-shell.dark-mode .server-menu-option.is-selected {
+  color: #bfdbfe !important;
+  background: #1e3a8a !important;
+}
+
+.app-shell.dark-mode .server-option-status {
+  color: #aab4c5 !important;
+  background: rgba(170, 180, 197, 0.12) !important;
+}
+
+.app-shell.dark-mode .server-menu-customize {
+  color: #bfdbfe !important;
+  background: #172554 !important;
+  border-color: #1e3a8a !important;
+}
+
+.app-shell.dark-mode .server-menu-customize:hover {
+  color: #dbeafe !important;
+  background: #1e3a8a !important;
+  border-color: #3b82f6 !important;
+}
+
+.app-shell.dark-mode .conversation-tab,
+.app-shell.dark-mode .conversation-tab:hover,
+.app-shell.dark-mode .active-conversation-tab {
+  background: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+.app-shell.dark-mode .active-tab,
+.app-shell.dark-mode .tab-button:hover,
+.app-shell.dark-mode .active-conversation-tab {
+  color: #93c5fd !important;
+}
+
+.app-shell.dark-mode .message-content a,
+.app-shell.dark-mode .active-tab,
+.app-shell.dark-mode .active-conversation-tab {
+  color: #93c5fd !important;
+}
+
+.app-shell.dark-mode .message-bubble {
+  color: #f3f4f6 !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+.app-shell.dark-mode .user-row .message-bubble {
+  background: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+.app-shell.dark-mode .composer textarea,
+.app-shell.dark-mode .model-select,
+.app-shell.dark-mode .edit-question-input,
+.app-shell.dark-mode .setup-field input,
+.app-shell.dark-mode .setup-field textarea,
+.app-shell.dark-mode .attachment-preview,
+.app-shell.dark-mode .connection-card,
+.app-shell.dark-mode .capability-card {
+  color: #f3f4f6 !important;
+  background: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+.app-shell.dark-mode .composer textarea::placeholder,
+.app-shell.dark-mode .message-meta,
+.app-shell.dark-mode .endpoint-line,
+.app-shell.dark-mode .capability-help {
+  color: #9ca3af !important;
+}
+
+.app-shell.dark-mode .message-content code,
+.app-shell.dark-mode .message-content pre {
+  color: #e5e7eb !important;
+  background: #030712 !important;
+}
+
+.app-shell.dark-mode .message-content blockquote,
+.app-shell.dark-mode .message-content hr,
+.app-shell.dark-mode .message-actions {
+  border-color: #374151 !important;
+}
+
+.dark-mode .capability-list,
+.dark-mode .capability-row,
+.dark-mode .endpoint-list,
+.dark-mode .setup-footer {
+  border-color: #374151;
+}
+
+.dark-mode .attachment-preview strong,
+.dark-mode .endpoint-line code {
+  color: #d1d5db;
+}
+
+.dark-mode .attach-button,
+.dark-mode .voice-button,
+.dark-mode .stop-button {
+  color: #d1d5db;
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.dark-mode .attach-button:hover,
+.dark-mode .voice-button:hover,
+.dark-mode .stop-button:hover:not(:disabled) {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+.dark-mode .new-conversation-button:disabled {
+  color: #6b7280;
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.dark-mode .error-banner {
+  color: #fca5a5;
+  background: #3b1d22;
+  border-color: #7f1d1d;
+}
+
+.dark-mode .message-content blockquote {
+  color: #9ca3af;
+  border-color: #4b5563;
+}
+
+.dark-mode .message-content code {
+  color: #d1d5db;
+  background: #374151;
+}
+
+.dark-mode .message-content hr {
+  border-color: #374151;
+}
+
+.dark-mode .message-content table {
+  border-color: #4b5563;
+}
+
+.dark-mode .message-content th,
+.dark-mode .message-content td {
+  border-color: #374151;
+}
+
+.dark-mode .message-content th {
+  background: #1f2937;
+}
+
+/* Dark theme contract: component-scoped light rules must not override the
+   readable dark surfaces defined by the application shell. */
+.app-shell.dark-mode .setup-heading > p:not(.eyebrow),
+.app-shell.dark-mode .setup-field > span,
+.app-shell.dark-mode .setup-field small,
+.app-shell.dark-mode .setup-help-local,
+.app-shell.dark-mode .connection-card h3,
+.app-shell.dark-mode .capability-card-heading h3,
+.app-shell.dark-mode .capability-model strong,
+.app-shell.dark-mode .capability-help,
+.app-shell.dark-mode .endpoint-line {
+  color: #f3f6fb !important;
+}
+
+.app-shell.dark-mode .setup-heading > p:not(.eyebrow),
+.app-shell.dark-mode .setup-field small,
+.app-shell.dark-mode .setup-help-local,
+.app-shell.dark-mode .capability-help,
+.app-shell.dark-mode .endpoint-line {
+  color: #aebbd0 !important;
+}
+
+.app-shell.dark-mode .setup-field,
+.app-shell.dark-mode .connection-card,
+.app-shell.dark-mode .capability-card {
+  color: #f3f6fb !important;
+  background: #182334 !important;
+  border-color: #30415b !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+}
+
+.app-shell.dark-mode .capability-card {
+  background: #121c2b !important;
+}
+
+.app-shell.dark-mode .setup-field input,
+.app-shell.dark-mode .setup-field textarea,
+.app-shell.dark-mode .edit-question-input {
+  color: #f8fafc !important;
+  caret-color: #93c5fd;
+  background: #0f1724 !important;
+  border-color: #40536f !important;
+}
+
+.app-shell.dark-mode .setup-field input::placeholder,
+.app-shell.dark-mode .setup-field textarea::placeholder {
+  color: #8292aa !important;
+}
+
+.app-shell.dark-mode .setup-field code,
+.app-shell.dark-mode .endpoint-line code {
+  color: #9bc1ff !important;
+}
+
+.app-shell.dark-mode .capability-list,
+.app-shell.dark-mode .capability-row,
+.app-shell.dark-mode .endpoint-list,
+.app-shell.dark-mode .setup-footer {
+  border-color: #30415b !important;
+}
+
+.app-shell.dark-mode .secondary-button {
+  color: #dbeafe !important;
+  background: #22314a !important;
+  border-color: #40536f !important;
+}
+
+.app-shell.dark-mode .secondary-button:hover:not(:disabled) {
+  color: #ffffff !important;
+  background: #294a7d !important;
+  border-color: #6aa0f8 !important;
+}
+
+.app-shell.dark-mode .setup-message {
+  color: #86efac !important;
+}
+
+.app-shell.dark-mode .setup-warning {
+  color: #fecaca !important;
+  background: #3a2028 !important;
+  border-color: #7f3541 !important;
+}
+
+/* High-contrast Apple-like palette: calm surfaces, clear hierarchy. */
+.app-shell.dark-mode .chat-card,
+.app-shell.dark-mode .app-header,
+.app-shell.dark-mode .chat-footer,
+.app-shell.dark-mode .composer {
+  background: #162338 !important;
+}
+
+.app-shell.dark-mode {
+  background: #0f1a2b !important;
+}
+
+.app-shell.dark-mode .chat-footer {
+  background: linear-gradient(to bottom, rgba(22, 35, 56, 0), #162338 28px, #162338 100%) !important;
+}
+
+.app-shell.dark-mode .setup-field small,
+.app-shell.dark-mode .setup-help-local,
+.app-shell.dark-mode .setup-heading > p:not(.eyebrow),
+.app-shell.dark-mode .capability-help,
+.app-shell.dark-mode .endpoint-line,
+.app-shell.dark-mode .message-meta,
+.app-shell.dark-mode .eyebrow {
+  color: #c4d0e0 !important;
+}
+
+.app-shell.dark-mode .setup-field,
+.app-shell.dark-mode .connection-card {
+  background: #22314a !important;
+}
+
+.app-shell.dark-mode .capability-card {
+  background: #1c2b42 !important;
+}
+
+.app-shell.dark-mode .setup-field input,
+.app-shell.dark-mode .setup-field textarea,
+.app-shell.dark-mode .composer textarea,
+.app-shell.dark-mode .model-select,
+.app-shell.dark-mode .edit-question-input {
+  background: #1a283d !important;
+  border-color: #49617f !important;
+}
+
+.app-shell:not(.dark-mode) .setup-field small,
+.app-shell:not(.dark-mode) .setup-help-local,
+.app-shell:not(.dark-mode) .setup-heading > p:not(.eyebrow),
+.app-shell:not(.dark-mode) .capability-help,
+.app-shell:not(.dark-mode) .endpoint-line,
+.app-shell:not(.dark-mode) .message-meta,
+.app-shell:not(.dark-mode) .eyebrow {
+  color: #526176;
+}
