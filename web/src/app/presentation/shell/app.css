@@ -1,6 +1,9 @@
 :host {
   display: block;
   min-height: 100dvh;
+  --shell-max-width: 920px;
+  --content-rail: 768px;
+  --page-gutter: clamp(16px, 3vw, 28px);
 }
 
 .app-shell {
@@ -10,7 +13,7 @@
 }
 
 .chat-card {
-  width: 100%;
+  width: min(100%, var(--shell-max-width));
   min-height: 100dvh;
   min-width: 0;
   display: flex;
@@ -18,7 +21,7 @@
   overflow: visible;
   background: #ffffff;
   padding-top: calc(var(--app-header-height, 100px) + env(safe-area-inset-top));
-  padding-bottom: calc(128px + env(safe-area-inset-bottom));
+  padding-bottom: calc(148px + env(safe-area-inset-bottom));
 }
 
 .composer,
@@ -28,6 +31,8 @@
 
 .topbar {
   min-height: 58px;
+  padding-right: var(--page-gutter);
+  padding-left: var(--page-gutter);
   border-bottom: 1px solid #ececf1;
 }
 
@@ -205,8 +210,8 @@ textarea:disabled {
 
 .settings-button,
 .new-conversation-button {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
   padding: 0;
@@ -220,16 +225,20 @@ textarea:disabled {
 
 .server-switcher > .settings-button {
   width: auto;
-  padding: 0 8px;
+  max-width: min(360px, 44vw);
+  padding: 0 9px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
 .server-button-label {
-  max-width: 200px;
+  min-width: 0;
+  max-width: 260px;
   overflow: hidden;
   font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .settings-button:hover,
@@ -273,6 +282,8 @@ textarea:disabled {
 
 .tab-bar {
   min-height: 42px;
+  padding-right: var(--page-gutter);
+  padding-left: var(--page-gutter);
   border-bottom: 1px solid #ececf1;
   min-width: 0;
 }
@@ -336,7 +347,7 @@ textarea:disabled {
   display: flex;
   align-items: center;
   gap: 5px;
-  margin-left: 4px;
+  margin-left: 8px;
   padding: 0;
   overflow-x: auto;
   scrollbar-width: none;
@@ -356,7 +367,7 @@ textarea:disabled {
   color: #8e8ea0;
   background: #f7f7f8;
   border: 1px solid #e6e6eb;
-  border-radius: 8px;
+  border-radius: 10px;
 }
 
 .conversation-tab-main {
@@ -406,8 +417,8 @@ textarea:disabled {
 
 .new-conversation-button {
   flex-shrink: 0;
-  width: 27px;
-  height: 27px;
+  width: 32px;
+  height: 32px;
   font-size: 18px;
   line-height: 1;
 }
@@ -442,7 +453,7 @@ textarea:disabled {
 
 .model-select-wrap {
   position: relative;
-  width: 168px;
+  width: 184px;
   max-width: 46vw;
   min-width: 0;
 }
@@ -493,14 +504,14 @@ textarea:disabled {
 }
 
 .conversation {
-  width: min(100%, 768px);
+  width: min(100%, var(--content-rail));
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   flex: 0 0 auto;
   overflow-x: hidden;
   overflow-y: visible;
-  padding: 12px 20px 20px;
+  padding: 24px var(--page-gutter) 52px;
   overflow-anchor: none;
 }
 
@@ -540,10 +551,10 @@ textarea:disabled {
   width: 100%;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
   max-width: 100%;
   margin: 0 auto;
-  padding: 17px 0;
+  padding: 20px 0;
 }
 
 .user-row {
@@ -580,10 +591,14 @@ textarea:disabled {
 
 .message-bubble {
   min-width: 0;
-  max-width: calc(100% - 37px);
-  padding: 1px 0;
+  max-width: calc(100% - 39px);
+  padding: 0;
   background: transparent;
   border: 0;
+}
+
+.assistant-row .message-bubble {
+  background: transparent;
 }
 
 .user-row .message-bubble {
@@ -604,7 +619,7 @@ textarea:disabled {
 }
 
 .message-meta {
-  margin-bottom: 5px;
+  margin-bottom: 7px;
   color: #8e8ea0;
   font-size: 9px;
   font-weight: 750;
@@ -617,9 +632,9 @@ textarea:disabled {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 4px 6px;
-  margin-top: 9px;
-  padding-top: 7px;
+  gap: 4px 5px;
+  margin-top: 12px;
+  padding-top: 8px;
   border-top: 1px solid #f0f0f3;
 }
 
@@ -735,7 +750,7 @@ textarea:disabled {
 }
 
 .error-banner {
-  width: min(calc(100% - 40px), 768px);
+  width: min(calc(100% - 40px), var(--content-rail));
   display: flex;
   align-items: center;
   gap: 8px;
@@ -755,21 +770,21 @@ textarea:disabled {
 .composer {
   position: relative;
   z-index: 2;
-  width: min(calc(100% - 40px), 768px);
+  width: min(calc(100% - 40px), var(--content-rail));
   min-width: 0;
   flex-shrink: 0;
   margin: 0 auto max(12px, env(safe-area-inset-bottom));
-  padding: 4px;
+  padding: 5px;
   background: #ffffff;
   border: 1px solid #c9c9d2;
-  border-radius: 17px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
+  border-radius: 19px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
 .composer textarea {
   width: 100%;
-  min-height: 48px;
-  padding: 8px 10px 5px;
+  min-height: 52px;
+  padding: 9px 11px 6px;
   resize: vertical;
   color: #343541;
   font: inherit;
@@ -882,7 +897,8 @@ textarea:disabled {
 
 .composer-footer {
   min-width: 0;
-  padding: 2px 6px 5px 9px;
+  min-height: 38px;
+  padding: 3px 7px 5px 9px;
 }
 
 .composer-actions {
@@ -890,7 +906,7 @@ textarea:disabled {
 }
 
 .composer-actions {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   justify-content: flex-end;
 }
 
@@ -1296,7 +1312,8 @@ textarea:disabled {
 
 @media (max-width: 700px) {
   .server-switcher > .settings-button {
-    width: 28px;
+    width: 32px;
+    height: 32px;
     padding: 0;
     gap: 3px;
   }
@@ -1338,7 +1355,7 @@ textarea:disabled {
   }
 
   .conversation {
-    padding: 8px 14px 14px;
+    padding: 20px 16px 64px;
   }
 
   .welcome-card {
@@ -1351,7 +1368,7 @@ textarea:disabled {
   }
 
   .message-row {
-    padding: 14px 0;
+    padding: 18px 0;
   }
 
   .message-content {
@@ -1374,7 +1391,7 @@ textarea:disabled {
 
   .composer {
     margin-bottom: 0;
-    padding: 3px;
+    padding: 4px;
     overflow: hidden;
   }
 
