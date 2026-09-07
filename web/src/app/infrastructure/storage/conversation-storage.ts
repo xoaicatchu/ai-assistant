@@ -32,8 +32,8 @@ export function saveConversationState(
   conversations: readonly StoredConversation[],
   activeConversationId: number,
 ): void {
-  // Kept as a no-op compatibility seam while Redis persistence happens in
-  // App.syncConversation(). Do not put messages or ownership tokens in browser storage.
+  // Kept as a no-op compatibility seam. Conversation content is written to
+  // Redis only when the user explicitly shares the conversation.
   void conversations;
   void activeConversationId;
 }

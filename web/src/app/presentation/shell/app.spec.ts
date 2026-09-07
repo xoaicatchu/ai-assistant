@@ -91,7 +91,7 @@ describe('App message submission', () => {
     expect((app as any).messages()[0].text).toBe('Câu hỏi cần gửi');
   });
 
-  it('persists the conversation in Redis before sending the first message', async () => {
+  it('does not persist a normal chat in Redis before the user shares it', async () => {
     const createConversation = vi.fn().mockResolvedValue({
       id: 'abcdefghijklmnopqrstuv',
       ownerToken: 'owner-token-for-tests',
@@ -123,13 +123,12 @@ describe('App message submission', () => {
     await (app as any).send();
 
     expect(stream).toHaveBeenCalledOnce();
-    await Promise.resolve();
-    expect(createConversation).toHaveBeenCalled();
-    expect(updateConversation).toHaveBeenCalled();
-    expect((app as any).conversations()[0].serverToken).toBe('owner-token-for-tests');
+    expect(createConversation).not.toHaveBeenCalled();
+    expect(updateConversation).not.toHaveBeenCalled();
+    expect((app as any).conversations()[0].serverToken).toBeUndefined();
   });
 
-  it('continues answering when Redis persistence is unavailable', async () => {
+  it('continues answering when the conversation store is unavailable', async () => {
     const createConversation = vi.fn();
     const stream = vi.fn(async (
       _model: string,

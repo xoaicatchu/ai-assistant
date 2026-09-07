@@ -237,7 +237,7 @@ export class App implements OnDestroy {
     if (this.initialSharedConversationId) {
       void this.loadSharedConversation(this.initialSharedConversationId);
     } else {
-      void this.ensureActiveConversationIdentity();
+      this.ensureActiveConversationIdentity();
     }
     void this.checkHealth();
   }
@@ -554,7 +554,6 @@ export class App implements OnDestroy {
     });
     this.busy.set(true);
 
-    let requestCompleted = false;
     let rawAssistantText = '';
     try {
       await this.chatUseCases.stream(selectedModel, requestMessages, controller.signal, (delta) => {
@@ -585,8 +584,6 @@ export class App implements OnDestroy {
         return;
       }
 
-      requestCompleted = true;
-
       const assistant = this.conversationMessages(conversationId).find((message) => message.id === assistantId);
       const sanitizedAssistantText = assistant ? sanitizeAssistantText(assistant.text) : '';
       if (assistant && !sanitizedAssistantText) {
@@ -603,12 +600,8 @@ export class App implements OnDestroy {
     } catch (caughtError) {
       if (!controller.signal.aborted && this.isCurrentRequest(conversationId, requestId, controller)) {
         this.setAssistantError(conversationId, assistantId, this.errorMessage(caughtError));
-        requestCompleted = true;
       }
     } finally {
-      if (requestCompleted) {
-        await this.syncConversation(conversationId, assistantId);
-      }
       if (this.activeRequests.get(conversationId)?.controller === controller) {
         this.activeRequests.delete(conversationId);
         if (this.activeConversationId() === conversationId) {
@@ -937,7 +930,6 @@ export class App implements OnDestroy {
     this.sharedRouteMessage.set('');
     this.focusComposer();
     this.replaceConversationUrl(conversation.serverId);
-    void this.ensureServerConversation(id);
   }
 
   protected selectConversation(id: number): void {
@@ -976,7 +968,6 @@ export class App implements OnDestroy {
     this.scrollConversationToBottom();
     this.focusComposer();
     this.replaceConversationUrl(selected.serverId!);
-    void this.ensureServerConversation(id);
   }
 
   protected deleteConversation(id: number, event: Event): void {
@@ -1001,7 +992,6 @@ export class App implements OnDestroy {
       this.sharedRouteState.set('none');
       this.sharedRouteMessage.set('');
       this.replaceConversationUrl(replacement.serverId);
-      void this.ensureServerConversation(replacement.id);
       return;
     }
 
@@ -1562,10 +1552,9 @@ export class App implements OnDestroy {
     this.persistConversations();
   }
 
-  private async ensureActiveConversationIdentity(): Promise<void> {
+  private ensureActiveConversationIdentity(): void {
     const serverId = this.ensureLocalConversationIdentity(this.activeConversationId());
     this.replaceConversationUrl(serverId);
-    await this.ensureServerConversation(this.activeConversationId());
   }
 
   private ensureLocalConversationIdentity(conversationId: number): string | null {
@@ -1727,66 +1716,6 @@ export class App implements OnDestroy {
     } finally {
       if (this.serverConversationCreates.get(conversationId) === request) {
         this.serverConversationCreates.delete(conversationId);
-      }
-    }
-  }
-
-  private async syncConversation(conversationId: number, feedbackMessageId?: number): Promise<void> {
-    let conversation = this.conversations().find((item) => item.id === conversationId);
-    if (!conversation) {
-      return;
-    }
-
-    if (!conversation.serverId || !conversation.serverToken) {
-      const serverId = await this.ensureServerConversation(conversationId, feedbackMessageId);
-      const persistedConversation = this.conversations().find((item) => item.id === conversationId);
-      if (!serverId || !persistedConversation?.serverId || !persistedConversation.serverToken) {
-        return;
-      }
-      conversation = persistedConversation;
-    }
-
-    const messages = this.conversationMessagesForApi(conversation.messages);
-    if (messages.length === 0) {
-      return;
-    }
-    const conversationToSync = conversation;
-
-    try {
-      await this.chatUseCases.updateConversation(
-        conversationToSync.serverId!,
-        conversationToSync.title,
-        messages,
-        conversationToSync.serverToken!,
-      );
-      this.markConversationSynced(conversationId);
-    } catch (caughtError) {
-      if (this.isMissingConversationError(caughtError)) {
-        try {
-          this.rotateServerIdentity(conversationId);
-          const recoveredId = await this.ensureServerConversation(conversationId, feedbackMessageId);
-          const recovered = this.conversations().find((item) => item.id === conversationId);
-          if (recoveredId && recovered?.serverToken) {
-            await this.chatUseCases.updateConversation(
-              recoveredId,
-              recovered.title,
-              this.conversationMessagesForApi(recovered.messages),
-              recovered.serverToken,
-            );
-            this.markConversationSynced(conversationId);
-            return;
-          }
-        } catch {
-          // Keep the local conversation even when the recovery request also fails.
-        }
-      }
-
-      if (this.activeConversationId() === conversationId) {
-        this.setMessageActionFeedback(
-          feedbackMessageId ?? this.latestAssistantMessageId(),
-          this.shareFailureMessage(caughtError),
-          'error',
-        );
       }
     }
   }
