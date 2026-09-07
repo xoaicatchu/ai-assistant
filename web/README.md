@@ -7,7 +7,7 @@ Angular 21 standalone chat UI for the .NET 10 Proxy Agent gateway.
 Start the backend from the repository root:
 
 ```powershell
-dotnet run --project src/ProxyAgent.Presentation --launch-profile http
+dotnet run --project src/ProxyAgent.Api --launch-profile http
 ```
 
 In a second terminal:

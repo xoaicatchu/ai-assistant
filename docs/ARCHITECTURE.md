@@ -67,7 +67,7 @@ flowchart LR
 
 ### API layer
 
-`src/ProxyAgent.Presentation/Api` chứa route và DTO bên ngoài:
+`src/ProxyAgent.Api/Api` chứa route và DTO bên ngoài:
 
 - `ChatEndpoints.cs`: định nghĩa `/api/chat` và `/v1/chat/completions`.
 - `ConversationEndpoints.cs`: tạo, đọc và cập nhật conversation server-backed cho link `/conversation/<id>`.

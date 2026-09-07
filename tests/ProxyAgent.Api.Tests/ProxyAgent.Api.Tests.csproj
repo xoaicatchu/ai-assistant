@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\ProxyAgent.Presentation\ProxyAgent.Presentation.csproj" />
+    <ProjectReference Include="..\..\src\ProxyAgent.Api\ProxyAgent.Api.csproj" />
   </ItemGroup>
 
 </Project>

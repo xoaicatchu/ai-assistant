@@ -5,4 +5,4 @@ set -eu
 # exact port instead of the fixed development/default port from the image.
 export ASPNETCORE_HTTP_PORTS="${PORT:-80}"
 
-exec dotnet ProxyAgent.Presentation.dll
+exec dotnet ProxyAgent.Api.dll

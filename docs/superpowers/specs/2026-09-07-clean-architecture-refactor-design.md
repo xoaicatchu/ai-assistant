@@ -37,7 +37,7 @@ src/
 │   ├── WebSearch/
 │   ├── Settings/
 │   └── DependencyInjection.cs
-└── ProxyAgent.Presentation/
+└── ProxyAgent.Api/
     ├── Endpoints/
     ├── Contracts/
     ├── Middleware/
@@ -53,7 +53,7 @@ Infrastructure → Application + Domain
 Domain → không phụ thuộc project nào
 ```
 
-`ProxyAgent.Presentation` là executable ASP.NET host để Docker/Vercel vẫn có một entrypoint rõ ràng. `ProxyAgent.Api` cũ sẽ được loại bỏ sau khi toàn bộ reference, Dockerfile, solution và test đã chuyển sang host mới.
+`ProxyAgent.Api` là executable ASP.NET host để Docker/Vercel vẫn có một entrypoint rõ ràng. `ProxyAgent.Api` cũ sẽ được loại bỏ sau khi toàn bộ reference, Dockerfile, solution và test đã chuyển sang host mới.
 
 ### Phân loại chức năng
 
@@ -70,7 +70,7 @@ Provider-specific payload DTO không được đưa vào Domain. HTTP request/re
 - Giữ nguyên `tool_calls`, SSE và normalized response hiện tại.
 - Giữ nguyên storage provider selection qua Redis/PostgreSQL/SQLite.
 - Giữ nguyên bootstrap admin và HttpOnly cookie.
-- Dockerfile, `Dockerfile.vercel`, `docker-entrypoint.sh`, Vercel rewrite và API proxy sẽ trỏ tới `ProxyAgent.Presentation`.
+- Dockerfile, `Dockerfile.vercel`, `docker-entrypoint.sh`, Vercel rewrite và API proxy sẽ trỏ tới `ProxyAgent.Api`.
 
 ## Frontend architecture
 
