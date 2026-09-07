@@ -563,6 +563,75 @@ h3 {
   background: #111827;
 }
 
+/* Keep dark tokens above Angular component-scoped light rules. */
+.app-shell.dark-mode,
+.app-shell.dark-mode .chat-card,
+.app-shell.dark-mode .app-header,
+.app-shell.dark-mode .chat-footer,
+.app-shell.dark-mode .composer {
+  color: #e5e7eb !important;
+  background: #111827 !important;
+}
+
+.app-shell.dark-mode {
+  background: #0b1120 !important;
+}
+
+.app-shell.dark-mode .message-content,
+.app-shell.dark-mode .message-content p,
+.app-shell.dark-mode .message-content li,
+.app-shell.dark-mode .message-content h1,
+.app-shell.dark-mode .message-content h2,
+.app-shell.dark-mode .message-content h3,
+.app-shell.dark-mode .message-content h4,
+.app-shell.dark-mode .welcome-card h2,
+.app-shell.dark-mode .setup-heading h2,
+.app-shell.dark-mode .connection-card h3,
+.app-shell.dark-mode .setup-field > span,
+.app-shell.dark-mode .capability-card-heading h3,
+.app-shell.dark-mode .capability-model strong {
+  color: #f3f4f6 !important;
+}
+
+.app-shell.dark-mode .message-content a,
+.app-shell.dark-mode .active-tab,
+.app-shell.dark-mode .active-conversation-tab {
+  color: #93c5fd !important;
+}
+
+.app-shell.dark-mode .composer textarea,
+.app-shell.dark-mode .model-select,
+.app-shell.dark-mode .edit-question-input,
+.app-shell.dark-mode .setup-field input,
+.app-shell.dark-mode .setup-field textarea,
+.app-shell.dark-mode .message-bubble,
+.app-shell.dark-mode .attachment-preview,
+.app-shell.dark-mode .connection-card,
+.app-shell.dark-mode .capability-card {
+  color: #f3f4f6 !important;
+  background: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+.app-shell.dark-mode .composer textarea::placeholder,
+.app-shell.dark-mode .message-meta,
+.app-shell.dark-mode .endpoint-line,
+.app-shell.dark-mode .capability-help {
+  color: #9ca3af !important;
+}
+
+.app-shell.dark-mode .message-content code,
+.app-shell.dark-mode .message-content pre {
+  color: #e5e7eb !important;
+  background: #030712 !important;
+}
+
+.app-shell.dark-mode .message-content blockquote,
+.app-shell.dark-mode .message-content hr,
+.app-shell.dark-mode .message-actions {
+  border-color: #374151 !important;
+}
+
 .dark-mode .capability-list,
 .dark-mode .capability-row,
 .dark-mode .endpoint-list,

@@ -11,6 +11,25 @@
   color: #202123;
 }
 
+:host-context(.dark-mode) .admin-page {
+  color: #e5e7eb;
+  background: #0b1120;
+}
+
+:host-context(.dark-mode) .admin-card {
+  color: #f3f4f6;
+  background: #111827;
+  border-color: #263244;
+}
+
+:host-context(.dark-mode) .admin-card input,
+:host-context(.dark-mode) .admin-card textarea,
+:host-context(.dark-mode) .admin-card select {
+  color: #f3f4f6;
+  background: #1f2937;
+  border-color: #374151;
+}
+
 .admin-card {
   width: min(100%, 980px);
   margin: 0 auto;
