@@ -185,13 +185,6 @@ textarea:disabled {
   opacity: 0.5;
 }
 
-.server-menu-check {
-  flex-shrink: 0;
-  color: #20b56d;
-  font-size: 15px;
-  font-weight: 800;
-}
-
 .server-menu-customize {
   width: 100%;
   margin-top: 5px;
@@ -231,14 +224,6 @@ textarea:disabled {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-
-.server-switcher > .settings-button .connection-status {
-  order: -1;
-}
-
-.server-switcher > .settings-button .server-button-label {
-  min-width: 0;
 }
 
 .server-button-label {
