@@ -91,7 +91,7 @@ describe('App message submission', () => {
     expect((app as any).messages()[0].text).toBe('Câu hỏi cần gửi');
   });
 
-  it('does not persist a normal chat in Redis before the user shares it', async () => {
+  it('persists a normal chat in Redis so its conversation URL survives a reload', async () => {
     const createConversation = vi.fn().mockResolvedValue({
       id: 'abcdefghijklmnopqrstuv',
       ownerToken: 'owner-token-for-tests',
@@ -123,9 +123,9 @@ describe('App message submission', () => {
     await (app as any).send();
 
     expect(stream).toHaveBeenCalledOnce();
-    expect(createConversation).not.toHaveBeenCalled();
-    expect(updateConversation).not.toHaveBeenCalled();
-    expect((app as any).conversations()[0].serverToken).toBeUndefined();
+    expect(createConversation).toHaveBeenCalledOnce();
+    expect(updateConversation).toHaveBeenCalledOnce();
+    expect((app as any).conversations()[0].serverToken).toBe('owner-token-for-tests');
   });
 
   it('falls back to a model available on the current server when setup contains a stale model', () => {
@@ -603,6 +603,45 @@ describe('App message submission', () => {
 
     expect((app as any).isSharedConversationReadOnly()).toBe(false);
     expect((app as any).sharedRouteMessage()).toBe('');
+  });
+
+  it('lets the owner share again after reloading a private conversation', async () => {
+    const conversationId = 'abcdefghijklmnopqrstuv';
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const replaceState = vi.fn();
+    vi.stubGlobal('location', { href: `https://example.com/conversation/${conversationId}` });
+    vi.stubGlobal('history', { replaceState });
+    vi.stubGlobal('navigator', { clipboard: { writeText } });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+    const getConversation = vi.fn().mockResolvedValue({
+      id: conversationId,
+      title: 'Cuộc trò chuyện của tôi',
+      canEdit: true,
+      messages: [
+        { id: 20, requestId: 8, role: 'user', text: 'Câu hỏi của tôi', status: 'complete' },
+        { id: 21, requestId: 8, role: 'assistant', text: 'Câu trả lời của tôi', status: 'complete' },
+      ],
+    });
+    const updateConversation = vi.fn().mockResolvedValue({});
+    const publishConversation = vi.fn().mockResolvedValue({ id: conversationId, isPublic: true });
+    const app = new App({
+      health: vi.fn().mockResolvedValue(undefined),
+      getConversation,
+      updateConversation,
+      publishConversation,
+    } as unknown as ChatService);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    await (app as any).shareActiveConversation(21);
+
+    expect(updateConversation).toHaveBeenCalledWith(
+      conversationId,
+      'Cuộc trò chuyện của tôi',
+      expect.any(Array),
+      undefined,
+    );
+    expect(publishConversation).toHaveBeenCalledWith(conversationId, undefined);
+    expect(writeText).toHaveBeenCalledWith(`https://example.com/conversation/${conversationId}`);
   });
 
   it('allows creating another empty tab before the first message', () => {

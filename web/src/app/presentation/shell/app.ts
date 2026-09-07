@@ -320,9 +320,13 @@ export class App implements OnDestroy {
     this.error.set('');
     this.shareMessage.set('');
     this.updateActiveConversation(content);
+    const conversationId = this.activeConversationId();
+    // Allocate the server record before the gateway request starts. This keeps
+    // the URL reloadable even while the assistant is still streaming.
+    void this.ensureServerConversation(conversationId);
 
     await this.runRequest(
-      this.activeConversationId(),
+      conversationId,
       requestMessages,
       selectedModel,
       requestId,
@@ -631,6 +635,7 @@ export class App implements OnDestroy {
           this.busy.set(false);
         }
       }
+      await this.syncConversationToServer(conversationId);
     }
   }
 
@@ -820,10 +825,6 @@ export class App implements OnDestroy {
       }
       const latestMessages = this.conversationMessagesForApi(latestConversation.messages);
       const ownerToken = latestConversation.serverToken;
-      if (!ownerToken) {
-        this.setMessageActionFeedback(feedbackMessageId, 'Không còn quyền sở hữu conversation trên thiết bị này.', 'error');
-        return;
-      }
       await this.chatUseCases.updateConversation(
         serverId,
         latestConversation.title,
@@ -1743,6 +1744,35 @@ export class App implements OnDestroy {
       if (this.serverConversationCreates.get(conversationId) === request) {
         this.serverConversationCreates.delete(conversationId);
       }
+    }
+  }
+
+  private async syncConversationToServer(conversationId: number): Promise<void> {
+    if (this.isSharedRouteBlocked() || this.isSharedConversationReadOnly()) {
+      return;
+    }
+
+    const serverId = await this.ensureServerConversation(conversationId);
+    if (!serverId) {
+      return;
+    }
+
+    const conversation = this.conversations().find((item) => item.id === conversationId);
+    if (!conversation) {
+      return;
+    }
+
+    try {
+      await this.chatUseCases.updateConversation(
+        serverId,
+        conversation.title,
+        this.conversationMessagesForApi(conversation.messages),
+        conversation.serverToken,
+      );
+      this.markConversationSynced(conversationId);
+    } catch {
+      // Chat remains usable when persistence is temporarily unavailable. The
+      // explicit Share action still reports the storage error to the user.
     }
   }
 
