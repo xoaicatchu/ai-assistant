@@ -808,3 +808,86 @@ h3 {
 .dark-mode .message-content th {
   background: #1f2937;
 }
+
+/* Dark theme contract: component-scoped light rules must not override the
+   readable dark surfaces defined by the application shell. */
+.app-shell.dark-mode .setup-heading > p:not(.eyebrow),
+.app-shell.dark-mode .setup-field > span,
+.app-shell.dark-mode .setup-field small,
+.app-shell.dark-mode .setup-help-local,
+.app-shell.dark-mode .connection-card h3,
+.app-shell.dark-mode .capability-card-heading h3,
+.app-shell.dark-mode .capability-model strong,
+.app-shell.dark-mode .capability-help,
+.app-shell.dark-mode .endpoint-line {
+  color: #f3f6fb !important;
+}
+
+.app-shell.dark-mode .setup-heading > p:not(.eyebrow),
+.app-shell.dark-mode .setup-field small,
+.app-shell.dark-mode .setup-help-local,
+.app-shell.dark-mode .capability-help,
+.app-shell.dark-mode .endpoint-line {
+  color: #aebbd0 !important;
+}
+
+.app-shell.dark-mode .setup-field,
+.app-shell.dark-mode .connection-card,
+.app-shell.dark-mode .capability-card {
+  color: #f3f6fb !important;
+  background: #182334 !important;
+  border-color: #30415b !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+}
+
+.app-shell.dark-mode .capability-card {
+  background: #121c2b !important;
+}
+
+.app-shell.dark-mode .setup-field input,
+.app-shell.dark-mode .setup-field textarea,
+.app-shell.dark-mode .edit-question-input {
+  color: #f8fafc !important;
+  caret-color: #93c5fd;
+  background: #0f1724 !important;
+  border-color: #40536f !important;
+}
+
+.app-shell.dark-mode .setup-field input::placeholder,
+.app-shell.dark-mode .setup-field textarea::placeholder {
+  color: #8292aa !important;
+}
+
+.app-shell.dark-mode .setup-field code,
+.app-shell.dark-mode .endpoint-line code {
+  color: #9bc1ff !important;
+}
+
+.app-shell.dark-mode .capability-list,
+.app-shell.dark-mode .capability-row,
+.app-shell.dark-mode .endpoint-list,
+.app-shell.dark-mode .setup-footer {
+  border-color: #30415b !important;
+}
+
+.app-shell.dark-mode .secondary-button {
+  color: #dbeafe !important;
+  background: #22314a !important;
+  border-color: #40536f !important;
+}
+
+.app-shell.dark-mode .secondary-button:hover:not(:disabled) {
+  color: #ffffff !important;
+  background: #294a7d !important;
+  border-color: #6aa0f8 !important;
+}
+
+.app-shell.dark-mode .setup-message {
+  color: #86efac !important;
+}
+
+.app-shell.dark-mode .setup-warning {
+  color: #fecaca !important;
+  background: #3a2028 !important;
+  border-color: #7f3541 !important;
+}

@@ -23,4 +23,11 @@ describe('chat shell visual contract', () => {
     expect(shellStyles).toMatch(/\.server-menu-option strong\s*\{[\s\S]*?overflow-wrap:\s*anywhere/);
     expect(globalStyles).toMatch(/\.app-shell\.dark-mode \.server-menu\s*\{[\s\S]*?background:\s*#1f2937 !important/);
   });
+
+  it('keeps customize form surfaces and labels readable in dark mode', () => {
+    expect(globalStyles).toMatch(/\.app-shell\.dark-mode \.setup-field,\s*\.app-shell\.dark-mode \.connection-card/);
+    expect(globalStyles).toMatch(/\.app-shell\.dark-mode \.setup-field > span,[\s\S]*?color:\s*#f3f6fb !important/);
+    expect(globalStyles).toMatch(/\.app-shell\.dark-mode \.setup-field small,[\s\S]*?color:\s*#aebbd0 !important/);
+    expect(globalStyles).toMatch(/\.app-shell\.dark-mode \.setup-heading > p:not\(\.eyebrow\),[\s\S]*?color:\s*#aebbd0 !important/);
+  });
 });
