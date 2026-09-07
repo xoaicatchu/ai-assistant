@@ -2,6 +2,6 @@
   "name": "ai-assistant-vercel-root",
   "private": true,
   "scripts": {
-    "build": "npm --prefix web ci --include=dev && npm --prefix web run build"
+    "build": "dotnet publish src/ProxyAgent.Api/ProxyAgent.Api.csproj --configuration Release --output ./artifacts/publish"
   }
 }

@@ -7,3 +7,6 @@ src/ProxyAgent.Api/appsettings.Local.json
 **/*.db-shm
 **/*.db-wal
 .ast-graph/
+artifacts/
+web/
+.vscode/

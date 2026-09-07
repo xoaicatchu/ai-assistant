@@ -13,7 +13,7 @@ Gateway HTTP trên .NET 10 để gọi OpenAI và Anthropic qua một contract t
 - `POST/GET/PUT /api/conversations`: lưu và mở conversation bằng ID ổn định để chia sẻ.
 - `POST /api/conversations/{id}/publish`: công khai conversation để người không đăng nhập xem được.
 - `/admin`: trang quản trị có đăng nhập, cấu hình provider và Tavily server-side.
-- Angular chat UI trong `web/`, chạy local ở `http://localhost:4200` và deploy static lên Vercel.
+- Backend/API độc lập; Angular chat UI đã tách sang project `medical-harness-ui` và deploy Vercel riêng.
 
 Tài liệu chi tiết:
 
@@ -56,30 +56,24 @@ dotnet run --project src/ProxyAgent.Api --launch-profile http
 
 Mặc định profile HTTP chạy tại `http://localhost:5030`.
 
-Để mở giao diện Angular, giữ API đang chạy ở terminal thứ nhất rồi chạy terminal thứ hai:
+Để mở giao diện Angular, clone project `medical-harness-ui`, giữ API đang chạy ở terminal thứ nhất rồi chạy terminal thứ hai:
 
 ```powershell
-cd web
+cd ..\medical-harness-ui
 npm install
 npm start
 ```
 
 Mở `http://localhost:4200`. Khi chạy local, Angular dev-server proxy `/health`, `/api` và `/v1` sang `http://localhost:5030`; trình duyệt không cần biết API key.
 
-## Deploy frontend lên Vercel
+## Deploy
 
-Tạo Vercel Project từ repository này và để **Root Directory** ở thư mục gốc (để trống hoặc `.`). Cấu hình build mặc định trong `vercel.json`:
+Backend Vercel dùng project này với `Dockerfile.vercel`; frontend dùng project
+`medical-harness-ui` với build command `npm run build`, output
+`dist/web/browser`, và biến `NG_APP_BACKEND_URL=https://<backend-domain>`.
 
-- Build command: `npm run build`
-- Output directory: `web/dist/web/browser`
-- Chọn framework **Services** trong Vercel Project Settings.
-- Provider credentials và CORS origin cấu hình trong Environment Variables của backend service.
-
-Frontend dùng mặc định same-origin `/api`; Vercel route `/api/*` trực tiếp tới backend .NET container trong cùng project. Cả frontend và backend đều được build từ Dockerfile dành cho Vercel; backend đọc credential từ Environment Variables server-side.
-
-Nếu Project đã đặt Root Directory là `web`, giữ thiết lập đó cũng được: dùng build command `npm run build`, output `dist/web/browser` và cấu hình trong `web/vercel.json`. Không đặt Root Directory là `src` hoặc một thư mục không chứa `package.json`.
-
-Với Vercel, để trống `NG_APP_API_BASE_URL`; frontend dùng same-origin `/api`. Tab Customize dùng để đổi backend, API key và custom model routes khi cần; backend mặc định đã quản lý cấu hình provider server-side.
+Frontend gọi backend trực tiếp nên backend phải allowlist origin frontend bằng
+`Cors__AllowedOrigins__0`. Tab Customize vẫn có thể đổi riêng model endpoint.
 
 Website production hiện tại là `https://ai-assistant-01.vercel.app`. Nếu GitHub đang hiển thị một preview alias trong trường **Website**, sửa trường đó trong phần About của repository thành URL production này; đây chỉ là metadata của GitHub, không ảnh hưởng deployment.
 
