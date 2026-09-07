@@ -21,5 +21,6 @@ describe('chat shell visual contract', () => {
   it('gives the server menu enough room for absolute endpoint URLs', () => {
     expect(shellStyles).toMatch(/\.server-menu\s*\{[\s\S]*?width:\s*min\(460px,/);
     expect(shellStyles).toMatch(/\.server-menu-option strong\s*\{[\s\S]*?overflow-wrap:\s*anywhere/);
+    expect(globalStyles).toMatch(/\.app-shell\.dark-mode \.server-menu\s*\{[\s\S]*?background:\s*#1f2937 !important/);
   });
 });

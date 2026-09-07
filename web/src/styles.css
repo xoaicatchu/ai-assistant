@@ -648,6 +648,39 @@ h3 {
   border-color: #374151 !important;
 }
 
+.app-shell.dark-mode .server-menu {
+  color: #e5e7eb !important;
+  background: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+.app-shell.dark-mode .server-menu-option {
+  color: #d1d5db !important;
+}
+
+.app-shell.dark-mode .server-menu-option:hover:not(:disabled),
+.app-shell.dark-mode .server-menu-option.is-selected {
+  color: #bfdbfe !important;
+  background: #1e3a8a !important;
+}
+
+.app-shell.dark-mode .server-option-status {
+  color: #aab4c5 !important;
+  background: rgba(170, 180, 197, 0.12) !important;
+}
+
+.app-shell.dark-mode .server-menu-customize {
+  color: #bfdbfe !important;
+  background: #172554 !important;
+  border-color: #1e3a8a !important;
+}
+
+.app-shell.dark-mode .server-menu-customize:hover {
+  color: #dbeafe !important;
+  background: #1e3a8a !important;
+  border-color: #3b82f6 !important;
+}
+
 .app-shell.dark-mode .conversation-tab,
 .app-shell.dark-mode .conversation-tab:hover,
 .app-shell.dark-mode .active-conversation-tab {
