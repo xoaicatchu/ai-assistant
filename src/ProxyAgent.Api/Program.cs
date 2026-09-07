@@ -28,11 +28,14 @@ if (string.IsNullOrWhiteSpace(postgresConnectionString))
     postgresConnectionString = storageOptions.PostgresConnectionString;
 }
 
+// An explicit provider selection always wins. This matters in production where
+// an old REDIS_URL may remain configured while the operator switches to Postgres.
+var hasExplicitProvider = !string.IsNullOrWhiteSpace(storageOptions.Provider);
 var useRedis = string.Equals(storageOptions.Provider, "redis", StringComparison.OrdinalIgnoreCase) ||
-    !string.IsNullOrWhiteSpace(redisUrl);
+    (!hasExplicitProvider && !string.IsNullOrWhiteSpace(redisUrl));
 var usePostgres = !useRedis && (
     string.Equals(storageOptions.Provider, "postgres", StringComparison.OrdinalIgnoreCase) ||
-    !string.IsNullOrWhiteSpace(postgresConnectionString));
+    (!hasExplicitProvider && !string.IsNullOrWhiteSpace(postgresConnectionString)));
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options => options.AddPolicy("frontend", policy =>
     policy.WithOrigins(allowedOrigins)
