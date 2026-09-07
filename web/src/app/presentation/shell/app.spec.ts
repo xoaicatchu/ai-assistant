@@ -128,6 +128,46 @@ describe('App message submission', () => {
     expect((app as any).conversations()[0].serverToken).toBeUndefined();
   });
 
+  it('falls back to a model available on the current server when setup contains a stale model', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => JSON.stringify({
+        gatewayBaseUrl: '',
+        customGatewayBaseUrl: 'http://localhost:9000',
+        apiKey: '',
+        customModels: ['kr/glm-5'],
+        selectedModel: 'kr/glm-5',
+        selectedModelExplicit: true,
+      })),
+      setItem: vi.fn(),
+    });
+
+    const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
+
+    expect((app as any).model()).toBe('deepseek/deepseek-v4-flash');
+    expect((app as any).modelOptions().some((option: { route: string }) => option.route === (app as any).model())).toBe(true);
+  });
+
+  it('does not send a model that is hidden by the current server selection', async () => {
+    const stream = vi.fn();
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
+      callback();
+      return 0;
+    });
+
+    const app = new App({
+      health: vi.fn().mockResolvedValue(undefined),
+      stream,
+    } as unknown as ChatService);
+    (app as any).draft.set('Câu hỏi');
+    (app as any).model.set('kr/glm-5');
+
+    await (app as any).send();
+
+    expect(stream).not.toHaveBeenCalled();
+    expect((app as any).error()).toContain('không thuộc server');
+  });
+
   it('continues answering when the conversation store is unavailable', async () => {
     const createConversation = vi.fn();
     const stream = vi.fn(async (

@@ -126,6 +126,11 @@ function maxRequestId(conversations: readonly ChatConversation[]): number {
   );
 }
 
+function modelServerForGateway(baseUrl: string): ModelServer {
+  const normalized = baseUrl.trim().replace(/\/+$/u, '');
+  return normalized === '' || normalized === '/api' ? 'default' : 'custom';
+}
+
 @Component({
   selector: 'app-root',
   imports: [
@@ -185,9 +190,15 @@ export class App implements OnDestroy {
   );
   protected readonly conversations = signal<ChatConversation[]>(this.initialConversationState.conversations);
   protected readonly activeConversationId = signal(this.initialConversationState.activeConversationId);
-  protected readonly model = signal(this.initialSetup.selectedModel);
+  protected readonly model = signal(
+    resolveModelForServer(
+      modelServerForGateway(this.initialSetup.gatewayBaseUrl),
+      this.initialSetup.selectedModel,
+      this.initialSetup.customModels,
+    )?.route ?? '',
+  );
   protected readonly modelOptions = signal(modelOptionsForServer(
-    this.initialSetup.gatewayBaseUrl.trim() ? 'custom' : 'default',
+    modelServerForGateway(this.initialSetup.gatewayBaseUrl),
     this.initialSetup.customModels,
   ));
   protected readonly gatewayBaseUrl = signal(this.initialSetup.gatewayBaseUrl);
@@ -265,6 +276,18 @@ export class App implements OnDestroy {
     }
     if (!selectedModel) {
       this.error.set('Hãy nhập model trước khi gửi.');
+      return;
+    }
+    if (!this.modelOptions().some((option) => option.route === selectedModel)) {
+      const fallback = this.modelOptions()[0];
+      if (fallback) {
+        this.model.set(fallback.route);
+        this.error.set(
+          `Model ${modelLabel(selectedModel)} không thuộc server hiện tại. Đã chuyển sang ${fallback.label}.`,
+        );
+      } else {
+        this.error.set('Server hiện tại chưa có model hợp lệ. Hãy mở Customize để thêm model.');
+      }
       return;
     }
     if (!this.canSendImage(selectedModel, image)) {
