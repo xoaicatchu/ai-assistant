@@ -3,6 +3,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist/web/browser",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!.*\\.).*)", "destination": "/index.html" }
   ]
 }
