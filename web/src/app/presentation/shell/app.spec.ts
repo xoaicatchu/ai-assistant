@@ -545,6 +545,27 @@ describe('App message submission', () => {
     ]);
   });
 
+  it('keeps the owner editable after reloading a conversation URL', async () => {
+    vi.stubGlobal('location', { href: 'https://example.com/conversation/abcdefghijklmnopqrstuv' });
+    vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
+    const chatService = {
+      health: vi.fn().mockResolvedValue(undefined),
+      getConversation: vi.fn().mockResolvedValue({
+        id: 'abcdefghijklmnopqrstuv',
+        title: 'Cuộc trò chuyện của tôi',
+        canEdit: true,
+        messages: [
+          { id: 20, requestId: 8, role: 'user', text: 'Câu hỏi của tôi', status: 'complete' },
+        ],
+      }),
+    } as unknown as ChatService;
+    const app = new App(chatService);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect((app as any).isSharedConversationReadOnly()).toBe(false);
+    expect((app as any).sharedRouteMessage()).toBe('');
+  });
+
   it('allows creating another empty tab before the first message', () => {
     vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
       callback();

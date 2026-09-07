@@ -67,8 +67,9 @@ public sealed class SqliteConversationStore(SqliteDatabase database) : IConversa
         }
 
         var document = ReadDocument(reader);
-        return document.IsPublic || ConversationAccessToken.Matches(ownerToken, reader.GetString(3))
-            ? document
+        var canEdit = ConversationAccessToken.Matches(ownerToken, reader.GetString(3));
+        return document.IsPublic || canEdit
+            ? document with { CanEdit = canEdit }
             : null;
     }
 

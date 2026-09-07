@@ -24,9 +24,9 @@ export interface ChatGatewayPort {
     id: string,
     title: string,
     messages: readonly ConversationApiMessage[],
-    ownerToken: string,
+    ownerToken?: string,
   ): Promise<ConversationApiDocument>;
-  publishConversation(id: string, ownerToken: string): Promise<ConversationApiDocument>;
+  publishConversation(id: string, ownerToken?: string): Promise<ConversationApiDocument>;
 }
 
 /** Application use cases. Transport details remain behind ChatGatewayPort. */

@@ -13,7 +13,8 @@ public sealed record ConversationDocument(
     string Id,
     string Title,
     IReadOnlyList<ConversationMessage> Messages,
-    bool IsPublic = false);
+    bool IsPublic = false,
+    bool CanEdit = false);
 
 public sealed class ConversationWriteRequest
 {

@@ -13,6 +13,7 @@ export interface ConversationApiDocument {
   title: string;
   messages: ConversationApiMessage[];
   isPublic?: boolean;
+  canEdit?: boolean;
 }
 
 export function createOpaqueConversationId(): string {

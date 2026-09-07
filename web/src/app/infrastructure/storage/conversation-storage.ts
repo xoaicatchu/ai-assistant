@@ -7,6 +7,7 @@ export interface StoredConversation {
   serverId?: string;
   serverToken?: string;
   isPublic?: boolean;
+  canEdit?: boolean;
   serverSyncedFingerprint?: string;
 }
 

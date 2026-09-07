@@ -1337,7 +1337,9 @@ export class App implements OnDestroy {
     this.activeConversationId.set(nextConversation.id);
     this.messages.set([...nextConversation.messages]);
     this.sharedRouteState.set('loaded');
-    this.sharedRouteMessage.set('Cuộc trò chuyện đã chia sẻ — chỉ được xem.');
+    this.sharedRouteMessage.set(nextConversation.canEdit
+      ? ''
+      : 'Cuộc trò chuyện đã chia sẻ — chỉ được xem.');
     this.persistConversations();
     this.shareMessage.set('Đã mở cuộc trò chuyện từ link chia sẻ.');
     restorePageScrollPosition();
@@ -1364,6 +1366,7 @@ export class App implements OnDestroy {
       title: shared.title,
       serverId: shared.id,
       isPublic: shared.isPublic === true,
+      canEdit: shared.canEdit === true,
       messages,
     };
   }
@@ -1682,7 +1685,7 @@ export class App implements OnDestroy {
     if (!conversation) {
       return null;
     }
-    if (conversation.serverId && conversation.serverToken) {
+    if (conversation.serverId && (conversation.serverToken || conversation.canEdit)) {
       return conversation.serverId;
     }
 
@@ -1833,7 +1836,12 @@ export class App implements OnDestroy {
   }
 
   protected isSharedConversationReadOnly(): boolean {
-    return this.initialSharedConversationId !== null && this.sharedRouteState() === 'loaded';
+    const conversation = this.conversations().find(
+      (item) => item.id === this.activeConversationId(),
+    );
+    return this.initialSharedConversationId !== null &&
+      this.sharedRouteState() === 'loaded' &&
+      conversation?.canEdit !== true;
   }
 
   private shareFailureMessage(error: unknown): string {

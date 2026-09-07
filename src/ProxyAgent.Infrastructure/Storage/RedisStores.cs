@@ -45,7 +45,7 @@ public sealed class RedisConversationStore(IRedisValueStore redis) : IConversati
             return null;
         }
 
-        return record.ToDocument();
+        return record.ToDocument(ownerToken);
     }
 
     public ConversationDocument? Update(
@@ -117,8 +117,9 @@ public sealed class RedisConversationStore(IRedisValueStore redis) : IConversati
         string OwnerTokenHash,
         bool IsPublic)
     {
-        public ConversationDocument ToDocument() =>
-            new(Id, Title, Messages, IsPublic);
+        public ConversationDocument ToDocument(string? ownerToken = null) =>
+            new(Id, Title, Messages, IsPublic,
+                ConversationAccessToken.Matches(ownerToken, OwnerTokenHash));
     }
 }
 

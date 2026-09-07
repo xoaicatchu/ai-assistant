@@ -43,6 +43,7 @@ public sealed class ConversationEndpointTests
         readResponse.EnsureSuccessStatusCode();
         using var readBody = JsonDocument.Parse(await readResponse.Content.ReadAsStringAsync());
         Assert.Equal(id, readBody.RootElement.GetProperty("id").GetString());
+        Assert.True(readBody.RootElement.GetProperty("canEdit").GetBoolean());
         Assert.Equal("Thời tiết hôm nay?", readBody.RootElement.GetProperty("messages")[0].GetProperty("text").GetString());
         Assert.DoesNotContain("image", readBody.RootElement.GetProperty("messages")[0].EnumerateObject().Select(property => property.Name));
 
@@ -74,10 +75,12 @@ public sealed class ConversationEndpointTests
         var publishResponse = await app.Client.SendAsync(publishRequest);
         publishResponse.EnsureSuccessStatusCode();
 
-        var publicReadResponse = await app.Client.GetAsync($"/api/conversations/{id}");
+        using var recipient = app.CreateClient();
+        var publicReadResponse = await recipient.GetAsync($"/api/conversations/{id}");
         publicReadResponse.EnsureSuccessStatusCode();
         using var publicBody = JsonDocument.Parse(await publicReadResponse.Content.ReadAsStringAsync());
         Assert.True(publicBody.RootElement.GetProperty("isPublic").GetBoolean());
+        Assert.False(publicBody.RootElement.GetProperty("canEdit").GetBoolean());
     }
 
     [Fact]

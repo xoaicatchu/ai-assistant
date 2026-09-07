@@ -173,7 +173,7 @@ export class ChatService {
     id: string,
     title: string,
     messages: readonly ConversationApiMessage[],
-    ownerToken: string,
+    ownerToken?: string,
   ): Promise<ConversationApiDocument> {
     const response = await this.requestConversation(
       `/conversations/${encodeURIComponent(id)}`,
@@ -184,7 +184,7 @@ export class ChatService {
     return (await response.json()) as ConversationApiDocument;
   }
 
-  async publishConversation(id: string, ownerToken: string): Promise<ConversationApiDocument> {
+  async publishConversation(id: string, ownerToken?: string): Promise<ConversationApiDocument> {
     const response = await this.requestConversation(
       `/conversations/${encodeURIComponent(id)}/publish`,
       'POST',
