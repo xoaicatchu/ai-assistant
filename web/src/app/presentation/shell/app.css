@@ -233,6 +233,14 @@ textarea:disabled {
   gap: 6px;
 }
 
+.server-switcher > .settings-button .connection-status {
+  order: -1;
+}
+
+.server-switcher > .settings-button .server-button-label {
+  min-width: 0;
+}
+
 .server-button-label {
   max-width: 200px;
   overflow: hidden;
@@ -1302,6 +1310,16 @@ textarea:disabled {
 }
 
 @media (max-width: 700px) {
+  .server-switcher > .settings-button {
+    width: 28px;
+    padding: 0;
+    gap: 3px;
+  }
+
+  .server-switcher > .settings-button .server-button-label {
+    display: none;
+  }
+
   .topbar,
   .tab-bar {
     padding-right: 14px;

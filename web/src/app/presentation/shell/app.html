@@ -35,18 +35,14 @@
           <button
             class="settings-button"
             type="button"
-            [class.active-settings]="serverMenuOpen()"
+            [class.active-settings]="serverMenuOpen() || activeTab() === 'setup'"
             [attr.aria-expanded]="serverMenuOpen()"
             aria-haspopup="menu"
             aria-label="Đổi server"
             title="Đổi server"
             (click)="toggleServerMenu()"
           >
-            <svg lucideServer class="h-4 w-4" aria-hidden="true"></svg>
-            <span
-              class="server-button-label"
-              [attr.title]="modelEndpoint()"
-            >{{ selectedEndpointLabel() }}</span>
+            <svg lucideSettings2 class="h-4 w-4" aria-hidden="true"></svg>
             <span
               class="connection-status"
               [class]="'connection-status status-' + health()"
@@ -61,6 +57,10 @@
                 @default { <svg lucideLoaderCircle class="h-3.5 w-3.5 animate-spin" aria-hidden="true"></svg> }
               }
             </span>
+            <span
+              class="server-button-label"
+              [attr.title]="modelEndpoint()"
+            >{{ selectedEndpointLabel() }}</span>
           </button>
           @if (serverMenuOpen()) {
             <div class="server-menu" role="menu" aria-label="Chọn server">
@@ -87,9 +87,6 @@
                     @default { <svg lucideLoaderCircle class="h-3.5 w-3.5 animate-spin" aria-hidden="true"></svg> }
                   }
                 </span>
-                @if (isUsingDefaultServer()) {
-                  <span class="server-menu-check" aria-hidden="true">✓</span>
-                }
               </button>
               <button
                 class="server-menu-option"
@@ -114,9 +111,6 @@
                     @default { <svg lucideLoaderCircle class="h-3.5 w-3.5 animate-spin" aria-hidden="true"></svg> }
                   }
                 </span>
-                @if (!isUsingDefaultServer() && hasCustomServer()) {
-                  <span class="server-menu-check" aria-hidden="true">✓</span>
-                }
               </button>
               <button class="server-menu-customize" type="button" (click)="openCustomizeFromServerMenu()">
                 Mở Customize để sửa server
@@ -124,18 +118,6 @@
             </div>
           }
         </div>
-        <button
-          id="customize-button"
-          class="settings-button"
-          type="button"
-          [class.active-settings]="activeTab() === 'setup'"
-          [attr.aria-pressed]="activeTab() === 'setup'"
-          aria-label="Mở tùy chỉnh"
-          title="Customize"
-          (click)="toggleCustomize()"
-        >
-          <svg lucideSettings2 class="h-4 w-4" aria-hidden="true"></svg>
-        </button>
       </div>
       </div>
 
