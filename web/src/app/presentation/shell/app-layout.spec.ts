@@ -30,4 +30,10 @@ describe('chat shell visual contract', () => {
     expect(globalStyles).toMatch(/\.app-shell\.dark-mode \.setup-field small,[\s\S]*?color:\s*#aebbd0 !important/);
     expect(globalStyles).toMatch(/\.app-shell\.dark-mode \.setup-heading > p:not\(\.eyebrow\),[\s\S]*?color:\s*#aebbd0 !important/);
   });
+
+  it('uses a softer dark palette and stronger light-theme secondary text', () => {
+    expect(globalStyles).toMatch(/\.app-shell\.dark-mode \.chat-card,[\s\S]*?background:\s*#162338 !important/);
+    expect(globalStyles).toMatch(/\.app-shell\.dark-mode \.setup-field small,[\s\S]*?color:\s*#c4d0e0 !important/);
+    expect(globalStyles).toMatch(/\.app-shell:not\(\.dark-mode\) \.setup-field small,[\s\S]*?color:\s*#526176/);
+  });
 });

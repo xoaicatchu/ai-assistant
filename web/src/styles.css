@@ -891,3 +891,57 @@ h3 {
   background: #3a2028 !important;
   border-color: #7f3541 !important;
 }
+
+/* High-contrast Apple-like palette: calm surfaces, clear hierarchy. */
+.app-shell.dark-mode .chat-card,
+.app-shell.dark-mode .app-header,
+.app-shell.dark-mode .chat-footer,
+.app-shell.dark-mode .composer {
+  background: #162338 !important;
+}
+
+.app-shell.dark-mode {
+  background: #0f1a2b !important;
+}
+
+.app-shell.dark-mode .chat-footer {
+  background: linear-gradient(to bottom, rgba(22, 35, 56, 0), #162338 28px, #162338 100%) !important;
+}
+
+.app-shell.dark-mode .setup-field small,
+.app-shell.dark-mode .setup-help-local,
+.app-shell.dark-mode .setup-heading > p:not(.eyebrow),
+.app-shell.dark-mode .capability-help,
+.app-shell.dark-mode .endpoint-line,
+.app-shell.dark-mode .message-meta,
+.app-shell.dark-mode .eyebrow {
+  color: #c4d0e0 !important;
+}
+
+.app-shell.dark-mode .setup-field,
+.app-shell.dark-mode .connection-card {
+  background: #22314a !important;
+}
+
+.app-shell.dark-mode .capability-card {
+  background: #1c2b42 !important;
+}
+
+.app-shell.dark-mode .setup-field input,
+.app-shell.dark-mode .setup-field textarea,
+.app-shell.dark-mode .composer textarea,
+.app-shell.dark-mode .model-select,
+.app-shell.dark-mode .edit-question-input {
+  background: #1a283d !important;
+  border-color: #49617f !important;
+}
+
+.app-shell:not(.dark-mode) .setup-field small,
+.app-shell:not(.dark-mode) .setup-help-local,
+.app-shell:not(.dark-mode) .setup-heading > p:not(.eyebrow),
+.app-shell:not(.dark-mode) .capability-help,
+.app-shell:not(.dark-mode) .endpoint-line,
+.app-shell:not(.dark-mode) .message-meta,
+.app-shell:not(.dark-mode) .eyebrow {
+  color: #526176;
+}
