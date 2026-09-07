@@ -83,6 +83,7 @@ import {
 import { VoiceInputController } from '../../infrastructure/browser/voice-input';
 import { AdminPage } from '../admin/admin-page';
 import { loadTheme, saveTheme } from '../../infrastructure/browser/theme';
+import { ChatUseCases } from '../../application/chat/chat-use-cases';
 
 type HealthState = 'checking' | 'online' | 'offline' | 'unconfigured';
 type ActiveTab = 'chat' | 'setup';
@@ -158,6 +159,7 @@ function maxRequestId(conversations: readonly ChatConversation[]): number {
   styleUrl: './app.css',
 })
 export class App implements OnDestroy {
+  private readonly chatUseCases: ChatUseCases;
   @ViewChild('conversation') private conversation?: ElementRef<HTMLElement>;
   @ViewChild('composerInput') private composerInput?: ElementRef<HTMLTextAreaElement>;
   @ViewChild('editQuestionInput') private editQuestionInput?: ElementRef<HTMLTextAreaElement>;
@@ -226,6 +228,7 @@ export class App implements OnDestroy {
   private autoScrollFramePending = false;
 
   constructor(private readonly chatService: ChatService) {
+    this.chatUseCases = new ChatUseCases(chatService);
     if (this.isAdminRoute) {
       return;
     }
@@ -554,7 +557,7 @@ export class App implements OnDestroy {
     let requestCompleted = false;
     let rawAssistantText = '';
     try {
-      await this.chatService.stream(selectedModel, requestMessages, controller.signal, (delta) => {
+      await this.chatUseCases.stream(selectedModel, requestMessages, controller.signal, (delta) => {
         if (!this.isCurrentRequest(conversationId, requestId, controller)) {
           return;
         }
@@ -802,13 +805,13 @@ export class App implements OnDestroy {
         this.setMessageActionFeedback(feedbackMessageId, 'Không còn quyền sở hữu conversation trên thiết bị này.', 'error');
         return;
       }
-      await this.chatService.updateConversation(
+      await this.chatUseCases.updateConversation(
         serverId,
         latestConversation.title,
         latestMessages,
         ownerToken,
       );
-      await this.chatService.publishConversation(serverId, ownerToken);
+      await this.chatUseCases.publishConversation(serverId, ownerToken);
       this.setConversationPublic(conversation.id, true);
       this.markConversationSynced(conversation.id);
     } catch (caughtError) {
@@ -828,13 +831,13 @@ export class App implements OnDestroy {
 
       try {
         const recoveredMessages = this.conversationMessagesForApi(recoveredConversation.messages);
-        await this.chatService.updateConversation(
+        await this.chatUseCases.updateConversation(
           serverId,
           recoveredConversation.title,
           recoveredMessages,
           recoveredToken,
         );
-        await this.chatService.publishConversation(serverId, recoveredToken);
+        await this.chatUseCases.publishConversation(serverId, recoveredToken);
         this.setConversationPublic(conversation.id, true);
         this.markConversationSynced(conversation.id);
       } catch (recoveryError) {
@@ -1106,7 +1109,7 @@ export class App implements OnDestroy {
       this.health.set('checking');
     }
     try {
-      await this.chatService.health(new AbortController().signal, baseUrl);
+      await this.chatUseCases.health(new AbortController().signal, baseUrl);
       this.serverHealth.update((states) => ({ ...states, [server]: 'online' }));
       if (server === this.selectedServer()) {
         this.health.set('online');
@@ -1281,8 +1284,8 @@ export class App implements OnDestroy {
 
     try {
       const shared = localConversation?.serverToken
-        ? await this.chatService.getConversation(shareId, localConversation.serverToken)
-        : await this.chatService.getConversation(shareId);
+        ? await this.chatUseCases.getConversation(shareId, localConversation.serverToken)
+        : await this.chatUseCases.getConversation(shareId);
       if (this.sharedRouteState() !== 'loading') {
         return;
       }
@@ -1696,7 +1699,7 @@ export class App implements OnDestroy {
 
       const messages = this.conversationMessagesForApi(current.messages);
       try {
-        const created = await this.chatService.createConversation(
+        const created = await this.chatUseCases.createConversation(
           current.title,
           messages,
           current.serverId,
@@ -1747,7 +1750,7 @@ export class App implements OnDestroy {
     const conversationToSync = conversation;
 
     try {
-      await this.chatService.updateConversation(
+      await this.chatUseCases.updateConversation(
         conversationToSync.serverId!,
         conversationToSync.title,
         messages,
@@ -1761,7 +1764,7 @@ export class App implements OnDestroy {
           const recoveredId = await this.ensureServerConversation(conversationId, feedbackMessageId);
           const recovered = this.conversations().find((item) => item.id === conversationId);
           if (recoveredId && recovered?.serverToken) {
-            await this.chatService.updateConversation(
+            await this.chatUseCases.updateConversation(
               recoveredId,
               recovered.title,
               this.conversationMessagesForApi(recovered.messages),
