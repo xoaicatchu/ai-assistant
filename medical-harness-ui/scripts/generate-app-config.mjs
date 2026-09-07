@@ -12,9 +12,10 @@ const configuredBackendUrl = rawBackendUrl.replace(/\/+$/, '');
 // NG_APP_API_BASE_URL remains an explicit model-gateway override. When the
 // frontend is deployed separately, NG_APP_BACKEND_URL is the backend origin
 // used for the default gateway and conversation/admin APIs.
-const defaultApiBaseUrl = configuredBackendUrl || configuredApiBaseUrl || '/api';
+const vercelBackendFallback = isVercel ? 'https://ai-assistant-01.vercel.app' : '/api';
+const defaultApiBaseUrl = configuredBackendUrl || configuredApiBaseUrl || vercelBackendFallback;
 const apiBaseUrl = configuredApiBaseUrl || defaultApiBaseUrl;
-const serverApiBaseUrl = configuredBackendUrl || '/api';
+const serverApiBaseUrl = configuredBackendUrl || vercelBackendFallback;
 
 await mkdir(dirname(configPath), { recursive: true });
 await writeFile(
