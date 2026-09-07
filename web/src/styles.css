@@ -593,6 +593,53 @@ h3 {
   color: #f3f4f6 !important;
 }
 
+/* Component-scoped shell rules contain explicit light colors. Keep every
+   visible header, tab, composer and control label readable in dark mode. */
+.app-shell.dark-mode .brand-title-row h1,
+.app-shell.dark-mode .tab-button,
+.app-shell.dark-mode .conversation-tab,
+.app-shell.dark-mode .conversation-tab-main,
+.app-shell.dark-mode .server-button-label,
+.app-shell.dark-mode .auto-scroll-toggle,
+.app-shell.dark-mode .model-select-label,
+.app-shell.dark-mode .model-select,
+.app-shell.dark-mode .settings-button,
+.app-shell.dark-mode .new-conversation-button,
+.app-shell.dark-mode .attach-button,
+.app-shell.dark-mode .voice-button,
+.app-shell.dark-mode .stop-button {
+  color: #e5e7eb !important;
+}
+
+.app-shell.dark-mode .eyebrow,
+.app-shell.dark-mode .message-meta,
+.app-shell.dark-mode .model-select-chevron {
+  color: #aab4c5 !important;
+}
+
+.app-shell.dark-mode .settings-button,
+.app-shell.dark-mode .new-conversation-button,
+.app-shell.dark-mode .attach-button,
+.app-shell.dark-mode .voice-button,
+.app-shell.dark-mode .stop-button,
+.app-shell.dark-mode .model-select-wrap {
+  background: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+.app-shell.dark-mode .conversation-tab,
+.app-shell.dark-mode .conversation-tab:hover,
+.app-shell.dark-mode .active-conversation-tab {
+  background: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+.app-shell.dark-mode .active-tab,
+.app-shell.dark-mode .tab-button:hover,
+.app-shell.dark-mode .active-conversation-tab {
+  color: #93c5fd !important;
+}
+
 .app-shell.dark-mode .message-content a,
 .app-shell.dark-mode .active-tab,
 .app-shell.dark-mode .active-conversation-tab {
