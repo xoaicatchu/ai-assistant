@@ -691,19 +691,12 @@ export class App implements OnDestroy {
   }
 
   protected selectedEndpointLabel(): string {
-    const endpoint = this.modelEndpoint();
-    try {
-      const origin = globalThis.location?.origin ?? 'http://localhost';
-      const url = new URL(endpoint, origin);
-      return url.origin === origin ? url.pathname : `${url.host}${url.pathname}`;
-    } catch {
-      return endpoint;
-    }
+    return this.absoluteEndpointLabel(this.modelEndpoint());
   }
 
   protected serverEndpointLabel(server: ModelServer): string {
     if (server === 'default') {
-      return '/api/v1/chat/completions';
+      return this.absoluteEndpointLabel('/api/v1/chat/completions');
     }
 
     const base = normalizeGatewayBaseUrl(this.customGatewayBaseUrl());
@@ -711,9 +704,19 @@ export class App implements OnDestroy {
       return 'Chưa cấu hình';
     }
 
-    return base.endsWith('/v1')
+    const endpoint = base.endsWith('/v1')
       ? `${base}/chat/completions`
       : `${base}/v1/chat/completions`;
+    return this.absoluteEndpointLabel(endpoint);
+  }
+
+  private absoluteEndpointLabel(endpoint: string): string {
+    try {
+      const origin = globalThis.location?.origin ?? 'http://localhost';
+      return new URL(endpoint, origin).toString();
+    } catch {
+      return endpoint;
+    }
   }
 
   protected serverHealthState(server: ModelServer): HealthState {

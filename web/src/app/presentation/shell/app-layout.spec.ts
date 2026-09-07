@@ -17,4 +17,9 @@ describe('chat shell visual contract', () => {
     expect(shellStyles).toMatch(/\.composer\s*\{[\s\S]*?width:\s*min\(calc\(100% - 40px\),\s*var\(--content-rail\)\)/);
     expect(globalStyles).toMatch(/\.chat-footer\s*\{[\s\S]*?position:\s*fixed/);
   });
+
+  it('gives the server menu enough room for absolute endpoint URLs', () => {
+    expect(shellStyles).toMatch(/\.server-menu\s*\{[\s\S]*?width:\s*min\(460px,/);
+    expect(shellStyles).toMatch(/\.server-menu-option strong\s*\{[\s\S]*?overflow-wrap:\s*anywhere/);
+  });
 });

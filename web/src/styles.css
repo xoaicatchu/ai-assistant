@@ -313,7 +313,6 @@ h3 {
   box-shadow: inset 0 0 0 1px rgba(251, 113, 133, 0.35);
 }
 
-.dark-mode .server-switcher,
 .dark-mode .server-menu-option:hover:not(:disabled),
 .dark-mode .server-menu-option.is-selected {
   color: #93c5fd;

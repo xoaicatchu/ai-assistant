@@ -242,8 +242,8 @@ describe('App message submission', () => {
     vi.stubGlobal('localStorage', { getItem: vi.fn(() => null), setItem: vi.fn() });
     const app = new App({ health: vi.fn().mockResolvedValue(undefined) } as unknown as ChatService);
 
-    expect((app as any).selectedEndpointLabel()).toBe('/api/v1/chat/completions');
-    expect((app as any).serverEndpointLabel('default')).toBe('/api/v1/chat/completions');
+    expect((app as any).selectedEndpointLabel()).toBe('https://example.com/api/v1/chat/completions');
+    expect((app as any).serverEndpointLabel('default')).toBe('https://example.com/api/v1/chat/completions');
   });
 
   it('toggles and saves the dark mode preference', () => {
