@@ -40,7 +40,11 @@ var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get
 builder.Services.AddCors(options => options.AddPolicy("frontend", policy =>
     policy.WithOrigins(allowedOrigins)
         .AllowAnyHeader()
-        .AllowAnyMethod()));
+        .AllowAnyMethod()
+        // Conversation ownership uses an HttpOnly cookie and the frontend is
+        // deployed on a separate origin. Keep the origin allow-list exact;
+        // credentials must never be combined with a wildcard origin.
+        .AllowCredentials()));
 builder.Services.AddSingleton<IModelSelector>(services => new ModelSelector(
     services.GetRequiredService<IOptions<RoutingOptions>>(),
     services.GetRequiredService<IBackendSettings>()));

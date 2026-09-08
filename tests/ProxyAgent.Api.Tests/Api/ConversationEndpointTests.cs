@@ -108,6 +108,22 @@ public sealed class ConversationEndpointTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Cross_origin_conversation_requests_allow_credentials_for_the_frontend()
+    {
+        using var app = new TestApp();
+        using var request = new HttpRequestMessage(HttpMethod.Options, "/api/conversations");
+        request.Headers.Add("Origin", "http://localhost:4200");
+        request.Headers.Add("Access-Control-Request-Method", "POST");
+        request.Headers.Add("Access-Control-Request-Headers", "content-type,x-conversation-token");
+
+        var response = await app.Client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal("http://localhost:4200", response.Headers.GetValues("Access-Control-Allow-Origin").Single());
+        Assert.Equal("true", response.Headers.GetValues("Access-Control-Allow-Credentials").Single());
+    }
+
     private static async Task<HttpStatusCode> GetStatus(HttpClient client, string path)
         => (await client.GetAsync(path)).StatusCode;
 
