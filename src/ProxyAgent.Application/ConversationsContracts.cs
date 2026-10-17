@@ -42,4 +42,5 @@ public sealed record SearchSettingsOverride(
 public sealed record BackendSettingsOverrides(
     ProviderSettingsOverride? OpenAI,
     ProviderSettingsOverride? Anthropic,
-    SearchSettingsOverride? WebSearch);
+    SearchSettingsOverride? WebSearch,
+    ProviderSettingsOverride? Nvidia = null);

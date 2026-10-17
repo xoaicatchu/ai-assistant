@@ -47,6 +47,25 @@ public sealed class ChatEndpointsTests
     }
 
     [Fact]
+    public async Task Gateway_endpoint_routes_to_nvidia_provider_when_prefixed()
+    {
+        var nvidiaFake = new FakeChatProvider("nvidia");
+        using var app = CreateApp(nvidiaFake);
+
+        var response = await app.Client.PostAsJsonAsync("/api/chat", new
+        {
+            model = "nvidia:meta/llama-3.2-11b-vision-instruct",
+            messages = new[] { new { role = "user", content = "Hi" } }
+        });
+
+        response.EnsureSuccessStatusCode();
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("nvidia", body.RootElement.GetProperty("provider").GetString());
+        Assert.Equal("meta/llama-3.2-11b-vision-instruct", body.RootElement.GetProperty("model").GetString());
+        Assert.True(nvidiaFake.WasCalled);
+    }
+
+    [Fact]
     public async Task OpenAi_stream_returns_sse_chunks_and_done_marker()
     {
         using var app = CreateApp(new FakeChatProvider());
@@ -243,9 +262,9 @@ public sealed class ChatEndpointsTests
         }
     }
 
-    private sealed class FakeChatProvider(bool returnToolCall = false) : IChatProvider
+    private sealed class FakeChatProvider(string name = "openai", bool returnToolCall = false) : IChatProvider
     {
-        public string Name => "openai";
+        public string Name => name;
         public bool WasCalled { get; private set; }
         public NormalizedChatRequest? LastRequest { get; private set; }
 

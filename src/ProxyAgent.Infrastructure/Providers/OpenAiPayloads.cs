@@ -8,19 +8,19 @@ internal sealed class OpenAiChatRequest
     [JsonPropertyName("model")] public string Model { get; init; } = string.Empty;
     [JsonPropertyName("messages")] public IReadOnlyList<OpenAiMessage> Messages { get; init; } = [];
     [JsonPropertyName("stream")] public bool Stream { get; init; }
-    [JsonPropertyName("temperature")] public double? Temperature { get; init; }
-    [JsonPropertyName("max_tokens")] public int? MaxTokens { get; init; }
-    [JsonPropertyName("tools")] public IReadOnlyList<OpenAiTool>? Tools { get; init; }
-    [JsonPropertyName("tool_choice")] public string? ToolChoice { get; init; }
+    [JsonPropertyName("temperature")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public double? Temperature { get; init; }
+    [JsonPropertyName("max_tokens")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? MaxTokens { get; init; }
+    [JsonPropertyName("tools")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyList<OpenAiTool>? Tools { get; init; }
+    [JsonPropertyName("tool_choice")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ToolChoice { get; init; }
 }
 
 internal sealed class OpenAiMessage
 {
     [JsonPropertyName("role")] public string Role { get; init; } = string.Empty;
-    [JsonPropertyName("content")] public JsonElement? Content { get; init; }
-    [JsonPropertyName("tool_calls")] public IReadOnlyList<OpenAiToolCall>? ToolCalls { get; init; }
-    [JsonPropertyName("tool_call_id")] public string? ToolCallId { get; init; }
-    [JsonPropertyName("name")] public string? Name { get; init; }
+    [JsonPropertyName("content")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public JsonElement? Content { get; init; }
+    [JsonPropertyName("tool_calls")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyList<OpenAiToolCall>? ToolCalls { get; init; }
+    [JsonPropertyName("tool_call_id")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ToolCallId { get; init; }
+    [JsonPropertyName("name")][JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Name { get; init; }
 }
 
 internal sealed class OpenAiContentPart

@@ -12,11 +12,13 @@ public sealed class ProvidersOptions
 {
     public ProviderOptions OpenAI { get; set; } = new();
     public ProviderOptions Anthropic { get; set; } = new();
+    public ProviderOptions Nvidia { get; set; } = new();
 
     public ProviderOptions Get(string provider) => provider.ToLowerInvariant() switch
     {
         "openai" => OpenAI,
         "anthropic" => Anthropic,
+        "nvidia" => Nvidia,
         _ => throw new UnsupportedProviderException(provider)
     };
 }

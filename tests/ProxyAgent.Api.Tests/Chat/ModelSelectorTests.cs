@@ -39,6 +39,28 @@ public sealed class ModelSelectorTests
     }
 
     [Fact]
+    public void Select_strips_nvidia_prefix()
+    {
+        var selector = CreateSelector();
+
+        var result = selector.Select("nvidia:meta/llama-3.2-11b-vision-instruct");
+
+        Assert.Equal("nvidia", result.Provider);
+        Assert.Equal("meta/llama-3.2-11b-vision-instruct", result.Model);
+    }
+
+    [Fact]
+    public void Select_uses_configured_default_model_for_empty_input_when_nvidia_is_default()
+    {
+        var selector = CreateSelector(defaultProvider: "nvidia", nvidiaDefault: "meta/llama-3.2-11b-vision-instruct");
+
+        var result = selector.Select(null);
+
+        Assert.Equal("nvidia", result.Provider);
+        Assert.Equal("meta/llama-3.2-11b-vision-instruct", result.Model);
+    }
+
+    [Fact]
     public void Select_rejects_unknown_provider_prefix()
     {
         var selector = CreateSelector();
@@ -51,12 +73,14 @@ public sealed class ModelSelectorTests
     private static ModelSelector CreateSelector(
         string defaultProvider = "openai",
         string openAiDefault = "gpt-default",
-        string anthropicDefault = "claude-default")
+        string anthropicDefault = "claude-default",
+        string nvidiaDefault = "nvidia-default")
     {
         var providers = new ProvidersOptions
         {
             OpenAI = new ProviderOptions { DefaultModel = openAiDefault },
-            Anthropic = new ProviderOptions { DefaultModel = anthropicDefault }
+            Anthropic = new ProviderOptions { DefaultModel = anthropicDefault },
+            Nvidia = new ProviderOptions { DefaultModel = nvidiaDefault }
         };
 
         return new ModelSelector(

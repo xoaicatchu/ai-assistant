@@ -31,7 +31,9 @@ public static class ModelCapabilityCatalog
         return normalized switch
         {
             "deepseek/deepseek-v4-flash" or "deepseek-v4-flash" => TextAndTools,
+            "deepseek-ai/deepseek-v4.1-flash" => TextAndTools,
             "deepseek/deepseek-v4-flash-vision-exp" or "deepseek-v4-flash-vision-exp" => VisionAndTools,
+            "meta/llama-3.2-11b-vision-instruct" => VisionAndTools,
             "x-ai/grok-4.6" or "grok-4.6" => VisionAndTools,
             _ => Unknown
         };

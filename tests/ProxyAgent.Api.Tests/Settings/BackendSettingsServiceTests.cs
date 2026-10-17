@@ -38,6 +38,42 @@ public sealed class BackendSettingsServiceTests
         Assert.Equal("environment-search-key", current.WebSearch.ApiKey);
     }
 
+    [Fact]
+    public void Applies_nvidia_overrides_correctly()
+    {
+        var store = new MemorySettingsStore();
+        var service = new BackendSettingsService(
+            Options.Create(new ProvidersOptions
+            {
+                Nvidia = new ProviderOptions
+                {
+                    BaseUrl = "https://integrate.api.nvidia.com/v1",
+                    ApiKey = "",
+                    DefaultModel = "meta/llama-3.2-11b-vision-instruct"
+                }
+            }),
+            Options.Create(new WebSearchOptions()),
+            store);
+
+        service.Save(new BackendSettingsOverrides(
+            OpenAI: null,
+            Anthropic: null,
+            WebSearch: null,
+            Nvidia: new ProviderSettingsOverride("https://override.nvidia.com/v1", "new-nv-key", "new-model", "v1")));
+
+        var current = service.Current;
+        Assert.Equal("https://override.nvidia.com/v1", current.Providers.Nvidia.BaseUrl);
+        Assert.Equal("new-nv-key", current.Providers.Nvidia.ApiKey);
+        Assert.Equal("new-model", current.Providers.Nvidia.DefaultModel);
+    }
+
+    private sealed class MemorySettingsStore : IBackendSettingsStore
+    {
+        private BackendSettingsOverrides? saved;
+        public BackendSettingsOverrides? Get() => saved;
+        public void Save(BackendSettingsOverrides settings) => saved = settings;
+    }
+
     private sealed class UnavailableSettingsStore : IBackendSettingsStore
     {
         public BackendSettingsOverrides? Get() => throw new InvalidOperationException("database unavailable");

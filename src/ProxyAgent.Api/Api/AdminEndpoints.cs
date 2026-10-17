@@ -64,6 +64,7 @@ public static class AdminEndpoints
         {
             OpenAI = ToProviderResponse(current.Providers.OpenAI),
             Anthropic = ToProviderResponse(current.Providers.Anthropic),
+            Nvidia = ToProviderResponse(current.Providers.Nvidia),
             WebSearch = ToSearchResponse(current.WebSearch)
         });
     }
@@ -75,8 +76,9 @@ public static class AdminEndpoints
             var current = settings.Current;
             var openAi = MergeProvider(request?.OpenAI, current.Providers.OpenAI, "OpenAI");
             var anthropic = MergeProvider(request?.Anthropic, current.Providers.Anthropic, "Anthropic");
+            var nvidia = MergeProvider(request?.Nvidia, current.Providers.Nvidia, "Nvidia");
             var webSearch = MergeSearch(request?.WebSearch, current.WebSearch);
-            settings.Save(new BackendSettingsOverrides(openAi, anthropic, webSearch));
+            settings.Save(new BackendSettingsOverrides(openAi, anthropic, webSearch, nvidia));
             return GetSettings(settings);
         }
         catch (ArgumentException exception)
@@ -224,6 +226,7 @@ public sealed class AdminSettingsRequest
 {
     public AdminProviderSettingsRequest? OpenAI { get; init; }
     public AdminProviderSettingsRequest? Anthropic { get; init; }
+    public AdminProviderSettingsRequest? Nvidia { get; init; }
     public AdminSearchSettingsRequest? WebSearch { get; init; }
 }
 
@@ -251,6 +254,7 @@ public sealed class AdminSettingsResponse
 {
     public AdminProviderSettingsResponse OpenAI { get; init; } = new();
     public AdminProviderSettingsResponse Anthropic { get; init; } = new();
+    public AdminProviderSettingsResponse Nvidia { get; init; } = new();
     public AdminSearchSettingsResponse WebSearch { get; init; } = new();
 }
 

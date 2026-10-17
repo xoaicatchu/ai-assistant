@@ -113,6 +113,11 @@ public sealed class BackendSettingsService : IBackendSettings
             Apply(nextProviders.Anthropic, overrides.Anthropic);
         }
 
+        if (overrides?.Nvidia is not null)
+        {
+            Apply(nextProviders.Nvidia, overrides.Nvidia);
+        }
+
         if (overrides?.WebSearch is not null)
         {
             var value = overrides.WebSearch;
@@ -138,7 +143,8 @@ public sealed class BackendSettingsService : IBackendSettings
     private static ProvidersOptions Clone(ProvidersOptions source) => new()
     {
         OpenAI = Clone(source.OpenAI),
-        Anthropic = Clone(source.Anthropic)
+        Anthropic = Clone(source.Anthropic),
+        Nvidia = Clone(source.Nvidia)
     };
 
     private static ProviderOptions Clone(ProviderOptions source) => new()

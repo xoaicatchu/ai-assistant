@@ -9,7 +9,7 @@ using ProxyAgent.Api.Streaming;
 
 namespace ProxyAgent.Api.Providers;
 
-public sealed class OpenAiProvider : IChatProvider
+public class OpenAiProvider : IChatProvider
 {
     private readonly HttpClient httpClient;
     private readonly Func<ProviderOptions> getSettings;
@@ -26,7 +26,13 @@ public sealed class OpenAiProvider : IChatProvider
         getSettings = () => backendSettings.Current.Providers.OpenAI;
     }
 
-    public string Name => "openai";
+    protected OpenAiProvider(HttpClient httpClient, Func<ProviderOptions> getSettings)
+    {
+        this.httpClient = httpClient;
+        this.getSettings = getSettings;
+    }
+
+    public virtual string Name => "openai";
 
     public async Task<NormalizedChatResponse> CompleteAsync(
         NormalizedChatRequest request,
@@ -211,7 +217,7 @@ public sealed class OpenAiProvider : IChatProvider
 
     private static Uri BuildEndpoint(string path, ProviderOptions settings) => new(new Uri(settings.BaseUrl.TrimEnd('/') + "/"), path);
 
-    private static OpenAiMessage MapMessage(ChatMessage message) => new()
+    private OpenAiMessage MapMessage(ChatMessage message) => new()
     {
         Role = message.Role,
         Content = message.ContentParts.Count == 0
@@ -243,7 +249,7 @@ public sealed class OpenAiProvider : IChatProvider
         ArgumentsJson = call.Function.Arguments
     };
 
-    private static OpenAiContentPart MapContentPart(ChatContentPart part) => part.Type switch
+    private OpenAiContentPart MapContentPart(ChatContentPart part) => part.Type switch
     {
         "text" => new OpenAiContentPart { Type = "text", Text = part.Text ?? string.Empty },
         "image_url" => new OpenAiContentPart
@@ -251,6 +257,6 @@ public sealed class OpenAiProvider : IChatProvider
             Type = "image_url",
             ImageUrl = new OpenAiImageUrl { Url = part.ImageUrl ?? string.Empty }
         },
-        _ => throw new ProviderRequestException("openai")
+        _ => throw new ProviderRequestException(Name)
     };
 }

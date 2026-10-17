@@ -109,6 +109,7 @@ builder.Services.AddAuthorization(options =>
 var timeoutSeconds = builder.Configuration.GetValue("Http:TimeoutSeconds", 120);
 builder.Services.AddHttpClient("openai", client => client.Timeout = TimeSpan.FromSeconds(timeoutSeconds));
 builder.Services.AddHttpClient("anthropic", client => client.Timeout = TimeSpan.FromSeconds(timeoutSeconds));
+builder.Services.AddHttpClient("nvidia", client => client.Timeout = TimeSpan.FromSeconds(timeoutSeconds));
 var webSearchTimeoutSeconds = builder.Configuration.GetValue("WebSearch:TimeoutSeconds", 30);
 builder.Services.AddHttpClient("web-search", client =>
 {
@@ -121,6 +122,12 @@ builder.Services.AddSingleton<IChatProvider>(services =>
 {
     return new OpenAiProvider(
         services.GetRequiredService<IHttpClientFactory>().CreateClient("openai"),
+        services.GetRequiredService<IBackendSettings>());
+});
+builder.Services.AddSingleton<IChatProvider>(services =>
+{
+    return new NvidiaProvider(
+        services.GetRequiredService<IHttpClientFactory>().CreateClient("nvidia"),
         services.GetRequiredService<IBackendSettings>());
 });
 builder.Services.AddSingleton<WebSearchAgent>(services => new WebSearchAgent(
@@ -170,6 +177,7 @@ app.Use(async (context, next) =>
     }
     catch (Exception exception)
     {
+        app.Logger.LogError(exception, "Unhandled exception processing request {Path}", context.Request.Path);
         await ErrorHandling.WriteAsync(context, exception, context.RequestAborted);
     }
 });

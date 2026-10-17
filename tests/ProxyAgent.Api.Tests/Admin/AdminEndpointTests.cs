@@ -34,6 +34,7 @@ public sealed class AdminEndpointTests
         Assert.DoesNotContain("server-secret", body, StringComparison.Ordinal);
         using var document = JsonDocument.Parse(body);
         Assert.True(document.RootElement.GetProperty("openAI").GetProperty("hasApiKey").GetBoolean());
+        Assert.True(document.RootElement.GetProperty("nvidia").GetProperty("hasApiKey").GetBoolean());
     }
 
     [Fact]
@@ -142,6 +143,7 @@ public sealed class AdminEndpointTests
             builder.UseSetting("Admin:InitialUsername", "admin");
             builder.UseSetting("Admin:InitialPassword", "initial-password-123");
             builder.UseSetting("Providers:OpenAI:ApiKey", "server-secret");
+            builder.UseSetting("Providers:Nvidia:ApiKey", "server-secret-nv");
         }
 
         protected override void Dispose(bool disposing)
