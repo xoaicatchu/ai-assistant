@@ -67,6 +67,36 @@ public sealed class BackendSettingsServiceTests
         Assert.Equal("new-model", current.Providers.Nvidia.DefaultModel);
     }
 
+    [Fact]
+    public void Applies_xai_overrides_correctly()
+    {
+        var store = new MemorySettingsStore();
+        var service = new BackendSettingsService(
+            Options.Create(new ProvidersOptions
+            {
+                XAI = new ProviderOptions
+                {
+                    BaseUrl = "https://api.x.ai/v1",
+                    ApiKey = "",
+                    DefaultModel = "grok-2-latest"
+                }
+            }),
+            Options.Create(new WebSearchOptions()),
+            store);
+
+        service.Save(new BackendSettingsOverrides(
+            OpenAI: null,
+            Anthropic: null,
+            WebSearch: null,
+            Nvidia: null,
+            XAI: new ProviderSettingsOverride("https://override.x.ai/v1", "new-xai-key", "grok-beta", "v1")));
+
+        var current = service.Current;
+        Assert.Equal("https://override.x.ai/v1", current.Providers.XAI.BaseUrl);
+        Assert.Equal("new-xai-key", current.Providers.XAI.ApiKey);
+        Assert.Equal("grok-beta", current.Providers.XAI.DefaultModel);
+    }
+
     private sealed class MemorySettingsStore : IBackendSettingsStore
     {
         private BackendSettingsOverrides? saved;

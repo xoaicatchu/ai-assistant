@@ -61,6 +61,28 @@ public sealed class ModelSelectorTests
     }
 
     [Fact]
+    public void Select_strips_xai_prefix()
+    {
+        var selector = CreateSelector();
+
+        var result = selector.Select("xai:grok-2-latest");
+
+        Assert.Equal("xai", result.Provider);
+        Assert.Equal("grok-2-latest", result.Model);
+    }
+
+    [Fact]
+    public void Select_normalizes_grok_prefix_to_xai()
+    {
+        var selector = CreateSelector();
+
+        var result = selector.Select("grok:grok-2-latest");
+
+        Assert.Equal("xai", result.Provider);
+        Assert.Equal("grok-2-latest", result.Model);
+    }
+
+    [Fact]
     public void Select_rejects_unknown_provider_prefix()
     {
         var selector = CreateSelector();
@@ -74,13 +96,15 @@ public sealed class ModelSelectorTests
         string defaultProvider = "openai",
         string openAiDefault = "gpt-default",
         string anthropicDefault = "claude-default",
-        string nvidiaDefault = "nvidia-default")
+        string nvidiaDefault = "nvidia-default",
+        string xaiDefault = "grok-default")
     {
         var providers = new ProvidersOptions
         {
             OpenAI = new ProviderOptions { DefaultModel = openAiDefault },
             Anthropic = new ProviderOptions { DefaultModel = anthropicDefault },
-            Nvidia = new ProviderOptions { DefaultModel = nvidiaDefault }
+            Nvidia = new ProviderOptions { DefaultModel = nvidiaDefault },
+            XAI = new ProviderOptions { DefaultModel = xaiDefault }
         };
 
         return new ModelSelector(

@@ -35,6 +35,7 @@ public sealed class AdminEndpointTests
         using var document = JsonDocument.Parse(body);
         Assert.True(document.RootElement.GetProperty("openAI").GetProperty("hasApiKey").GetBoolean());
         Assert.True(document.RootElement.GetProperty("nvidia").GetProperty("hasApiKey").GetBoolean());
+        Assert.True(document.RootElement.GetProperty("xai").GetProperty("hasApiKey").GetBoolean());
     }
 
     [Fact]
@@ -144,6 +145,7 @@ public sealed class AdminEndpointTests
             builder.UseSetting("Admin:InitialPassword", "initial-password-123");
             builder.UseSetting("Providers:OpenAI:ApiKey", "server-secret");
             builder.UseSetting("Providers:Nvidia:ApiKey", "server-secret-nv");
+            builder.UseSetting("Providers:XAI:ApiKey", "server-secret-xai");
         }
 
         protected override void Dispose(bool disposing)

@@ -66,6 +66,25 @@ public sealed class ChatEndpointsTests
     }
 
     [Fact]
+    public async Task Gateway_endpoint_routes_to_xai_provider_when_grok_prefixed()
+    {
+        var xaiFake = new FakeChatProvider("xai");
+        using var app = CreateApp(xaiFake);
+
+        var response = await app.Client.PostAsJsonAsync("/api/chat", new
+        {
+            model = "grok:grok-2-latest",
+            messages = new[] { new { role = "user", content = "Hi" } }
+        });
+
+        response.EnsureSuccessStatusCode();
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("xai", body.RootElement.GetProperty("provider").GetString());
+        Assert.Equal("grok-2-latest", body.RootElement.GetProperty("model").GetString());
+        Assert.True(xaiFake.WasCalled);
+    }
+
+    [Fact]
     public async Task OpenAi_stream_returns_sse_chunks_and_done_marker()
     {
         using var app = CreateApp(new FakeChatProvider());

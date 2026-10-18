@@ -13,12 +13,14 @@ public sealed class ProvidersOptions
     public ProviderOptions OpenAI { get; set; } = new();
     public ProviderOptions Anthropic { get; set; } = new();
     public ProviderOptions Nvidia { get; set; } = new();
+    public ProviderOptions XAI { get; set; } = new();
 
     public ProviderOptions Get(string provider) => provider.ToLowerInvariant() switch
     {
         "openai" => OpenAI,
         "anthropic" => Anthropic,
         "nvidia" => Nvidia,
+        "xai" or "grok" => XAI,
         _ => throw new UnsupportedProviderException(provider)
     };
 }
@@ -85,6 +87,11 @@ public sealed class ModelSelector : IModelSelector
                 provider = value[..separator].ToLowerInvariant();
                 model = value[(separator + 1)..].Trim();
             }
+        }
+
+        if (provider is "grok")
+        {
+            provider = "xai";
         }
 
         var settings = getProviders().Get(provider);

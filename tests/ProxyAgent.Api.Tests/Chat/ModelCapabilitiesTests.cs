@@ -10,6 +10,7 @@ public sealed class ModelCapabilitiesTests
     [InlineData("deepseek/deepseek-v4-flash-vision-exp", ModelCapabilitySupport.Supported, ModelCapabilitySupport.Supported)]
     [InlineData("meta/llama-3.2-11b-vision-instruct", ModelCapabilitySupport.Supported, ModelCapabilitySupport.Supported)]
     [InlineData("deepseek-ai/deepseek-v4.1-flash", ModelCapabilitySupport.Unsupported, ModelCapabilitySupport.Supported)]
+    [InlineData("grok-2-latest", ModelCapabilitySupport.Supported, ModelCapabilitySupport.Supported)]
     public void For_returns_capabilities_for_known_model_aliases(
         string model,
         ModelCapabilitySupport vision,

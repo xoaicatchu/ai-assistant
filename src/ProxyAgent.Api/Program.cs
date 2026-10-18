@@ -110,6 +110,7 @@ var timeoutSeconds = builder.Configuration.GetValue("Http:TimeoutSeconds", 120);
 builder.Services.AddHttpClient("openai", client => client.Timeout = TimeSpan.FromSeconds(timeoutSeconds));
 builder.Services.AddHttpClient("anthropic", client => client.Timeout = TimeSpan.FromSeconds(timeoutSeconds));
 builder.Services.AddHttpClient("nvidia", client => client.Timeout = TimeSpan.FromSeconds(timeoutSeconds));
+builder.Services.AddHttpClient("xai", client => client.Timeout = TimeSpan.FromSeconds(timeoutSeconds));
 var webSearchTimeoutSeconds = builder.Configuration.GetValue("WebSearch:TimeoutSeconds", 30);
 builder.Services.AddHttpClient("web-search", client =>
 {
@@ -128,6 +129,12 @@ builder.Services.AddSingleton<IChatProvider>(services =>
 {
     return new NvidiaProvider(
         services.GetRequiredService<IHttpClientFactory>().CreateClient("nvidia"),
+        services.GetRequiredService<IBackendSettings>());
+});
+builder.Services.AddSingleton<IChatProvider>(services =>
+{
+    return new XaiProvider(
+        services.GetRequiredService<IHttpClientFactory>().CreateClient("xai"),
         services.GetRequiredService<IBackendSettings>());
 });
 builder.Services.AddSingleton<WebSearchAgent>(services => new WebSearchAgent(

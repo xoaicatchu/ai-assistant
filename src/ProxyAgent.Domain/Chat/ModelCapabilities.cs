@@ -35,6 +35,7 @@ public static class ModelCapabilityCatalog
             "deepseek/deepseek-v4-flash-vision-exp" or "deepseek-v4-flash-vision-exp" => VisionAndTools,
             "meta/llama-3.2-11b-vision-instruct" => VisionAndTools,
             "x-ai/grok-4.6" or "grok-4.6" => VisionAndTools,
+            "x-ai/grok-2-latest" or "grok-2-latest" or "grok-2" or "grok-beta" or "grok-2-vision-latest" => VisionAndTools,
             _ => Unknown
         };
     }
