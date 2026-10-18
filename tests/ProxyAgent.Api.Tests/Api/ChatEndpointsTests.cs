@@ -85,6 +85,25 @@ public sealed class ChatEndpointsTests
     }
 
     [Fact]
+    public async Task Gateway_endpoint_routes_to_groq_provider_when_prefixed()
+    {
+        var groqFake = new FakeChatProvider("groq");
+        using var app = CreateApp(groqFake);
+
+        var response = await app.Client.PostAsJsonAsync("/api/chat", new
+        {
+            model = "groq:openai/gpt-oss-120b",
+            messages = new[] { new { role = "user", content = "Hi" } }
+        });
+
+        response.EnsureSuccessStatusCode();
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("groq", body.RootElement.GetProperty("provider").GetString());
+        Assert.Equal("openai/gpt-oss-120b", body.RootElement.GetProperty("model").GetString());
+        Assert.True(groqFake.WasCalled);
+    }
+
+    [Fact]
     public async Task OpenAi_stream_returns_sse_chunks_and_done_marker()
     {
         using var app = CreateApp(new FakeChatProvider());

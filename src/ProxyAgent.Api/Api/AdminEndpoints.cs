@@ -66,6 +66,7 @@ public static class AdminEndpoints
             Anthropic = ToProviderResponse(current.Providers.Anthropic),
             Nvidia = ToProviderResponse(current.Providers.Nvidia),
             XAI = ToProviderResponse(current.Providers.XAI),
+            Groq = ToProviderResponse(current.Providers.Groq),
             WebSearch = ToSearchResponse(current.WebSearch)
         });
     }
@@ -79,8 +80,9 @@ public static class AdminEndpoints
             var anthropic = MergeProvider(request?.Anthropic, current.Providers.Anthropic, "Anthropic");
             var nvidia = MergeProvider(request?.Nvidia, current.Providers.Nvidia, "Nvidia");
             var xai = MergeProvider(request?.XAI, current.Providers.XAI, "XAI");
+            var groq = MergeProvider(request?.Groq, current.Providers.Groq, "Groq");
             var webSearch = MergeSearch(request?.WebSearch, current.WebSearch);
-            settings.Save(new BackendSettingsOverrides(openAi, anthropic, webSearch, nvidia, xai));
+            settings.Save(new BackendSettingsOverrides(openAi, anthropic, webSearch, nvidia, xai, groq));
             return GetSettings(settings);
         }
         catch (ArgumentException exception)
@@ -230,6 +232,7 @@ public sealed class AdminSettingsRequest
     public AdminProviderSettingsRequest? Anthropic { get; init; }
     public AdminProviderSettingsRequest? Nvidia { get; init; }
     public AdminProviderSettingsRequest? XAI { get; init; }
+    public AdminProviderSettingsRequest? Groq { get; init; }
     public AdminSearchSettingsRequest? WebSearch { get; init; }
 }
 
@@ -259,6 +262,7 @@ public sealed class AdminSettingsResponse
     public AdminProviderSettingsResponse Anthropic { get; init; } = new();
     public AdminProviderSettingsResponse Nvidia { get; init; } = new();
     public AdminProviderSettingsResponse XAI { get; init; } = new();
+    public AdminProviderSettingsResponse Groq { get; init; } = new();
     public AdminSearchSettingsResponse WebSearch { get; init; } = new();
 }
 

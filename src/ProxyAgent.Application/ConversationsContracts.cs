@@ -44,4 +44,5 @@ public sealed record BackendSettingsOverrides(
     ProviderSettingsOverride? Anthropic,
     SearchSettingsOverride? WebSearch,
     ProviderSettingsOverride? Nvidia = null,
-    ProviderSettingsOverride? XAI = null);
+    ProviderSettingsOverride? XAI = null,
+    ProviderSettingsOverride? Groq = null);

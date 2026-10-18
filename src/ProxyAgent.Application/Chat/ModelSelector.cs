@@ -14,6 +14,7 @@ public sealed class ProvidersOptions
     public ProviderOptions Anthropic { get; set; } = new();
     public ProviderOptions Nvidia { get; set; } = new();
     public ProviderOptions XAI { get; set; } = new();
+    public ProviderOptions Groq { get; set; } = new();
 
     public ProviderOptions Get(string provider) => provider.ToLowerInvariant() switch
     {
@@ -21,6 +22,7 @@ public sealed class ProvidersOptions
         "anthropic" => Anthropic,
         "nvidia" => Nvidia,
         "xai" or "grok" => XAI,
+        "groq" => Groq,
         _ => throw new UnsupportedProviderException(provider)
     };
 }
@@ -86,6 +88,11 @@ public sealed class ModelSelector : IModelSelector
             {
                 provider = value[..separator].ToLowerInvariant();
                 model = value[(separator + 1)..].Trim();
+            }
+            else if (value.StartsWith("openai/gpt-oss", StringComparison.OrdinalIgnoreCase) ||
+                     value.StartsWith("gpt-oss", StringComparison.OrdinalIgnoreCase))
+            {
+                provider = "groq";
             }
         }
 

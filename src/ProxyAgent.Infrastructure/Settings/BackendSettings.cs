@@ -123,6 +123,11 @@ public sealed class BackendSettingsService : IBackendSettings
             Apply(nextProviders.XAI, overrides.XAI);
         }
 
+        if (overrides?.Groq is not null)
+        {
+            Apply(nextProviders.Groq, overrides.Groq);
+        }
+
         if (overrides?.WebSearch is not null)
         {
             var value = overrides.WebSearch;
@@ -150,7 +155,8 @@ public sealed class BackendSettingsService : IBackendSettings
         OpenAI = Clone(source.OpenAI),
         Anthropic = Clone(source.Anthropic),
         Nvidia = Clone(source.Nvidia),
-        XAI = Clone(source.XAI)
+        XAI = Clone(source.XAI),
+        Groq = Clone(source.Groq)
     };
 
     private static ProviderOptions Clone(ProviderOptions source) => new()

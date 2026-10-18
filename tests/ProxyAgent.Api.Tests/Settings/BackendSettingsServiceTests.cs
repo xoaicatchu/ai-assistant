@@ -97,6 +97,37 @@ public sealed class BackendSettingsServiceTests
         Assert.Equal("grok-beta", current.Providers.XAI.DefaultModel);
     }
 
+    [Fact]
+    public void Applies_groq_overrides_correctly()
+    {
+        var store = new MemorySettingsStore();
+        var service = new BackendSettingsService(
+            Options.Create(new ProvidersOptions
+            {
+                Groq = new ProviderOptions
+                {
+                    BaseUrl = "https://api.groq.com/openai/v1",
+                    ApiKey = "",
+                    DefaultModel = "openai/gpt-oss-120b"
+                }
+            }),
+            Options.Create(new WebSearchOptions()),
+            store);
+
+        service.Save(new BackendSettingsOverrides(
+            OpenAI: null,
+            Anthropic: null,
+            WebSearch: null,
+            Nvidia: null,
+            XAI: null,
+            Groq: new ProviderSettingsOverride("https://override.groq.com/v1", "new-groq-key", "new-groq-model", "v1")));
+
+        var current = service.Current;
+        Assert.Equal("https://override.groq.com/v1", current.Providers.Groq.BaseUrl);
+        Assert.Equal("new-groq-key", current.Providers.Groq.ApiKey);
+        Assert.Equal("new-groq-model", current.Providers.Groq.DefaultModel);
+    }
+
     private sealed class MemorySettingsStore : IBackendSettingsStore
     {
         private BackendSettingsOverrides? saved;

@@ -105,6 +105,28 @@ public sealed class ModelSelectorTests
     }
 
     [Fact]
+    public void Select_strips_groq_prefix()
+    {
+        var selector = CreateSelector();
+
+        var result = selector.Select("groq:openai/gpt-oss-120b");
+
+        Assert.Equal("groq", result.Provider);
+        Assert.Equal("openai/gpt-oss-120b", result.Model);
+    }
+
+    [Fact]
+    public void Select_routes_openai_gpt_oss_unprefixed_to_groq_provider()
+    {
+        var selector = CreateSelector();
+
+        var result = selector.Select("openai/gpt-oss-120b");
+
+        Assert.Equal("groq", result.Provider);
+        Assert.Equal("openai/gpt-oss-120b", result.Model);
+    }
+
+    [Fact]
     public void Select_rejects_unknown_provider_prefix()
     {
         var selector = CreateSelector();
@@ -119,14 +141,16 @@ public sealed class ModelSelectorTests
         string openAiDefault = "gpt-default",
         string anthropicDefault = "claude-default",
         string nvidiaDefault = "nvidia-default",
-        string xaiDefault = "grok-default")
+        string xaiDefault = "grok-default",
+        string groqDefault = "groq-default")
     {
         var providers = new ProvidersOptions
         {
             OpenAI = new ProviderOptions { DefaultModel = openAiDefault },
             Anthropic = new ProviderOptions { DefaultModel = anthropicDefault },
             Nvidia = new ProviderOptions { DefaultModel = nvidiaDefault },
-            XAI = new ProviderOptions { DefaultModel = xaiDefault }
+            XAI = new ProviderOptions { DefaultModel = xaiDefault },
+            Groq = new ProviderOptions { DefaultModel = groqDefault }
         };
 
         return new ModelSelector(
