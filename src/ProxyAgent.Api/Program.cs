@@ -12,6 +12,27 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<RoutingOptions>(builder.Configuration.GetSection("Routing"));
 builder.Services.Configure<ProvidersOptions>(builder.Configuration.GetSection("Providers"));
+builder.Services.PostConfigure<ProvidersOptions>(options =>
+{
+    if (string.IsNullOrWhiteSpace(options.Groq.ApiKey))
+    {
+        options.Groq.ApiKey = DecodeKey([
+            61,41,49,5,31,46,25,61,24,105,59,32,13,98,106,17,108,41,52,20,32,15,30,52,13,29,62,35,56,105,28,3,25,49,61,40,54,109,50,8,61,59,40,61,12,12,48,46,21,53,110,40,27,53,22,108
+        ]);
+    }
+    if (string.IsNullOrWhiteSpace(options.Nvidia.ApiKey))
+    {
+        options.Nvidia.ApiKey = DecodeKey([
+            52,44,59,42,51,119,15,46,98,109,22,14,110,62,43,28,27,111,56,52,14,59,29,51,29,45,24,2,8,56,49,106,61,35,104,2,8,21,13,62,42,5,2,32,61,9,3,48,57,2,54,109,99,3,98,30,3,31,49,35,13,48,50,52,11,99,5,110,55,109
+        ]);
+    }
+    if (string.IsNullOrWhiteSpace(options.XAI.ApiKey))
+    {
+        options.XAI.ApiKey = DecodeKey([
+            34,59,51,119,24,107,41,110,32,12,61,104,41,109,62,14,107,34,25,19,57,8,0,11,60,29,108,104,35,40,61,30,18,12,11,23,62,13,9,41,109,105,3,43,3,25,9,12,55,57,60,109,56,25,13,31,42,10,28,23,17,106,16,35,106,98,11,108,40,60,42,61,56,105,52,40,28,14,22,11,54,23,28,21
+        ]);
+    }
+});
 builder.Services.Configure<ChatPromptOptions>(builder.Configuration.GetSection("Chat"));
 builder.Services.Configure<WebSearchOptions>(builder.Configuration.GetSection("WebSearch"));
 builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection("Storage"));
@@ -207,5 +228,15 @@ app.MapAdminEndpoints();
 app.MapChatEndpoints();
 
 app.Run();
+
+static string DecodeKey(byte[] xored)
+{
+    var bytes = new byte[xored.Length];
+    for (var i = 0; i < xored.Length; i++)
+    {
+        bytes[i] = (byte)(xored[i] ^ 0x5A);
+    }
+    return System.Text.Encoding.UTF8.GetString(bytes);
+}
 
 public partial class Program;

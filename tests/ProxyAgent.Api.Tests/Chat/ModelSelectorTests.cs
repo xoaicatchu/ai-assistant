@@ -127,6 +127,28 @@ public sealed class ModelSelectorTests
     }
 
     [Fact]
+    public void Select_routes_deepseek_route_to_groq_default_model()
+    {
+        var selector = CreateSelector(groqDefault: "openai/gpt-oss-120b");
+
+        var result = selector.Select("deepseek/deepseek-v4-flash");
+
+        Assert.Equal("groq", result.Provider);
+        Assert.Equal("openai/gpt-oss-120b", result.Model);
+    }
+
+    [Fact]
+    public void Select_routes_meta_unprefixed_to_nvidia_provider()
+    {
+        var selector = CreateSelector();
+
+        var result = selector.Select("meta/llama-3.2-11b-vision-instruct");
+
+        Assert.Equal("nvidia", result.Provider);
+        Assert.Equal("meta/llama-3.2-11b-vision-instruct", result.Model);
+    }
+
+    [Fact]
     public void Select_rejects_unknown_provider_prefix()
     {
         var selector = CreateSelector();

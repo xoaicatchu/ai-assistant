@@ -20,8 +20,13 @@ public sealed class ProviderNotConfiguredException(string provider)
 {
 }
 
-public sealed class ProviderAuthenticationException(string provider)
-    : ProviderException(provider, "provider_authentication_failed", "The upstream provider rejected the credentials.")
+public sealed class ProviderAuthenticationException(string provider, string? upstreamDetails = null)
+    : ProviderException(
+        provider,
+        "provider_authentication_failed",
+        string.IsNullOrWhiteSpace(upstreamDetails)
+            ? "The upstream provider rejected the credentials."
+            : $"The upstream provider rejected the credentials: {upstreamDetails}")
 {
 }
 
@@ -71,12 +76,18 @@ public static class ProviderErrorDetails
         try
         {
             using var document = JsonDocument.Parse(body);
-            if (document.RootElement.TryGetProperty("error", out var error) &&
-                error.ValueKind == JsonValueKind.Object &&
-                error.TryGetProperty("message", out var message) &&
-                message.ValueKind == JsonValueKind.String)
+            if (document.RootElement.TryGetProperty("error", out var error))
             {
-                body = message.GetString() ?? body;
+                if (error.ValueKind == JsonValueKind.Object &&
+                    error.TryGetProperty("message", out var message) &&
+                    message.ValueKind == JsonValueKind.String)
+                {
+                    body = message.GetString() ?? body;
+                }
+                else if (error.ValueKind == JsonValueKind.String)
+                {
+                    body = error.GetString() ?? body;
+                }
             }
         }
         catch (JsonException)

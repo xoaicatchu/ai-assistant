@@ -187,7 +187,7 @@ public class OpenAiProvider : IChatProvider
             response.Dispose();
             throw statusCode switch
             {
-                HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => new ProviderAuthenticationException(Name),
+                HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => new ProviderAuthenticationException(Name, upstreamDetails),
                 HttpStatusCode.PaymentRequired => new ProviderQuotaException(Name),
                 >= HttpStatusCode.BadRequest and < HttpStatusCode.InternalServerError => new ProviderRequestException(Name, upstreamDetails),
                 _ => new ProviderUnavailableException(Name)

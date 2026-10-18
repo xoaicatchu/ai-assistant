@@ -12,9 +12,9 @@ public sealed class ProvidersOptions
 {
     public ProviderOptions OpenAI { get; set; } = new();
     public ProviderOptions Anthropic { get; set; } = new();
-    public ProviderOptions Nvidia { get; set; } = new();
-    public ProviderOptions XAI { get; set; } = new();
-    public ProviderOptions Groq { get; set; } = new();
+    public ProviderOptions Nvidia { get; set; } = new() { DefaultModel = "meta/llama-3.2-11b-vision-instruct" };
+    public ProviderOptions XAI { get; set; } = new() { DefaultModel = "grok-2-latest" };
+    public ProviderOptions Groq { get; set; } = new() { DefaultModel = "openai/gpt-oss-120b" };
 
     public ProviderOptions Get(string provider) => provider.ToLowerInvariant() switch
     {
@@ -90,9 +90,29 @@ public sealed class ModelSelector : IModelSelector
                 model = value[(separator + 1)..].Trim();
             }
             else if (value.StartsWith("openai/gpt-oss", StringComparison.OrdinalIgnoreCase) ||
-                     value.StartsWith("gpt-oss", StringComparison.OrdinalIgnoreCase))
+                     value.StartsWith("gpt-oss", StringComparison.OrdinalIgnoreCase) ||
+                     value.StartsWith("deepseek", StringComparison.OrdinalIgnoreCase))
             {
                 provider = "groq";
+                if (value.StartsWith("deepseek", StringComparison.OrdinalIgnoreCase))
+                {
+                    model = null;
+                }
+            }
+            else if (value.StartsWith("x-ai/", StringComparison.OrdinalIgnoreCase) ||
+                     value.StartsWith("xai/", StringComparison.OrdinalIgnoreCase))
+            {
+                provider = "xai";
+                model = null;
+            }
+            else if (value.StartsWith("meta/", StringComparison.OrdinalIgnoreCase) ||
+                     value.StartsWith("nvidia/", StringComparison.OrdinalIgnoreCase))
+            {
+                provider = "nvidia";
+                if (value.StartsWith("nvidia/", StringComparison.OrdinalIgnoreCase))
+                {
+                    model = value["nvidia/".Length..];
+                }
             }
         }
 
@@ -102,7 +122,9 @@ public sealed class ModelSelector : IModelSelector
         }
 
         var settings = getProviders().Get(provider);
-        if (string.IsNullOrWhiteSpace(model) || (provider is "xai" && model.StartsWith("x-ai/", StringComparison.OrdinalIgnoreCase)))
+        if (string.IsNullOrWhiteSpace(model) ||
+            (provider is "xai" && model.StartsWith("x-ai/", StringComparison.OrdinalIgnoreCase)) ||
+            (provider is "groq" && model.StartsWith("deepseek", StringComparison.OrdinalIgnoreCase)))
         {
             model = settings.DefaultModel;
         }
