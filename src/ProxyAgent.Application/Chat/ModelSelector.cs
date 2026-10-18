@@ -95,7 +95,7 @@ public sealed class ModelSelector : IModelSelector
         }
 
         var settings = getProviders().Get(provider);
-        if (string.IsNullOrWhiteSpace(model))
+        if (string.IsNullOrWhiteSpace(model) || (provider is "xai" && model.StartsWith("x-ai/", StringComparison.OrdinalIgnoreCase)))
         {
             model = settings.DefaultModel;
         }

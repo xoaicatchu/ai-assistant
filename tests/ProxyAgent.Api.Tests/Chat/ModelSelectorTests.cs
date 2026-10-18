@@ -83,6 +83,28 @@ public sealed class ModelSelectorTests
     }
 
     [Fact]
+    public void Select_routes_xai_route_to_xai_default_model_when_xai_provider()
+    {
+        var selector = CreateSelector(defaultProvider: "xai", xaiDefault: "grok-2-latest");
+
+        var result = selector.Select("x-ai/grok-4.6");
+
+        Assert.Equal("xai", result.Provider);
+        Assert.Equal("grok-2-latest", result.Model);
+    }
+
+    [Fact]
+    public void Select_routes_prefixed_xai_route_to_xai_default_model()
+    {
+        var selector = CreateSelector(xaiDefault: "grok-2-latest");
+
+        var result = selector.Select("xai:x-ai/grok-4.6");
+
+        Assert.Equal("xai", result.Provider);
+        Assert.Equal("grok-2-latest", result.Model);
+    }
+
+    [Fact]
     public void Select_rejects_unknown_provider_prefix()
     {
         var selector = CreateSelector();
